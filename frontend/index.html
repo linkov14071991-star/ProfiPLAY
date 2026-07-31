@@ -3,56 +3,98 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ProfiPlay — Крокодил</title>
+<title>ProfiPlay</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-<!-- Экран проверки подписки -->
+<!-- ==== Экран: проверка подписки ==== -->
 <section id="screen-check" class="screen active">
   <div class="loader"></div>
   <p>Проверяем подписку...</p>
 </section>
 
-<!-- Экран "Нужна подписка" -->
+<!-- ==== Экран: нужна подписка ==== -->
 <section id="screen-need-sub" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
   <div class="card">
     <h1>📢 Подпишитесь на канал</h1>
-    <p>Чтобы играть в ProfiPlay, подпишитесь на канал <b>@profimatika_inf</b>.</p>
-    <a id="btn-subscribe" href="https://t.me/profimatika_inf" target="_blank" class="btn btn-primary">Подписаться</a>
+    <p>Чтобы играть в <b>ProfiPlay</b>, подпишитесь на канал <b>@profimatika_inf</b>.</p>
+    <a href="https://t.me/profimatika_inf" target="_blank" class="btn btn-primary">Подписаться</a>
     <button id="btn-recheck" class="btn btn-secondary">Я подписался, проверить</button>
   </div>
 </section>
 
-<!-- Главный экран: выбор сложности -->
-<section id="screen-home" class="screen">
+<!-- ==== Экран: главное меню (выбор игры) ==== -->
+<section id="screen-menu" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <h1 style="text-align:center; margin-bottom:6px;">ProfiPlay</h1>
+  <p class="subtitle" style="text-align:center;">Игры для тех, кто любит информатику</p>
+
+  <h3 style="padding-left:4px;">Выберите игру</h3>
+  <div class="games-grid">
+    <div class="game-card" data-game="crocodile">
+      <div class="icon">🐊</div>
+      <div class="info">
+        <div class="title">Крокодил</div>
+        <div class="desc">Объясняй термины жестами. Для компании 2+ человек.</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="sprint">
+      <div class="icon">⚡</div>
+      <div class="info">
+        <div class="title">Спринт</div>
+        <div class="desc">Один игрок. Максимум правильных ответов за 60 секунд.</div>
+      </div>
+    </div>
+    <div class="game-card locked">
+      <div class="icon" style="background:#B6A9D9;">🏆</div>
+      <div class="info">
+        <div class="title">Марафон</div>
+        <div class="desc">Пройди как можно дальше с 3 жизнями.</div>
+      </div>
+      <div class="badge-soon">скоро</div>
+    </div>
+    <div class="game-card locked">
+      <div class="icon" style="background:#B6A9D9;">🗣</div>
+      <div class="info">
+        <div class="title">Alias</div>
+        <div class="desc">Объясняй слова словами. Для компании.</div>
+      </div>
+      <div class="badge-soon">скоро</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==== Экран: настройка Крокодила ==== -->
+<section id="screen-croco-setup" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
   <div class="card">
     <h1>🐊 Крокодил</h1>
     <p class="subtitle">Информатика</p>
-    <p>Ведущий видит слово и объясняет его <b>жестами</b>, остальные угадывают. Кнопки под словом — если угадали или хотите пропустить.</p>
-
-    <h3>Настройки раунда</h3>
+    <p>Ведущий видит слово и объясняет его <b>жестами</b>, остальные угадывают. Кнопки — если угадали или пропускаете.</p>
 
     <label class="field">Сложность</label>
-    <div class="pills" id="pills-difficulty">
+    <div class="pills" id="croco-difficulty">
       <button class="pill active" data-value="easy">Простая</button>
       <button class="pill" data-value="medium">Средняя</button>
       <button class="pill" data-value="hard">Сложная</button>
     </div>
 
     <label class="field">Длительность раунда</label>
-    <div class="pills" id="pills-duration">
+    <div class="pills" id="croco-duration">
       <button class="pill" data-value="60">60 сек</button>
       <button class="pill active" data-value="90">90 сек</button>
       <button class="pill" data-value="120">120 сек</button>
     </div>
 
-    <button id="btn-start" class="btn btn-primary btn-big">Начать раунд</button>
+    <button id="btn-croco-start" class="btn btn-primary btn-big">Начать раунд</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
   </div>
 </section>
 
-<!-- Экран игры -->
+<!-- ==== Экран: игра Крокодил ==== -->
 <section id="screen-game" class="screen">
   <div class="game-header">
     <div class="timer" id="timer">90</div>
@@ -74,8 +116,9 @@
   <button id="btn-stop" class="btn btn-link">Остановить раунд</button>
 </section>
 
-<!-- Экран итогов -->
+<!-- ==== Экран: итоги Крокодила ==== -->
 <section id="screen-result" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
   <div class="card">
     <h1>🏁 Раунд окончен</h1>
     <div class="result-stats">
@@ -88,8 +131,81 @@
         <div class="stat-label">Пропущено</div>
       </div>
     </div>
-    <button id="btn-again" class="btn btn-primary btn-big">Ещё раунд</button>
-    <button id="btn-home" class="btn btn-secondary">В меню</button>
+    <button id="btn-croco-again" class="btn btn-primary btn-big">Ещё раунд</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
+<!-- ==== Экран: настройка Спринта ==== -->
+<section id="screen-sprint-setup" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1>⚡ Спринт</h1>
+    <p class="subtitle">Информатика · соло</p>
+    <p>Отвечайте как можно быстрее. За заданное время наберите максимум правильных ответов.</p>
+
+    <label class="field">Сложность</label>
+    <div class="pills" id="sprint-difficulty">
+      <button class="pill active" data-value="easy">Простая</button>
+      <button class="pill" data-value="medium">Средняя</button>
+      <button class="pill" data-value="hard">Сложная</button>
+    </div>
+
+    <label class="field">Длительность</label>
+    <div class="pills" id="sprint-duration">
+      <button class="pill" data-value="30">30 сек</button>
+      <button class="pill active" data-value="60">60 сек</button>
+      <button class="pill" data-value="90">90 сек</button>
+    </div>
+
+    <div id="sprint-record-hint" style="display:none;">
+      <div class="record-badge">🏆 Ваш рекорд: <span id="sprint-record">0</span></div>
+    </div>
+
+    <button id="btn-sprint-start" class="btn btn-primary btn-big">Начать</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+  </div>
+</section>
+
+<!-- ==== Экран: игра Спринт ==== -->
+<section id="screen-sprint" class="screen">
+  <div class="sprint-topbar">
+    <div class="timer" id="sprint-timer">60</div>
+    <div class="score-big">✅ <span id="sprint-score">0</span></div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-text" id="sprint-question">—</div>
+  </div>
+
+  <div class="answers" id="sprint-answers">
+    <!-- 4 кнопки с ответами будут вставлены сюда -->
+  </div>
+
+  <button id="btn-sprint-stop" class="btn btn-link">Остановить</button>
+</section>
+
+<!-- ==== Экран: итоги Спринта ==== -->
+<section id="screen-sprint-result" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1 id="sprint-result-title">🏁 Готово!</h1>
+    <div id="sprint-new-record" style="display:none;">
+      <div class="record-badge">🎉 Новый рекорд!</div>
+    </div>
+    <div class="result-stats">
+      <div class="stat stat-ok">
+        <div class="stat-num" id="sprint-r-correct">0</div>
+        <div class="stat-label">Правильно</div>
+      </div>
+      <div class="stat stat-skip">
+        <div class="stat-num" id="sprint-r-wrong">0</div>
+        <div class="stat-label">Ошибок</div>
+      </div>
+    </div>
+    <p style="text-align:center; opacity:0.7; margin:0 0 8px;">Личный рекорд: <b id="sprint-r-best">0</b></p>
+    <button id="btn-sprint-again" class="btn btn-primary btn-big">Ещё раз</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>
 

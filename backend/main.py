@@ -30,9 +30,13 @@ CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@profimatika_inf")
 BASE_DIR = Path(__file__).parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
 WORDS_FILE = BASE_DIR / "words.json"
+QUESTIONS_FILE = BASE_DIR / "questions.json"
 
 with open(WORDS_FILE, "r", encoding="utf-8") as f:
     WORDS = json.load(f)
+
+with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
+    QUESTIONS = json.load(f)
 
 # ---------- Приложение ----------
 app = FastAPI(title="ProfiPlay API")
@@ -115,12 +119,22 @@ async def check_subscription(user_id: int = Query(...)):
 
 @app.get("/api/words")
 async def get_words(difficulty: str = Query("easy")):
-    """Возвращает перемешанный список слов заданной сложности."""
+    """Возвращает перемешанный список слов заданной сложности (для Крокодила)."""
     if difficulty not in ("easy", "medium", "hard"):
         raise HTTPException(status_code=400, detail="Bad difficulty")
     words = WORDS["informatika"][difficulty].copy()
     random.shuffle(words)
     return {"words": words}
+
+
+@app.get("/api/questions")
+async def get_questions(difficulty: str = Query("easy"), limit: int = Query(50)):
+    """Возвращает перемешанный список вопросов (для Спринта / Марафона)."""
+    if difficulty not in ("easy", "medium", "hard"):
+        raise HTTPException(status_code=400, detail="Bad difficulty")
+    questions = QUESTIONS["informatika"][difficulty].copy()
+    random.shuffle(questions)
+    return {"questions": questions[:limit]}
 
 
 # ---------- Раздача статики фронтенда ----------
