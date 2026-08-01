@@ -1165,6 +1165,69 @@ async function loadProfileScreen() {
   if (me && me.place) {
     document.getElementById("profile-place").textContent = me.place + " из " + me.total;
   }
+  // Ежедневные задания
+  await renderDailyQuests();
+}
+
+async function renderDailyQuests() {
+  const wrap = document.getElementById("quests-list");
+  if (!wrap) return;
+  const res = await apiPost("/api/quests/daily", {init_data: INIT_DATA});
+  if (!res || !res.quests) {
+    wrap.innerHTML = "";
+    return;
+  }
+  wrap.innerHTML = "";
+  res.quests.forEach((q) => {
+    const done = q.completed === 1;
+    const claimed = q.claimed === 1;
+    const percent = Math.min(100, Math.round(q.progress * 100 / q.target));
+    const row = document.createElement("div");
+    row.className = "quest-row" + (claimed ? " claimed" : done ? " done" : "");
+    let rightSide;
+    if (claimed) {
+      rightSide = `<div class="quest-claimed-mark">✓</div>`;
+    } else if (done) {
+      rightSide = `<button class="quest-claim-btn" data-qid="${q.id}" data-xp="${q.xp_reward}">+${q.xp_reward} XP</button>`;
+    } else {
+      rightSide = `
+        <div class="quest-reward">
+          <div class="quest-reward-xp">+${q.xp_reward}</div>
+          <div class="quest-reward-xp-label">XP</div>
+        </div>`;
+    }
+    row.innerHTML = `
+      <div class="quest-icon">${q.icon}</div>
+      <div class="quest-info">
+        <div class="quest-title">${escapeHtml(q.title)}</div>
+        <div class="quest-progress-bar">
+          <div class="quest-progress-fill" style="width:${percent}%"></div>
+        </div>
+        <div class="quest-progress-text">${q.progress}/${q.target}</div>
+      </div>
+      ${rightSide}
+    `;
+    wrap.appendChild(row);
+  });
+  // Обработчики claim-кнопок
+  wrap.querySelectorAll(".quest-claim-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      hapticMedium();
+      const qid = parseInt(btn.dataset.qid, 10);
+      const res = await apiPost("/api/quests/claim", {init_data: INIT_DATA, quest_id: qid});
+      if (res && res.xp_awarded) {
+        // Тост
+        showRatingToast({delta_awarded: 0, xp_awarded: res.xp_awarded, new_rating: null});
+        // Level-up
+        if (res.leveled_up) {
+          setTimeout(() => showLevelUpModal(res.level_info.level), 800);
+        }
+        // Перерендер
+        setTimeout(renderDailyQuests, 300);
+        refreshProfile();
+      }
+    });
+  });
 }
 
 async function openLeaderboard() {

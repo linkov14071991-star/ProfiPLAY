@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from db import (
     DAILY_STREAK_BASE_XP,
     DAILY_TRAINING_CAP,
+    QUEST_TEMPLATES,
     STREAK_MILESTONES,
     TRAINING_SOURCES,
     calculate_elo,
@@ -134,6 +135,78 @@ def get_verified_user(init_data: str) -> dict:
         # локальная разработка / smoke-тест
         return {"id": 12345, "first_name": "Dev", "username": "dev"}
     raise HTTPException(status_code=401, detail="Invalid Telegram init data")
+
+
+def _ensure_daily_quests(db, user_id: int):
+    """Генерирует 3 квеста для игрока на сегодня, если ещё нет."""
+    today = today_msk()
+    row = db.execute(
+        "SELECT COUNT(*) AS c FROM daily_quests WHERE user_id = ? AND date = ?",
+        (user_id, today),
+    ).fetchone()
+    if row["c"] >= 3:
+        return
+    # Выбираем 3 разных по типу квеста
+    templates = QUEST_TEMPLATES.copy()
+    random.shuffle(templates)
+    picked = []
+    seen_types = set()
+    for tpl in templates:
+        if tpl["type"] in seen_types:
+            continue
+        picked.append(tpl)
+        seen_types.add(tpl["type"])
+        if len(picked) == 3:
+            break
+    for tpl in picked:
+        try:
+            db.execute(
+                """
+                INSERT OR IGNORE INTO daily_quests
+                    (user_id, date, task_type, title, icon, target, xp_reward)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, today, tpl["type"], tpl["title"], tpl["icon"],
+                 tpl["target"], tpl["xp"]),
+            )
+        except Exception:
+            pass
+
+
+def _get_daily_quests(db, user_id: int) -> list:
+    """Возвращает список квестов на сегодня."""
+    today = today_msk()
+    rows = db.execute(
+        """
+        SELECT id, task_type, title, icon, target, progress, completed, claimed, xp_reward
+        FROM daily_quests
+        WHERE user_id = ? AND date = ?
+        ORDER BY id
+        """,
+        (user_id, today),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def update_quest_progress(db, user_id: int, event_type: str, amount: int = 1):
+    """
+    Инкрементим прогресс всех активных квестов заданного типа.
+    Если прогресс достиг target — помечаем completed=1 (но не claimed).
+    """
+    if amount <= 0:
+        return
+    today = today_msk()
+    # Убедимся что квесты сгенерированы
+    _ensure_daily_quests(db, user_id)
+    db.execute(
+        """
+        UPDATE daily_quests
+        SET progress = MIN(target, progress + ?),
+            completed = CASE WHEN progress + ? >= target THEN 1 ELSE completed END
+        WHERE user_id = ? AND date = ? AND task_type = ? AND claimed = 0
+        """,
+        (amount, amount, user_id, today, event_type),
+    )
 
 
 def update_streak(db, user_id: int) -> dict:
@@ -461,6 +534,18 @@ async def add_training_points(
         xp_amount = round(points * XP_PER_RATING.get(source, 2.0))
         new_xp, level_info, leveled_up = award_xp(db, user_id, xp_amount, source)
 
+        # --- Прогресс ежедневных квестов ---
+        # Считаем правильные ответы: sprint(1:1), marathon(points/2), party — нет ответов
+        if source == "sprint":
+            update_quest_progress(db, user_id, "sprint_played", 1)
+            update_quest_progress(db, user_id, "correct_answer", points)
+        elif source == "marathon":
+            update_quest_progress(db, user_id, "marathon_played", 1)
+            update_quest_progress(db, user_id, "correct_answer", max(1, points // 2))
+        elif source == "party":
+            update_quest_progress(db, user_id, "party_played", 1)
+        update_quest_progress(db, user_id, "xp_earned", xp_amount)
+
     return {
         "delta_awarded": actual_delta,
         "requested": points,
@@ -469,6 +554,49 @@ async def add_training_points(
         "cap_reached": remaining <= actual_delta,
         "training_remaining_today": max(0, remaining - actual_delta),
         "xp_awarded": xp_amount,
+        "new_xp": new_xp,
+        "level_info": level_info,
+        "leveled_up": leveled_up,
+    }
+
+
+@app.post("/api/quests/daily")
+async def get_daily_quests(init_data: str = Body(..., embed=True)):
+    """Список квестов на сегодня. Автогенерация при первом заходе за день."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        row = upsert_user(db, tg_user)
+        _ensure_daily_quests(db, row["telegram_id"])
+        quests = _get_daily_quests(db, row["telegram_id"])
+    return {"quests": quests, "date": today_msk()}
+
+
+@app.post("/api/quests/claim")
+async def claim_quest(
+    init_data: str = Body(...),
+    quest_id: int = Body(...),
+):
+    """Забрать награду за выполненный квест."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        row = upsert_user(db, tg_user)
+        user_id = row["telegram_id"]
+        q = db.execute(
+            "SELECT * FROM daily_quests WHERE id = ? AND user_id = ?",
+            (quest_id, user_id),
+        ).fetchone()
+        if not q:
+            raise HTTPException(status_code=404, detail="Quest not found")
+        if not q["completed"]:
+            raise HTTPException(status_code=400, detail="Not completed yet")
+        if q["claimed"]:
+            raise HTTPException(status_code=400, detail="Already claimed")
+        # Помечаем как claimed и начисляем XP
+        db.execute("UPDATE daily_quests SET claimed = 1 WHERE id = ?", (quest_id,))
+        new_xp, level_info, leveled_up = award_xp(db, user_id, q["xp_reward"], "quest")
+    return {
+        "quest_id": quest_id,
+        "xp_awarded": q["xp_reward"],
         "new_xp": new_xp,
         "level_info": level_info,
         "leveled_up": leveled_up,
@@ -625,6 +753,13 @@ def _try_finalize_duel(db, duel_id: str):
         xp_b = XP_DUEL_WIN
     award_xp(db, creator["telegram_id"], xp_a, "duel")
     award_xp(db, opponent["telegram_id"], xp_b, "duel")
+
+    # Прогресс квестов: победа в дуэли + xp_earned
+    if not is_draw:
+        winner_id_local = creator["telegram_id"] if score_a == 1.0 else opponent["telegram_id"]
+        update_quest_progress(db, winner_id_local, "duel_won", 1)
+    update_quest_progress(db, creator["telegram_id"], "xp_earned", xp_a)
+    update_quest_progress(db, opponent["telegram_id"], "xp_earned", xp_b)
 
     db.execute(
         """

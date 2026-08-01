@@ -103,8 +103,51 @@ def init_db():
         """
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_xp_log_user ON xp_log (user_id, created_at)")
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS daily_quests (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            date        TEXT NOT NULL,
+            task_type   TEXT NOT NULL,
+            title       TEXT NOT NULL,
+            icon        TEXT NOT NULL,
+            target      INTEGER NOT NULL,
+            progress    INTEGER NOT NULL DEFAULT 0,
+            completed   INTEGER NOT NULL DEFAULT 0,
+            claimed     INTEGER NOT NULL DEFAULT 0,
+            xp_reward   INTEGER NOT NULL,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (user_id, date, task_type)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_quests_user_date ON daily_quests (user_id, date)")
     conn.commit()
     conn.close()
+
+
+# ---------- Шаблоны ежедневных заданий ----------
+# Типы событий, по которым инкрементим прогресс:
+#   'sprint_played'    — сыграна партия в Спринт
+#   'marathon_played'  — сыграна партия в Марафон
+#   'party_played'     — сыграна партия в Тусовке
+#   'duel_won'         — победа в дуэли
+#   'correct_answer'   — правильный ответ (любая игра)
+#   'xp_earned'        — заработан XP (кроме streak)
+QUEST_TEMPLATES = [
+    {"type": "sprint_played",   "target": 3,   "xp": 30, "title": "Сыграй 3 спринта",       "icon": "⚡"},
+    {"type": "sprint_played",   "target": 5,   "xp": 50, "title": "Сыграй 5 спринтов",       "icon": "⚡"},
+    {"type": "marathon_played", "target": 2,   "xp": 40, "title": "Пройди 2 марафона",       "icon": "🏆"},
+    {"type": "party_played",    "target": 1,   "xp": 25, "title": "Сыграй партию в Тусовке", "icon": "🎉"},
+    {"type": "party_played",    "target": 2,   "xp": 45, "title": "Сыграй 2 партии в Тусовке","icon": "🎉"},
+    {"type": "duel_won",        "target": 1,   "xp": 60, "title": "Победи в 1 дуэли",         "icon": "⚔"},
+    {"type": "correct_answer",  "target": 20,  "xp": 30, "title": "Ответь правильно 20 раз",  "icon": "🎯"},
+    {"type": "correct_answer",  "target": 50,  "xp": 60, "title": "Ответь правильно 50 раз",  "icon": "🎯"},
+    {"type": "xp_earned",       "target": 100, "xp": 40, "title": "Заработай 100 XP за день", "icon": "💎"},
+    {"type": "xp_earned",       "target": 200, "xp": 70, "title": "Заработай 200 XP за день", "icon": "💎"},
+]
 
 
 # ---------- ELO ----------
