@@ -42,11 +42,18 @@
   <h1 style="text-align:center; margin-bottom:6px;">ProfikArena</h1>
   <p class="subtitle" style="text-align:center;">Тренируйся, сражайся, побеждай</p>
 
-  <!-- Персональная плашка: лига + рейтинг -->
+  <!-- Персональная плашка: уровень + лига + рейтинг -->
   <div id="my-strip" class="my-strip" onclick="showScreen('profile')" style="display:none;">
+    <div class="my-strip-level" id="my-strip-level">
+      <div class="my-strip-level-num" id="my-strip-level-num">1</div>
+      <div class="my-strip-level-label">УРОВЕНЬ</div>
+    </div>
     <div class="my-strip-left">
       <div class="my-strip-league" id="my-strip-league">🎓 Юниор</div>
-      <div class="my-strip-rating" id="my-strip-rating">1000</div>
+      <div class="my-strip-rating">🏆 <span id="my-strip-rating">1000</span></div>
+      <div class="my-strip-xpbar">
+        <div class="my-strip-xpfill" id="my-strip-xpfill" style="width:0%"></div>
+      </div>
     </div>
     <div class="my-strip-arrow">→</div>
   </div>
@@ -633,10 +640,24 @@
     <h1>👤 <span id="profile-name">Игрок</span></h1>
 
     <div class="profile-hero">
-      <div class="profile-league-emoji" id="profile-league-emoji">🎓</div>
-      <div>
-        <div class="profile-league-name" id="profile-league-name">Юниор</div>
-        <div class="profile-rating"><span id="profile-rating">1000</span> <span style="opacity:0.6;">очков</span></div>
+      <div class="profile-level-badge">
+        <div class="profile-level-num" id="profile-level-num">1</div>
+        <div class="profile-level-label">УРОВЕНЬ</div>
+      </div>
+      <div style="flex:1; min-width: 0;">
+        <div class="profile-league-name">
+          <span id="profile-league-emoji">🎓</span>
+          <span id="profile-league-name">Юниор</span>
+        </div>
+        <div class="profile-rating">🏆 <span id="profile-rating">1000</span></div>
+        <div class="profile-xp-row">
+          <div class="profile-xp-bar">
+            <div class="profile-xp-fill" id="profile-xp-fill" style="width:0%"></div>
+          </div>
+          <div class="profile-xp-text">
+            <span id="profile-xp-current">0</span> / <span id="profile-xp-next">100</span> XP
+          </div>
+        </div>
       </div>
     </div>
 
@@ -963,6 +984,17 @@
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>
+
+<!-- ==== Модалка Level-up ==== -->
+<div id="levelup-modal" class="levelup-overlay" style="display:none;">
+  <div class="levelup-card">
+    <div class="levelup-stars">✨</div>
+    <div class="levelup-title">НОВЫЙ УРОВЕНЬ!</div>
+    <div class="levelup-num" id="levelup-num">2</div>
+    <div class="levelup-sub">Так держать!</div>
+    <button id="levelup-btn" class="btn btn-lime btn-big">Круто! 🎉</button>
+  </div>
+</div>
 
 <script src="/script.js"></script>
 </body>

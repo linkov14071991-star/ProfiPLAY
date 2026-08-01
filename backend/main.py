@@ -31,9 +31,21 @@ from db import (
     calculate_elo,
     get_db,
     get_league,
+    get_level_info,
     get_training_earned_today,
     init_db,
 )
+
+# XP-множители для тренировок (сколько XP за каждое очко рейтинга)
+XP_PER_RATING = {
+    "sprint": 2.0,    # спринт: за правильный ответ +1 рейтинг → +2 XP
+    "marathon": 1.5,  # марафон: за правильный +2 рейтинг → +3 XP
+    "party": 3.0,     # тусовка: +5 рейтинг → +15 XP
+}
+# Duel XP
+XP_DUEL_WIN = 50
+XP_DUEL_DRAW = 30
+XP_DUEL_LOSS = 20
 
 # ---------- Настройки ----------
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
@@ -117,6 +129,37 @@ def get_verified_user(init_data: str) -> dict:
         # локальная разработка / smoke-тест
         return {"id": 12345, "first_name": "Dev", "username": "dev"}
     raise HTTPException(status_code=401, detail="Invalid Telegram init data")
+
+
+def award_xp(db, user_id: int, amount: int, source: str) -> tuple[int, dict, bool]:
+    """
+    Начисляет XP игроку. Возвращает (new_xp, level_info, leveled_up).
+    """
+    if amount <= 0:
+        row = db.execute("SELECT xp FROM users WHERE telegram_id = ?", (user_id,)).fetchone()
+        return (row["xp"] if row else 0), get_level_info(row["xp"] if row else 0), False
+
+    row = db.execute("SELECT xp FROM users WHERE telegram_id = ?", (user_id,)).fetchone()
+    old_xp = row["xp"] if row else 0
+    old_level = get_level_info(old_xp)["level"]
+
+    db.execute(
+        "UPDATE users SET xp = xp + ? WHERE telegram_id = ?",
+        (amount, user_id),
+    )
+    new_xp = db.execute(
+        "SELECT xp FROM users WHERE telegram_id = ?", (user_id,)
+    ).fetchone()["xp"]
+    db.execute(
+        """
+        INSERT INTO xp_log (user_id, delta, source, balance_after)
+        VALUES (?, ?, ?, ?)
+        """,
+        (user_id, amount, source, new_xp),
+    )
+    new_level_info = get_level_info(new_xp)
+    leveled_up = new_level_info["level"] > old_level
+    return new_xp, new_level_info, leveled_up
 
 
 def upsert_user(db, tg_user: dict):
@@ -261,9 +304,11 @@ async def get_config():
 
 
 def _user_to_dict(row) -> dict:
-    """Sqlite Row + служебные поля лиги."""
+    """Sqlite Row + служебные поля лиги + уровня."""
     d = dict(row)
     d["league"] = get_league(d["rating"])
+    d["xp"] = d.get("xp", 0) or 0
+    d["level_info"] = get_level_info(d["xp"])
     return d
 
 
@@ -293,7 +338,10 @@ async def add_training_points(
     source: str = Body(...),
     points: int = Body(...),
 ):
-    """Начисляем очки от тренировки с учётом дневного капа."""
+    """
+    Начисляем очки от тренировки с учётом дневного капа + XP (без капа).
+    XP всегда начисляется, даже если рейтинг ушёл в кап.
+    """
     if source not in TRAINING_SOURCES:
         raise HTTPException(status_code=400, detail="Bad source")
     if points <= 0 or points > 200:
@@ -304,6 +352,7 @@ async def add_training_points(
         row = upsert_user(db, tg_user)
         user_id = row["telegram_id"]
 
+        # --- Рейтинг с капом ---
         earned = get_training_earned_today(db, user_id)
         remaining = max(0, DAILY_TRAINING_CAP - earned)
         actual_delta = min(points, remaining)
@@ -326,6 +375,10 @@ async def add_training_points(
         else:
             new_rating = row["rating"]
 
+        # --- XP всегда, БЕЗ капа. Считаем от исходного points, не от actual_delta ---
+        xp_amount = round(points * XP_PER_RATING.get(source, 2.0))
+        new_xp, level_info, leveled_up = award_xp(db, user_id, xp_amount, source)
+
     return {
         "delta_awarded": actual_delta,
         "requested": points,
@@ -333,6 +386,10 @@ async def add_training_points(
         "league": get_league(new_rating),
         "cap_reached": remaining <= actual_delta,
         "training_remaining_today": max(0, remaining - actual_delta),
+        "xp_awarded": xp_amount,
+        "new_xp": new_xp,
+        "level_info": level_info,
+        "leveled_up": leveled_up,
     }
 
 
@@ -474,6 +531,19 @@ def _try_finalize_duel(db, duel_id: str):
             (uid, delta, new_rating),
         )
 
+    # --- Начисляем XP: победитель много, проигравший — утешительно ---
+    if is_draw:
+        xp_a = XP_DUEL_DRAW
+        xp_b = XP_DUEL_DRAW
+    elif score_a == 1.0:  # A победил
+        xp_a = XP_DUEL_WIN
+        xp_b = XP_DUEL_LOSS
+    else:  # A проиграл
+        xp_a = XP_DUEL_LOSS
+        xp_b = XP_DUEL_WIN
+    award_xp(db, creator["telegram_id"], xp_a, "duel")
+    award_xp(db, opponent["telegram_id"], xp_b, "duel")
+
     db.execute(
         """
         UPDATE duels
@@ -526,6 +596,23 @@ def _duel_public_view(db, duel, viewer_id: int) -> dict:
         res["you_are"] = "creator"
     elif opponent and viewer_id == opponent["telegram_id"]:
         res["you_are"] = "opponent"
+
+    # XP-инфа зрителя (если дуэль завершена)
+    if duel["status"] == "complete" and res["you_are"]:
+        me_row = db.execute(
+            "SELECT xp FROM users WHERE telegram_id = ?", (viewer_id,)
+        ).fetchone()
+        if me_row:
+            res["my_xp"] = me_row["xp"]
+            res["my_level_info"] = get_level_info(me_row["xp"])
+            # Сколько XP дали за эту дуэль
+            if duel["is_draw"]:
+                res["xp_awarded"] = XP_DUEL_DRAW
+            elif res["you_are"] == "creator":
+                res["xp_awarded"] = XP_DUEL_WIN if duel["winner_id"] == duel["creator_id"] else XP_DUEL_LOSS
+            else:
+                res["xp_awarded"] = XP_DUEL_WIN if duel["winner_id"] == duel["opponent_id"] else XP_DUEL_LOSS
+
     return res
 
 

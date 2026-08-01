@@ -1088,6 +1088,9 @@ async function refreshProfile() {
   if (strip) {
     document.getElementById("my-strip-league").textContent = `${p.league.emoji} ${p.league.name}`;
     document.getElementById("my-strip-rating").textContent = p.rating;
+    const lvl = p.level_info || {level: 1, progress_percent: 0};
+    document.getElementById("my-strip-level-num").textContent = lvl.level;
+    document.getElementById("my-strip-xpfill").style.width = (lvl.progress_percent || 0) + "%";
     strip.style.display = "flex";
   }
 }
@@ -1104,6 +1107,12 @@ async function loadProfileScreen() {
   document.getElementById("profile-today-earned").textContent = p.training_earned_today;
   document.getElementById("profile-cap-remaining").textContent = p.training_remaining_today;
   document.getElementById("profile-games-played").textContent = p.games_played;
+  // Уровень и XP
+  const lvl = p.level_info || {level: 1, in_level: 0, next_threshold: 100, current_threshold: 0, progress_percent: 0};
+  document.getElementById("profile-level-num").textContent = lvl.level;
+  document.getElementById("profile-xp-current").textContent = p.xp || 0;
+  document.getElementById("profile-xp-next").textContent = lvl.next_threshold;
+  document.getElementById("profile-xp-fill").style.width = (lvl.progress_percent || 0) + "%";
 
   // Прогресс до следующей лиги
   const wrap = document.getElementById("profile-progress-wrap");
@@ -1168,8 +1177,8 @@ window.openLeaderboard = openLeaderboard;
 /**
  * Начисление очков от тренировки.
  * source: 'sprint' | 'marathon' | 'party'
- * points: сколько запрашиваем (сервер применит дневной кап)
- * Возвращает {delta_awarded, new_rating, cap_reached} или null.
+ * points: сколько запрашиваем (сервер применит дневной кап к рейтингу; XP без капа)
+ * Возвращает {delta_awarded, xp_awarded, new_rating, new_xp, level_info, leveled_up}
  */
 async function awardTraining(source, points) {
   if (points <= 0) return null;
@@ -1177,26 +1186,40 @@ async function awardTraining(source, points) {
     init_data: INIT_DATA, source: source, points: points,
   });
   if (res && res.new_rating) {
-    // обновим текущий рейтинг локально
-    if (currentProfile) currentProfile.rating = res.new_rating;
+    if (currentProfile) {
+      currentProfile.rating = res.new_rating;
+      currentProfile.xp = res.new_xp;
+      currentProfile.level_info = res.level_info;
+    }
+  }
+  // Обновим плашку на главной
+  refreshProfile();
+  // Level-up!
+  if (res && res.leveled_up) {
+    setTimeout(() => showLevelUpModal(res.level_info.level), 1200);
   }
   return res;
 }
 
 /**
- * Показать небольшой тост с итогом начисления очков.
+ * Показать тост с итогом начисления рейтинга и XP.
  */
 function showRatingToast(res) {
   if (!res) return;
   const toast = document.createElement("div");
   toast.className = "rating-toast";
+  const parts = [];
   if (res.delta_awarded > 0) {
-    toast.innerHTML = `<b>+${res.delta_awarded}</b> очков к рейтингу<br><small>Итого: ${res.new_rating}</small>`;
-    toast.classList.add("ok");
-  } else {
-    toast.innerHTML = `Дневной кап тренировок достигнут (100). Заходи завтра!`;
-    toast.classList.add("cap");
+    parts.push(`<b>+${res.delta_awarded}</b> рейтинга`);
+  } else if (res.cap_reached) {
+    parts.push(`<span style="color:#FF8C42;">Кап рейтинга</span>`);
   }
+  if (res.xp_awarded > 0) {
+    parts.push(`<b style="color:var(--brand-lime);">+${res.xp_awarded}</b> XP`);
+  }
+  if (parts.length === 0) return;
+  toast.innerHTML = parts.join(" · ") + (res.new_rating ? `<br><small>Рейтинг: ${res.new_rating}</small>` : "");
+  toast.classList.add("ok");
   document.body.appendChild(toast);
   setTimeout(() => toast.classList.add("show"), 10);
   setTimeout(() => {
@@ -1204,6 +1227,19 @@ function showRatingToast(res) {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+
+/**
+ * Показать модалку нового уровня.
+ */
+function showLevelUpModal(newLevel) {
+  const modal = document.getElementById("levelup-modal");
+  document.getElementById("levelup-num").textContent = newLevel;
+  modal.style.display = "flex";
+  hapticSuccess();
+}
+document.getElementById("levelup-btn").addEventListener("click", () => {
+  document.getElementById("levelup-modal").style.display = "none";
+});
 
 // ==============================
 // ========== ДУЭЛЬ =============
@@ -1355,10 +1391,17 @@ function duelShowResult(info) {
   document.getElementById("duel-result-emoji").textContent = emoji;
   document.getElementById("duel-result-title").textContent = title;
   const deltaEl = document.getElementById("duel-elo-delta");
-  deltaEl.textContent = (myDelta > 0 ? "+" : "") + myDelta;
+  const xpTxt = info.xp_awarded ? ` · <b style="color:var(--brand-lime);">+${info.xp_awarded} XP</b>` : "";
+  deltaEl.innerHTML = (myDelta > 0 ? "+" : "") + myDelta + xpTxt;
   deltaEl.style.color = myDelta > 0 ? "var(--ok)" : (myDelta < 0 ? "var(--danger)" : "");
 
   showScreen("duelResult");
+
+  // Level-up после дуэли
+  if (info.my_level_info && currentProfile && info.my_level_info.level > (currentProfile.level_info?.level || 1)) {
+    setTimeout(() => showLevelUpModal(info.my_level_info.level), 1500);
+  }
+  refreshProfile();
 }
 
 async function duelCheckResult() {

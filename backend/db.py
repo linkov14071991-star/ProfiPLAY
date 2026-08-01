@@ -27,11 +27,17 @@ def init_db():
             first_name   TEXT,
             username     TEXT,
             rating       INTEGER NOT NULL DEFAULT 1000,
+            xp           INTEGER NOT NULL DEFAULT 0,
             joined_at    TEXT NOT NULL DEFAULT (datetime('now')),
             last_seen_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
         """
     )
+    # Миграция для старых баз (безопасно — если колонка уже есть, catch)
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN xp INTEGER NOT NULL DEFAULT 0")
+    except Exception:
+        pass
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS rating_log (
@@ -74,6 +80,20 @@ def init_db():
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_duels_creator ON duels (creator_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_duels_opponent ON duels (opponent_id)")
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS xp_log (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER NOT NULL,
+            delta         INTEGER NOT NULL,
+            source        TEXT NOT NULL,
+            balance_after INTEGER NOT NULL,
+            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_xp_log_user ON xp_log (user_id, created_at)")
     conn.commit()
     conn.close()
 
@@ -145,6 +165,49 @@ def get_league(rating: int) -> dict:
                 "next_threshold": next_threshold,
             }
     return {"name": "Юниор", "emoji": "🎓", "threshold": 0, "next_threshold": 1000}
+
+
+# ---------- Уровень аккаунта (по XP) ----------
+def _xp_for_level(level: int) -> int:
+    """Сколько XP нужно накопить всего, чтобы достичь этого уровня."""
+    if level <= 1:
+        return 0
+    return 100 * level * (level - 1) // 2
+
+
+def get_level_info(xp: int) -> dict:
+    """
+    Возвращает уровень + прогресс до следующего.
+    Уровень 1: 0-100
+    Уровень 2: 100-300
+    Уровень 3: 300-600
+    Уровень N: 100*N*(N-1)/2  до  100*(N+1)*N/2
+    """
+    xp = max(0, int(xp))
+    # Вычисляем уровень методом решения N^2 - N - xp/50 = 0
+    import math
+    if xp == 0:
+        level = 1
+    else:
+        level = int((1 + math.sqrt(1 + xp * 8 / 100)) / 2)
+        # Защита от ошибок округления
+        while _xp_for_level(level) > xp:
+            level -= 1
+        while _xp_for_level(level + 1) <= xp:
+            level += 1
+    current_threshold = _xp_for_level(level)
+    next_threshold = _xp_for_level(level + 1)
+    in_level = xp - current_threshold
+    to_next = next_threshold - xp
+    total_in_level = next_threshold - current_threshold
+    return {
+        "level": level,
+        "current_threshold": current_threshold,
+        "next_threshold": next_threshold,
+        "in_level": in_level,
+        "to_next": to_next,
+        "progress_percent": round(in_level * 100 / total_in_level) if total_in_level else 0,
+    }
 
 
 # ---------- Дневной кап тренировок ----------
