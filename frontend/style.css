@@ -371,6 +371,46 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .stat-ok .stat-num { color: var(--brand-purple); }
 .stat-skip .stat-num { color: var(--skip); }
 
+/* ========== Игры 5 секунд / Шпион — общие ========== */
+#screen-five-turn, #screen-spy-pass, #screen-spy-role {
+  display: none;
+  justify-content: center;
+}
+#screen-five-turn.active, #screen-spy-pass.active, #screen-spy-role.active {
+  display: flex;
+}
+
+.vote-btn, .guess-btn {
+  padding: 14px 16px;
+  border: 2px solid var(--brand-lime);
+  background: rgba(180, 242, 77, 0.08);
+  color: var(--text-on-light);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+.vote-btn:active, .guess-btn:active { transform: scale(0.98); }
+
+.five-scores {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+.five-score-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(102, 54, 233, 0.08);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+}
+.five-score-row.win {
+  background: var(--brand-lime);
+}
+
 /* ========== Игра Марафон ========== */
 #screen-marathon {
   padding: 12px;

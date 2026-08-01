@@ -63,25 +63,23 @@
       </div>
     </div>
 
-    <h3 style="padding-left:4px; margin-top:24px;">Скоро в игре</h3>
-
-    <div class="game-card locked">
-      <div class="icon" style="background:#B6A9D9;">⏱</div>
+    <div class="game-card" data-game="fivesec">
+      <div class="icon">⏱</div>
       <div class="info">
         <div class="title">5 секунд</div>
-        <div class="desc">Назови 3 ответа на категорию за 5 секунд. Соло и командная.</div>
+        <div class="desc">Назови 3 ответа на категорию за 5 секунд. Для компании.</div>
       </div>
-      <div class="badge-soon">скоро</div>
     </div>
 
-    <div class="game-card locked">
-      <div class="icon" style="background:#B6A9D9;">🕵</div>
+    <div class="game-card" data-game="spy">
+      <div class="icon">🕵</div>
       <div class="info">
         <div class="title">Шпион</div>
         <div class="desc">Найди шпиона среди своих. Все знают слово — кроме одного.</div>
       </div>
-      <div class="badge-soon">скоро</div>
     </div>
+
+    <h3 style="padding-left:4px; margin-top:24px;">Скоро в игре</h3>
 
     <div class="game-card locked">
       <div class="icon" style="background:#B6A9D9;">❓</div>
@@ -392,6 +390,175 @@
     <p style="text-align:center; opacity:0.8; margin:0 0 8px;">Штрафов: <b id="alias-r-fail">0</b></p>
     <p style="text-align:center; font-size:20px; margin:8px 0 0;">Итог: <b id="alias-r-total">0</b> очков</p>
     <button id="btn-alias-again" class="btn btn-primary btn-big">Ещё раунд</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
+<!-- ==== Экраны: 5 секунд ==== -->
+<section id="screen-five-setup" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1>⏱ 5 секунд</h1>
+    <p class="subtitle">Информатика · для компании</p>
+    <p>Игроки по очереди берут телефон. Задача — за 5 секунд назвать <b>3 ответа</b> на категорию. Успел — очко.</p>
+
+    <label class="field">Игроков</label>
+    <div class="pills" id="five-players">
+      <button class="pill" data-value="2">2</button>
+      <button class="pill active" data-value="3">3</button>
+      <button class="pill" data-value="4">4</button>
+      <button class="pill" data-value="5">5+</button>
+    </div>
+
+    <label class="field">Сложность категорий</label>
+    <div class="pills" id="five-difficulty">
+      <button class="pill active" data-value="easy">Простая</button>
+      <button class="pill" data-value="medium">Средняя</button>
+      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill" data-value="mixed">Микс</button>
+    </div>
+
+    <label class="field">Кругов</label>
+    <div class="pills" id="five-rounds">
+      <button class="pill" data-value="2">2</button>
+      <button class="pill active" data-value="3">3</button>
+      <button class="pill" data-value="5">5</button>
+    </div>
+
+    <button id="btn-five-start" class="btn btn-primary btn-big">Начать</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+  </div>
+</section>
+
+<section id="screen-five-turn" class="screen">
+  <div class="card card-dark" style="margin-top:auto; margin-bottom:auto;">
+    <h1 style="text-align:center;">Ход игрока</h1>
+    <div style="text-align:center; font-size:64px; font-weight:800; color:var(--brand-lime); margin:16px 0;" id="five-turn-num">1</div>
+    <p style="text-align:center;">Возьмите телефон и нажмите «Готов», когда прочитаете категорию.</p>
+    <button id="btn-five-ready" class="btn btn-lime btn-big">Готов!</button>
+  </div>
+</section>
+
+<section id="screen-five-play" class="screen">
+  <div style="text-align:center; margin-top:20px;">
+    <p style="color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; font-size:13px; margin-bottom:8px;">Игрок <span id="five-player-badge">1</span></p>
+  </div>
+  <div class="q-card" style="flex:1; margin:12px 4px;">
+    <div class="q-text" id="five-category">—</div>
+  </div>
+  <div class="timer" id="five-timer" style="text-align:center; margin-bottom:16px;">5</div>
+  <div class="game-actions" style="padding:0 4px;">
+    <button id="btn-five-fail" class="btn btn-skip btn-big">Не успел</button>
+    <button id="btn-five-ok" class="btn btn-ok btn-big">Успел!</button>
+  </div>
+</section>
+
+<section id="screen-five-result" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1>🏁 Итоги</h1>
+    <div id="five-score-list"></div>
+    <p style="text-align:center; margin-top:16px;" id="five-winner-note"></p>
+    <button id="btn-five-again" class="btn btn-primary btn-big">Ещё раз</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
+<!-- ==== Экраны: Шпион ==== -->
+<section id="screen-spy-setup" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1>🕵 Шпион</h1>
+    <p class="subtitle">Информатика · для компании</p>
+    <p>Каждому игроку показывается слово — кроме одного, он <b>Шпион</b>. Обсуждаете и голосуете за подозреваемого. Шпион пытается угадать слово.</p>
+
+    <label class="field">Игроков</label>
+    <div class="pills" id="spy-players">
+      <button class="pill" data-value="3">3</button>
+      <button class="pill active" data-value="4">4</button>
+      <button class="pill" data-value="5">5</button>
+      <button class="pill" data-value="6">6+</button>
+    </div>
+
+    <label class="field">Сложность (пул слов)</label>
+    <div class="pills" id="spy-difficulty">
+      <button class="pill active" data-value="easy">Простая</button>
+      <button class="pill" data-value="medium">Средняя</button>
+      <button class="pill" data-value="hard">Сложная</button>
+    </div>
+
+    <label class="field">Время обсуждения</label>
+    <div class="pills" id="spy-time">
+      <button class="pill" data-value="120">2 мин</button>
+      <button class="pill active" data-value="180">3 мин</button>
+      <button class="pill" data-value="300">5 мин</button>
+    </div>
+
+    <button id="btn-spy-start" class="btn btn-primary btn-big">Раздать роли</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+  </div>
+</section>
+
+<!-- Экран передачи телефона (между игроками) -->
+<section id="screen-spy-pass" class="screen">
+  <div class="card card-dark" style="margin:auto;">
+    <h1 style="text-align:center;">Передайте телефон</h1>
+    <div style="text-align:center; font-size:64px; font-weight:800; color:var(--brand-lime); margin:16px 0;" id="spy-pass-num">1</div>
+    <p style="text-align:center;">Игрок <b><span id="spy-pass-name">1</span></b>, возьмите телефон. Не показывайте экран другим.</p>
+    <button id="btn-spy-reveal" class="btn btn-lime btn-big">Показать роль</button>
+  </div>
+</section>
+
+<!-- Экран показа роли (слово или шпион) -->
+<section id="screen-spy-role" class="screen">
+  <div class="card" style="margin:auto;">
+    <p class="subtitle" style="text-align:center;">Твоя роль:</p>
+    <div id="spy-role-word" style="text-align:center; font-size:36px; font-weight:800; margin:20px 0; color:var(--brand-purple); word-break:break-word;">—</div>
+    <p id="spy-role-note" style="text-align:center; color:var(--text-on-light); opacity:0.8;">Запомни слово. Не показывай никому.</p>
+    <button id="btn-spy-next-player" class="btn btn-primary btn-big">Готово, скрыть</button>
+  </div>
+</section>
+
+<!-- Экран обсуждения -->
+<section id="screen-spy-discuss" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div style="text-align:center; margin-top:20px;">
+    <h1>💬 Обсуждение</h1>
+    <p>Задавайте друг другу вопросы про слово. Не говорите слово напрямую! Шпион пытается понять, что это.</p>
+  </div>
+  <div class="timer" id="spy-timer" style="text-align:center; margin:24px 0; font-size:72px;">3:00</div>
+  <button id="btn-spy-to-vote" class="btn btn-primary btn-big">Голосовать сейчас</button>
+</section>
+
+<!-- Голосование -->
+<section id="screen-spy-vote" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1>🗳 Кто шпион?</h1>
+    <p>Обсудите и выберите подозреваемого.</p>
+    <div id="spy-vote-list" style="display:grid; gap:10px; margin-top:16px;"></div>
+  </div>
+</section>
+
+<!-- Экран догадки шпиона (если поймали) -->
+<section id="screen-spy-guess" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1>🎯 Шанс шпиона</h1>
+    <p>Вы поймали шпиона! Теперь <b>шпион угадывает слово</b>. Если угадает — победа шпиона.</p>
+    <div id="spy-guess-list" style="display:grid; gap:8px; margin-top:16px;"></div>
+  </div>
+</section>
+
+<!-- Итог -->
+<section id="screen-spy-result" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1 id="spy-result-title">🏁 Итог</h1>
+    <p id="spy-result-text" style="font-size:18px; text-align:center;"></p>
+    <p style="text-align:center; margin-top:16px;">Слово было: <b id="spy-result-word"></b></p>
+    <p style="text-align:center;">Шпион: <b id="spy-result-spy"></b></p>
+    <button id="btn-spy-again" class="btn btn-primary btn-big">Ещё раунд</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>

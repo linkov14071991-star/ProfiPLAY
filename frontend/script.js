@@ -22,6 +22,17 @@ const SCREENS = {
   marathonSetup: "screen-marathon-setup",
   marathon: "screen-marathon",
   marathonResult: "screen-marathon-result",
+  fiveSetup: "screen-five-setup",
+  fiveTurn: "screen-five-turn",
+  fivePlay: "screen-five-play",
+  fiveResult: "screen-five-result",
+  spySetup: "screen-spy-setup",
+  spyPass: "screen-spy-pass",
+  spyRole: "screen-spy-role",
+  spyDiscuss: "screen-spy-discuss",
+  spyVote: "screen-spy-vote",
+  spyGuess: "screen-spy-guess",
+  spyResult: "screen-spy-result",
 };
 
 function showScreen(name) {
@@ -66,6 +77,8 @@ document.querySelectorAll(".game-card:not(.locked)").forEach((card) => {
     if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
     if (game === "alias") showScreen("aliasSetup");
     if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
+    if (game === "fivesec") showScreen("fiveSetup");
+    if (game === "spy") showScreen("spySetup");
   });
 });
 
@@ -607,6 +620,276 @@ document.getElementById("btn-marathon-stop").addEventListener("click", () => mar
     });
   });
 })();
+
+// ==============================
+// ========= 5 СЕКУНД ===========
+// ==============================
+const five = {
+  players: 3,
+  rounds: 3,
+  difficulty: "easy",
+  categories: [],
+  catIdx: 0,
+  currentPlayer: 1,
+  currentRound: 1,
+  scores: [],
+  timer: null,
+  timeLeft: 0,
+  locked: false,
+};
+
+setupPills("five-players", (v) => (five.players = v), (v) => parseInt(v, 10));
+setupPills("five-rounds", (v) => (five.rounds = v), (v) => parseInt(v, 10));
+setupPills("five-difficulty", (v) => (five.difficulty = v));
+
+async function fiveLoadCats() {
+  const r = await fetch(`/api/categories?difficulty=${five.difficulty}&limit=100`);
+  const d = await r.json();
+  five.categories = d.categories;
+  five.catIdx = 0;
+}
+
+async function fiveStart() {
+  hapticMedium();
+  await fiveLoadCats();
+  five.scores = new Array(five.players).fill(0);
+  five.currentPlayer = 1;
+  five.currentRound = 1;
+  fiveShowTurn();
+}
+
+function fiveShowTurn() {
+  if (five.currentRound > five.rounds) {
+    fiveShowResult();
+    return;
+  }
+  document.getElementById("five-turn-num").textContent = `Игрок ${five.currentPlayer}`;
+  showScreen("fiveTurn");
+}
+
+function fivePlay() {
+  if (five.catIdx >= five.categories.length) {
+    five.categories.sort(() => Math.random() - 0.5);
+    five.catIdx = 0;
+  }
+  document.getElementById("five-category").textContent = five.categories[five.catIdx++];
+  document.getElementById("five-player-badge").textContent = five.currentPlayer;
+  five.locked = false;
+  showScreen("fivePlay");
+  fiveStartTimer();
+}
+
+function fiveStartTimer() {
+  five.timeLeft = 5;
+  const el = document.getElementById("five-timer");
+  el.textContent = 5;
+  el.classList.add("danger");
+  five.timer = setInterval(() => {
+    five.timeLeft--;
+    el.textContent = five.timeLeft;
+    if (five.timeLeft <= 0) {
+      clearInterval(five.timer);
+      // Время вышло — засчитываем как "не успел", если игрок ещё не нажал
+      if (!five.locked) fiveResolve(false);
+    }
+  }, 1000);
+}
+
+function fiveResolve(success) {
+  if (five.locked) return;
+  five.locked = true;
+  clearInterval(five.timer);
+  if (success) {
+    five.scores[five.currentPlayer - 1]++;
+    hapticSuccess();
+  } else {
+    hapticError();
+  }
+  // Следующий игрок / круг
+  five.currentPlayer++;
+  if (five.currentPlayer > five.players) {
+    five.currentPlayer = 1;
+    five.currentRound++;
+  }
+  setTimeout(fiveShowTurn, 500);
+}
+
+function fiveShowResult() {
+  const wrap = document.getElementById("five-score-list");
+  wrap.innerHTML = "";
+  const maxScore = Math.max(...five.scores);
+  const list = document.createElement("div");
+  list.className = "five-scores";
+  five.scores.forEach((s, i) => {
+    const row = document.createElement("div");
+    row.className = "five-score-row";
+    if (s === maxScore && maxScore > 0) row.classList.add("win");
+    row.innerHTML = `<span>Игрок ${i + 1}</span><span>${s} 🏅</span>`;
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+
+  const winners = five.scores
+    .map((s, i) => [s, i + 1])
+    .filter(([s]) => s === maxScore && maxScore > 0)
+    .map(([, i]) => `Игрок ${i}`);
+  document.getElementById("five-winner-note").textContent =
+    winners.length ? `🏆 Победитель: ${winners.join(", ")}` : "Никто не набрал очков";
+  showScreen("fiveResult");
+  hapticSuccess();
+}
+
+document.getElementById("btn-five-start").addEventListener("click", fiveStart);
+document.getElementById("btn-five-again").addEventListener("click", fiveStart);
+document.getElementById("btn-five-ready").addEventListener("click", fivePlay);
+document.getElementById("btn-five-ok").addEventListener("click", () => fiveResolve(true));
+document.getElementById("btn-five-fail").addEventListener("click", () => fiveResolve(false));
+
+// ==============================
+// =========== ШПИОН ============
+// ==============================
+const spy = {
+  players: 4,
+  difficulty: "easy",
+  discussTime: 180,
+  spyIndex: 0,        // индекс игрока-шпиона (0..players-1)
+  word: "",
+  decoys: [],
+  currentPlayer: 0,   // 0..players-1 при раздаче ролей
+  timer: null,
+  timeLeft: 0,
+};
+
+setupPills("spy-players", (v) => (spy.players = v), (v) => parseInt(v, 10));
+setupPills("spy-difficulty", (v) => (spy.difficulty = v));
+setupPills("spy-time", (v) => (spy.discussTime = v), (v) => parseInt(v, 10));
+
+async function spyStart() {
+  hapticMedium();
+  // Получаем слово и обманки
+  const r = await fetch(`/api/spy?difficulty=${spy.difficulty}`);
+  const d = await r.json();
+  spy.word = d.word;
+  spy.decoys = d.decoys;
+  spy.spyIndex = Math.floor(Math.random() * spy.players);
+  spy.currentPlayer = 0;
+  spyShowPass();
+}
+
+function spyShowPass() {
+  document.getElementById("spy-pass-num").textContent = spy.currentPlayer + 1;
+  document.getElementById("spy-pass-name").textContent = spy.currentPlayer + 1;
+  showScreen("spyPass");
+}
+
+function spyShowRole() {
+  if (spy.currentPlayer === spy.spyIndex) {
+    document.getElementById("spy-role-word").textContent = "🕵 ТЫ ШПИОН";
+    document.getElementById("spy-role-note").textContent =
+      "Слова ты не знаешь. Слушай других и попробуй угадать, о чём речь.";
+  } else {
+    document.getElementById("spy-role-word").textContent = spy.word;
+    document.getElementById("spy-role-note").textContent =
+      "Запомни слово. Не показывай никому.";
+  }
+  showScreen("spyRole");
+}
+
+function spyNextPlayer() {
+  spy.currentPlayer++;
+  if (spy.currentPlayer >= spy.players) {
+    // Все увидели свои роли — начинаем обсуждение
+    spyStartDiscussion();
+  } else {
+    spyShowPass();
+  }
+}
+
+function spyStartDiscussion() {
+  spy.timeLeft = spy.discussTime;
+  spyRenderDiscussionTimer();
+  spy.timer = setInterval(() => {
+    spy.timeLeft--;
+    spyRenderDiscussionTimer();
+    if (spy.timeLeft <= 0) {
+      clearInterval(spy.timer);
+      spy.timer = null;
+      spyShowVote();
+    }
+  }, 1000);
+  showScreen("spyDiscuss");
+}
+
+function spyRenderDiscussionTimer() {
+  const m = Math.floor(spy.timeLeft / 60);
+  const s = spy.timeLeft % 60;
+  const el = document.getElementById("spy-timer");
+  el.textContent = `${m}:${String(s).padStart(2, "0")}`;
+  el.classList.remove("warn", "danger");
+  if (spy.timeLeft <= 30) el.classList.add("warn");
+  if (spy.timeLeft <= 10) el.classList.add("danger");
+}
+
+function spyShowVote() {
+  if (spy.timer) { clearInterval(spy.timer); spy.timer = null; }
+  const wrap = document.getElementById("spy-vote-list");
+  wrap.innerHTML = "";
+  for (let i = 0; i < spy.players; i++) {
+    const btn = document.createElement("button");
+    btn.className = "vote-btn";
+    btn.textContent = `Игрок ${i + 1}`;
+    btn.addEventListener("click", () => spyVoteChosen(i));
+    wrap.appendChild(btn);
+  }
+  showScreen("spyVote");
+}
+
+function spyVoteChosen(playerIndex) {
+  hapticMedium();
+  if (playerIndex === spy.spyIndex) {
+    // Шпион пойман — даём ему шанс угадать слово
+    spyShowGuess();
+  } else {
+    // Не поймали — шпион побеждает
+    spyShowResult(false, `Проиграли! Вы поймали не того. Игрок ${playerIndex + 1} — мирный.`);
+  }
+}
+
+function spyShowGuess() {
+  const wrap = document.getElementById("spy-guess-list");
+  wrap.innerHTML = "";
+  const opts = [spy.word, ...spy.decoys].slice(0, 8);
+  opts.sort(() => Math.random() - 0.5);
+  opts.forEach((w) => {
+    const btn = document.createElement("button");
+    btn.className = "guess-btn";
+    btn.textContent = w;
+    btn.addEventListener("click", () => {
+      if (w === spy.word) {
+        spyShowResult(false, "Шпион угадал слово и всё-таки победил!");
+      } else {
+        spyShowResult(true, "Шпион пойман и не угадал слово. Мирные победили!");
+      }
+    });
+    wrap.appendChild(btn);
+  });
+  showScreen("spyGuess");
+}
+
+function spyShowResult(citizensWin, text) {
+  document.getElementById("spy-result-title").textContent = citizensWin ? "🎉 Победа мирных!" : "🕵 Победа шпиона!";
+  document.getElementById("spy-result-text").textContent = text;
+  document.getElementById("spy-result-word").textContent = spy.word;
+  document.getElementById("spy-result-spy").textContent = `Игрок ${spy.spyIndex + 1}`;
+  showScreen("spyResult");
+  if (citizensWin) hapticSuccess(); else hapticError();
+}
+
+document.getElementById("btn-spy-start").addEventListener("click", spyStart);
+document.getElementById("btn-spy-again").addEventListener("click", spyStart);
+document.getElementById("btn-spy-reveal").addEventListener("click", spyShowRole);
+document.getElementById("btn-spy-next-player").addEventListener("click", spyNextPlayer);
+document.getElementById("btn-spy-to-vote").addEventListener("click", spyShowVote);
 
 // ==== Проверка подписки: кнопка ====
 document.getElementById("btn-recheck").addEventListener("click", checkSubscription);

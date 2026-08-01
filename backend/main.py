@@ -31,12 +31,16 @@ BASE_DIR = Path(__file__).parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
 WORDS_FILE = BASE_DIR / "words.json"
 QUESTIONS_FILE = BASE_DIR / "questions.json"
+CATEGORIES_FILE = BASE_DIR / "categories.json"
 
 with open(WORDS_FILE, "r", encoding="utf-8") as f:
     WORDS = json.load(f)
 
 with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
     QUESTIONS = json.load(f)
+
+with open(CATEGORIES_FILE, "r", encoding="utf-8") as f:
+    CATEGORIES = json.load(f)
 
 # ---------- Приложение ----------
 app = FastAPI(title="ProfiPlay API")
@@ -154,6 +158,39 @@ async def get_questions(difficulty: str = Query("easy"), limit: int = Query(50))
     questions = QUESTIONS["informatika"][difficulty].copy()
     random.shuffle(questions)
     return {"questions": questions[:limit]}
+
+
+@app.get("/api/categories")
+async def get_categories(difficulty: str = Query("easy"), limit: int = Query(30)):
+    """Категории для игры «5 секунд»."""
+    if difficulty == "mixed":
+        pool = (
+            CATEGORIES["informatika"]["easy"]
+            + CATEGORIES["informatika"]["medium"]
+            + CATEGORIES["informatika"]["hard"]
+        )
+    elif difficulty in ("easy", "medium", "hard"):
+        pool = CATEGORIES["informatika"][difficulty]
+    else:
+        raise HTTPException(status_code=400, detail="Bad difficulty")
+    pool = pool.copy()
+    random.shuffle(pool)
+    return {"categories": pool[:limit]}
+
+
+@app.get("/api/spy")
+async def get_spy(difficulty: str = Query("easy")):
+    """Одно случайное слово и список отвлекающих слов (для Шпиона)."""
+    if difficulty not in ("easy", "medium", "hard"):
+        raise HTTPException(status_code=400, detail="Bad difficulty")
+    items = WORDS["informatika"][difficulty].copy()
+    words = [it["word"] if isinstance(it, dict) else it for it in items]
+    random.shuffle(words)
+    if not words:
+        raise HTTPException(status_code=500, detail="No words")
+    target = words[0]
+    decoys = words[1:8]  # 7 других слов той же сложности
+    return {"word": target, "decoys": decoys}
 
 
 @app.get("/api/marathon")
