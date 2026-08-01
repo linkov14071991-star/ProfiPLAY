@@ -372,11 +372,11 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .stat-skip .stat-num { color: var(--skip); }
 
 /* ========== Игры 5 секунд / Шпион — общие ========== */
-#screen-five-turn, #screen-spy-pass, #screen-spy-role {
+#screen-five-turn, #screen-spy-pass, #screen-spy-role, #screen-whoami-turn {
   display: none;
   justify-content: center;
 }
-#screen-five-turn.active, #screen-spy-pass.active, #screen-spy-role.active {
+#screen-five-turn.active, #screen-spy-pass.active, #screen-spy-role.active, #screen-whoami-turn.active {
   display: flex;
 }
 

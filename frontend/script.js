@@ -33,6 +33,10 @@ const SCREENS = {
   spyVote: "screen-spy-vote",
   spyGuess: "screen-spy-guess",
   spyResult: "screen-spy-result",
+  whoamiSetup: "screen-whoami-setup",
+  whoamiTurn: "screen-whoami-turn",
+  whoamiPlay: "screen-whoami-play",
+  whoamiResult: "screen-whoami-result",
 };
 
 function showScreen(name) {
@@ -79,6 +83,7 @@ document.querySelectorAll(".game-card:not(.locked)").forEach((card) => {
     if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
     if (game === "fivesec") showScreen("fiveSetup");
     if (game === "spy") showScreen("spySetup");
+    if (game === "whoami") showScreen("whoamiSetup");
   });
 });
 
@@ -890,6 +895,133 @@ document.getElementById("btn-spy-again").addEventListener("click", spyStart);
 document.getElementById("btn-spy-reveal").addEventListener("click", spyShowRole);
 document.getElementById("btn-spy-next-player").addEventListener("click", spyNextPlayer);
 document.getElementById("btn-spy-to-vote").addEventListener("click", spyShowVote);
+
+// ==============================
+// ========= КТО Я? =============
+// ==============================
+const whoami = {
+  players: 3,
+  difficulty: "easy",
+  duration: 90,
+  words: [],
+  wIdx: 0,
+  currentPlayer: 1,
+  scores: [],
+  ok: 0,
+  skip: 0,
+  timer: null,
+  timeLeft: 0,
+};
+
+setupPills("whoami-players", (v) => (whoami.players = v), (v) => parseInt(v, 10));
+setupPills("whoami-difficulty", (v) => (whoami.difficulty = v));
+setupPills("whoami-duration", (v) => (whoami.duration = v), (v) => parseInt(v, 10));
+
+async function whoamiLoad() {
+  const r = await fetch(`/api/words?difficulty=${whoami.difficulty}`);
+  const d = await r.json();
+  whoami.words = d.words;
+  whoami.wIdx = 0;
+}
+
+async function whoamiStart() {
+  hapticMedium();
+  await whoamiLoad();
+  whoami.scores = new Array(whoami.players).fill(0);
+  whoami.currentPlayer = 1;
+  whoamiShowTurn();
+}
+
+function whoamiShowTurn() {
+  if (whoami.currentPlayer > whoami.players) {
+    whoamiShowResult();
+    return;
+  }
+  document.getElementById("whoami-turn-num").textContent = `Игрок ${whoami.currentPlayer}`;
+  showScreen("whoamiTurn");
+}
+
+function whoamiNextWord() {
+  if (whoami.wIdx >= whoami.words.length) {
+    whoami.words.sort(() => Math.random() - 0.5);
+    whoami.wIdx = 0;
+  }
+  document.getElementById("whoami-word").textContent = whoami.words[whoami.wIdx++];
+}
+
+function whoamiUpdateTimer() {
+  const el = document.getElementById("whoami-timer");
+  el.textContent = whoami.timeLeft;
+  el.classList.remove("warn", "danger");
+  if (whoami.timeLeft <= 5) el.classList.add("danger");
+  else if (whoami.timeLeft <= 15) el.classList.add("warn");
+}
+
+function whoamiPlay() {
+  whoami.ok = 0;
+  whoami.skip = 0;
+  document.getElementById("whoami-score-ok").textContent = 0;
+  document.getElementById("whoami-score-skip").textContent = 0;
+  showScreen("whoamiPlay");
+  whoamiNextWord();
+  whoami.timeLeft = whoami.duration;
+  whoamiUpdateTimer();
+  whoami.timer = setInterval(() => {
+    whoami.timeLeft--;
+    whoamiUpdateTimer();
+    if (whoami.timeLeft <= 0) whoamiEndTurn();
+  }, 1000);
+}
+
+function whoamiEndTurn() {
+  clearInterval(whoami.timer);
+  whoami.timer = null;
+  whoami.scores[whoami.currentPlayer - 1] = whoami.ok;
+  whoami.currentPlayer++;
+  hapticSuccess();
+  whoamiShowTurn();
+}
+
+function whoamiShowResult() {
+  const wrap = document.getElementById("whoami-score-list");
+  wrap.innerHTML = "";
+  const maxScore = Math.max(...whoami.scores);
+  const list = document.createElement("div");
+  list.className = "five-scores";
+  whoami.scores.forEach((s, i) => {
+    const row = document.createElement("div");
+    row.className = "five-score-row";
+    if (s === maxScore && maxScore > 0) row.classList.add("win");
+    row.innerHTML = `<span>Игрок ${i + 1}</span><span>${s} ✅</span>`;
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+  const winners = whoami.scores
+    .map((s, i) => [s, i + 1])
+    .filter(([s]) => s === maxScore && maxScore > 0)
+    .map(([, i]) => `Игрок ${i}`);
+  document.getElementById("whoami-winner-note").textContent =
+    winners.length ? `🏆 Победитель: ${winners.join(", ")}` : "Никто не угадал";
+  showScreen("whoamiResult");
+  hapticSuccess();
+}
+
+document.getElementById("btn-whoami-start").addEventListener("click", whoamiStart);
+document.getElementById("btn-whoami-again").addEventListener("click", whoamiStart);
+document.getElementById("btn-whoami-ready").addEventListener("click", whoamiPlay);
+document.getElementById("btn-whoami-ok").addEventListener("click", () => {
+  whoami.ok++;
+  document.getElementById("whoami-score-ok").textContent = whoami.ok;
+  hapticLight();
+  whoamiNextWord();
+});
+document.getElementById("btn-whoami-skip").addEventListener("click", () => {
+  whoami.skip++;
+  document.getElementById("whoami-score-skip").textContent = whoami.skip;
+  hapticLight();
+  whoamiNextWord();
+});
+document.getElementById("btn-whoami-stop").addEventListener("click", whoamiEndTurn);
 
 // ==== Проверка подписки: кнопка ====
 document.getElementById("btn-recheck").addEventListener("click", checkSubscription);
