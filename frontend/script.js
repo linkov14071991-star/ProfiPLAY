@@ -56,6 +56,8 @@ function showScreen(name) {
   // при возврате на меню — обновим плашку рейтинга
   if (name === "menu") refreshProfile();
   if (name === "profile") loadProfileScreen();
+  // Рандомная реплика Профика на любом экране с data-profik-context
+  populateProfikChips();
 }
 window.showScreen = showScreen;  // для onclick в HTML
 
@@ -366,6 +368,7 @@ async function sprintFinish() {
     ? await awardTraining("sprint", sprint.correct)
     : {delta_awarded: 0, xp_awarded: 0};
 
+  showProfikResult("sprint", {correct: sprint.correct});
   showTrainingResult({
     screenName: "sprintResult",
     screenId: "screen-sprint-result",
@@ -645,6 +648,7 @@ async function marathonFinish(userQuit) {
     ? await awardTraining("marathon", marathon.correct * 2)
     : {delta_awarded: 0, xp_awarded: 0};
 
+  showProfikResult("marathon", {correct: marathon.correct});
   showTrainingResult({
     screenName: "marathonResult",
     screenId: "screen-marathon-result",
@@ -1179,6 +1183,128 @@ async function renderDashboard(profile) {
   helloBox.style.display = "flex";
 
   setupQuickPlay(quests);
+}
+
+// ==============================
+// ====== РЕПЛИКИ ПРОФИКА =======
+// ==============================
+const PROFIK_LINES = {
+  sprint_start: [
+    "Готов рвать таймер? Погнали!",
+    "Каждый правильный ответ — очко. Соберём максимум!",
+    "Быстрее думай — больше набьёшь!",
+    "Кстати: правильный ответ теперь <b>не всегда первый</b> 😉",
+    "Спринт короткий. Настраивайся!",
+    "Скорость и точность. Больше ничего не нужно.",
+  ],
+  marathon_start: [
+    "Здесь важна выдержка. Не торопись — думай.",
+    "Береги жизни. Ошибка — минус одна.",
+    "Марафон не спринт. Настрой длинную дистанцию.",
+    "После каждой ошибки видно правильный вариант — учись на ходу!",
+    "3 жизни — по одной на каждый уровень уверенности?",
+  ],
+  duel_start: [
+    "Скорость важна не меньше правильности!",
+    "Соперник получит те же 10 вопросов. Дай ему бой!",
+    "Ответил за секунду — <b>почти двойные очки</b>.",
+    "Помни: даже за проигрыш дадут +20 XP.",
+    "После победы — обязательно поделись карточкой в чат класса.",
+  ],
+
+  sprint_result_high: [
+    "Ух! Ты машина! 🚀",
+    "Это уровень легенды. Другим до тебя далеко!",
+    "Так держать! Продолжай и попадёшь в топ.",
+    "Отличный результат! Стрик копится, XP растёт.",
+  ],
+  sprint_result_mid: [
+    "Хороший темп! Ещё пара тренировок — и будет ещё лучше.",
+    "Не останавливайся — форма набирается.",
+    "Пробуй разные сложности, они дают одинаковое количество XP.",
+  ],
+  sprint_result_low: [
+    "Каждый мастер когда-то нажимал по 3 правильных за минуту.",
+    "Тренируйся регулярно — станешь быстрее!",
+    "Попробуй сложность попроще, чтобы разогнаться.",
+  ],
+  sprint_result_zero: [
+    "Ноль — это тоже опыт. Приходи снова!",
+    "Стрик за заход всё равно засчитан. Завтра ждёт бонус.",
+  ],
+
+  marathon_result_high: [
+    "Марафонец! 15+ вопросов подряд — это уровень.",
+    "Серия у тебя настоящая. Отличная концентрация.",
+    "Забирай XP и жми ещё раз — рекорд впереди.",
+  ],
+  marathon_result_mid: [
+    "Достойный результат! Работай над сериями — там XP больше.",
+    "Смотри на правильные варианты после ошибок — это учит быстрее.",
+  ],
+  marathon_result_low: [
+    "3 жизни ушли быстро? Не расстраивайся — попробуй проще.",
+    "Не торопись отвечать — в марафоне важнее точность.",
+  ],
+
+  duel_result_win: [
+    "Красивая победа! Рейтинг подрос.",
+    "Так и надо! Соперник в шоке.",
+    "Отличная работа. Соперник сдал слабее — ловим момент.",
+    "Победа! Забирай карточку и делись с друзьями.",
+  ],
+  duel_result_loss: [
+    "Не расстраивайся — <b>+20 XP</b> всё равно твои.",
+    "Проиграл вдвое меньше очков, чем можно было. Это по-честному!",
+    "Соперник силён. Приходи на реванш — теперь ты знаешь его слабости.",
+    "Каждый поражение — плюс к опыту. И к XP.",
+  ],
+  duel_result_draw: [
+    "Ничья! Оба молодцы.",
+    "Равный бой. XP получил, рейтинг остался — по-честному.",
+  ],
+};
+
+function profikSays(context) {
+  const arr = PROFIK_LINES[context];
+  if (!arr || !arr.length) return "";
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function populateProfikChips() {
+  document.querySelectorAll("[data-profik-context]").forEach((el) => {
+    el.innerHTML = profikSays(el.dataset.profikContext);
+  });
+}
+
+/**
+ * Показать реплику Профика на экране результата.
+ * type — 'sprint', 'marathon', 'duel'
+ * Sprint/Marathon: определяет уровень по числу правильных.
+ */
+function showProfikResult(type, opts) {
+  const chip = document.getElementById(`${type}-profik-chip`);
+  const msgEl = document.getElementById(`${type}-profik-msg`);
+  if (!chip || !msgEl) return;
+  let context = "";
+  if (type === "sprint") {
+    const correct = opts.correct ?? 0;
+    if (correct === 0)      context = "sprint_result_zero";
+    else if (correct < 10)  context = "sprint_result_low";
+    else if (correct < 20)  context = "sprint_result_mid";
+    else                    context = "sprint_result_high";
+  } else if (type === "marathon") {
+    const correct = opts.correct ?? 0;
+    if (correct < 5)        context = "marathon_result_low";
+    else if (correct < 15)  context = "marathon_result_mid";
+    else                    context = "marathon_result_high";
+  } else if (type === "duel") {
+    if (opts.is_draw)       context = "duel_result_draw";
+    else if (opts.won)      context = "duel_result_win";
+    else                    context = "duel_result_loss";
+  }
+  msgEl.innerHTML = profikSays(context);
+  chip.style.display = "flex";
 }
 
 function greetingByHour() {
@@ -1769,6 +1895,10 @@ function duelShowResult(info) {
   }
 
   showScreen("duelResult");
+
+  // Реплика Профика по итогу
+  const wonForMe = !info.is_draw && info.winner_id === myObj?.id;
+  showProfikResult("duel", {won: wonForMe, is_draw: info.is_draw});
 
   // Готовим и показываем виральную карточку
   const cardWrap = document.getElementById("duel-card-wrap");

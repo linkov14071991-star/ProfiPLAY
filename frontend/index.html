@@ -295,6 +295,11 @@
     <p class="subtitle">Информатика · соло</p>
     <p>Отвечайте как можно быстрее. За заданное время наберите максимум правильных ответов.</p>
 
+    <div class="profik-chip">
+      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <div class="profik-chip-msg" data-profik-context="sprint_start"></div>
+    </div>
+
     <label class="field">Сложность</label>
     <div class="pills" id="sprint-difficulty">
       <button class="pill active" data-value="easy">Простая</button>
@@ -365,6 +370,11 @@
       <div class="reward-chip xp pos">💎 <span id="sprint-r-xp">0</span> XP</div>
     </div>
 
+    <div class="profik-chip reveal" id="sprint-profik-chip" style="display:none;">
+      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <div class="profik-chip-msg" id="sprint-profik-msg"></div>
+    </div>
+
     <div id="sprint-levelup" class="result-levelup reveal reveal-pop" style="display:none;">
       <div class="result-levelup-label">✨ НОВЫЙ УРОВЕНЬ</div>
       <div class="result-levelup-num" id="sprint-levelup-num">2</div>
@@ -392,6 +402,11 @@
     <h1>🏆 Марафон</h1>
     <p class="subtitle">Информатика · соло</p>
     <p>Отвечайте на вопросы, пока не закончатся жизни. Каждая ошибка — минус одна жизнь. После ответа видно правильный вариант.</p>
+
+    <div class="profik-chip">
+      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <div class="profik-chip-msg" data-profik-context="marathon_start"></div>
+    </div>
 
     <label class="field">Сложность</label>
     <div class="pills" id="marathon-difficulty">
@@ -464,6 +479,11 @@
     <div class="reward-strip reveal">
       <div class="reward-chip rating pos">🏆 <span id="marathon-r-rating">0</span></div>
       <div class="reward-chip xp pos">💎 <span id="marathon-r-xp">0</span> XP</div>
+    </div>
+
+    <div class="profik-chip reveal" id="marathon-profik-chip" style="display:none;">
+      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <div class="profik-chip-msg" id="marathon-profik-msg"></div>
     </div>
 
     <div id="marathon-levelup" class="result-levelup reveal reveal-pop" style="display:none;">
@@ -573,6 +593,11 @@
     <h1>⚔ Блиц-дуэль</h1>
     <p class="subtitle">1×1 асинхронно</p>
     <p><b>10 вопросов</b>, по <b>15 секунд</b> на каждый. Очки: 100 за правильный + до 100 бонуса за скорость. Играешь сейчас — соперник примет вызов, когда сможет.</p>
+
+    <div class="profik-chip">
+      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <div class="profik-chip-msg" data-profik-context="duel_start"></div>
+    </div>
 
     <label class="field">Сложность вопросов</label>
     <div class="pills" id="duel-difficulty">
@@ -698,6 +723,11 @@
 
     <div class="record-badge reveal" id="duel-elo-badge">
       Рейтинг: <b id="duel-elo-delta">+16</b>
+    </div>
+
+    <div class="profik-chip reveal" id="duel-profik-chip" style="display:none;">
+      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <div class="profik-chip-msg" id="duel-profik-msg"></div>
     </div>
 
     <div id="duel-levelup" class="result-levelup reveal reveal-pop" style="display:none;">

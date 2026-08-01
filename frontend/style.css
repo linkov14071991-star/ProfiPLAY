@@ -655,6 +655,43 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .rating-toast.cap { border-color: #FF8C42; }
 .rating-toast.cap b { color: #FF8C42; }
 
+/* ========== Реплика Профика (короткая, для встраивания) ========== */
+.profik-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(180, 242, 77, 0.12), rgba(102, 54, 233, 0.06));
+  border: 1px solid rgba(180, 242, 77, 0.3);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 8px 0 16px;
+}
+.profik-chip-img {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+.profik-chip-msg {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-on-light);
+  line-height: 1.35;
+  font-weight: 500;
+}
+.profik-chip-msg b {
+  color: var(--brand-purple);
+  font-weight: 800;
+}
+/* Вариант для тёмных экранов */
+.profik-chip.dark {
+  background: linear-gradient(135deg, rgba(180, 242, 77, 0.18), rgba(0, 0, 0, 0.15));
+  border-color: rgba(180, 242, 77, 0.4);
+}
+.profik-chip.dark .profik-chip-msg { color: #fff; }
+.profik-chip.dark .profik-chip-msg b { color: var(--brand-lime); }
+
 /* ========== Дашборд: приветствие Profik ========== */
 .profik-hello {
   display: flex;
