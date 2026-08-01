@@ -48,13 +48,12 @@
         <div class="desc">Один игрок. Максимум правильных ответов за 60 секунд.</div>
       </div>
     </div>
-    <div class="game-card locked">
-      <div class="icon" style="background:#B6A9D9;">🏆</div>
+    <div class="game-card" data-game="marathon">
+      <div class="icon">🏆</div>
       <div class="info">
         <div class="title">Марафон</div>
-        <div class="desc">Пройди как можно дальше с 3 жизнями.</div>
+        <div class="desc">Соло. Пройди как можно дальше с 3 жизнями.</div>
       </div>
-      <div class="badge-soon">скоро</div>
     </div>
     <div class="game-card" data-game="alias">
       <div class="icon">🗣</div>
@@ -62,6 +61,44 @@
         <div class="title">Alias</div>
         <div class="desc">Объясняй термин словами. Запрещённые слова нельзя!</div>
       </div>
+    </div>
+
+    <h3 style="padding-left:4px; margin-top:24px;">Скоро в игре</h3>
+
+    <div class="game-card locked">
+      <div class="icon" style="background:#B6A9D9;">⏱</div>
+      <div class="info">
+        <div class="title">5 секунд</div>
+        <div class="desc">Назови 3 ответа на категорию за 5 секунд. Соло и командная.</div>
+      </div>
+      <div class="badge-soon">скоро</div>
+    </div>
+
+    <div class="game-card locked">
+      <div class="icon" style="background:#B6A9D9;">🕵</div>
+      <div class="info">
+        <div class="title">Шпион</div>
+        <div class="desc">Найди шпиона среди своих. Все знают слово — кроме одного.</div>
+      </div>
+      <div class="badge-soon">скоро</div>
+    </div>
+
+    <div class="game-card locked">
+      <div class="icon" style="background:#B6A9D9;">❓</div>
+      <div class="info">
+        <div class="title">Кто я?</div>
+        <div class="desc">У тебя на лбу термин, ты его не видишь. Задавай «да/нет» вопросы.</div>
+      </div>
+      <div class="badge-soon">скоро</div>
+    </div>
+
+    <div class="game-card locked">
+      <div class="icon" style="background:#B6A9D9;">⚔</div>
+      <div class="info">
+        <div class="title">ProfiDuel</div>
+        <div class="desc">Турниры и дуэли онлайн. Рейтинг, чемпионаты, достижения.</div>
+      </div>
+      <div class="badge-soon">скоро</div>
     </div>
   </div>
 </section>
@@ -204,6 +241,82 @@
     </div>
     <p style="text-align:center; opacity:0.7; margin:0 0 8px;">Личный рекорд: <b id="sprint-r-best">0</b></p>
     <button id="btn-sprint-again" class="btn btn-primary btn-big">Ещё раз</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
+<!-- ==== Экран: настройка Марафона ==== -->
+<section id="screen-marathon-setup" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1>🏆 Марафон</h1>
+    <p class="subtitle">Информатика · соло</p>
+    <p>Отвечайте на вопросы, пока не закончатся жизни. Каждая ошибка — минус одна жизнь. После ответа видно правильный вариант.</p>
+
+    <label class="field">Сложность</label>
+    <div class="pills" id="marathon-difficulty">
+      <button class="pill" data-value="medium">Средняя</button>
+      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill active" data-value="mixed">Микс (сред+сложн)</button>
+    </div>
+
+    <label class="field">Количество жизней</label>
+    <div class="pills" id="marathon-lives">
+      <button class="pill" data-value="3">3 ❤️</button>
+      <button class="pill active" data-value="5">5 ❤️</button>
+      <button class="pill" data-value="7">7 ❤️</button>
+    </div>
+
+    <div id="marathon-record-hint" style="display:none;">
+      <div class="record-badge">🏆 Ваш рекорд: <span id="marathon-record">0</span> вопросов</div>
+    </div>
+
+    <button id="btn-marathon-start" class="btn btn-primary btn-big">Начать</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+  </div>
+</section>
+
+<!-- ==== Экран: игра Марафон ==== -->
+<section id="screen-marathon" class="screen">
+  <div class="marathon-topbar">
+    <div class="lives" id="marathon-lives-view">❤️❤️❤️❤️❤️</div>
+    <div class="streak-badge" id="marathon-streak-wrap" style="display:none;">
+      🔥 <span id="marathon-streak">0</span>
+    </div>
+    <div class="score-big" style="background:var(--brand-purple); color:white;">
+      <span id="marathon-answered">0</span>
+    </div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-text" id="marathon-question">—</div>
+  </div>
+
+  <div class="answers" id="marathon-answers"></div>
+
+  <button id="btn-marathon-stop" class="btn btn-link">Сдаться</button>
+</section>
+
+<!-- ==== Экран: итоги Марафона ==== -->
+<section id="screen-marathon-result" class="screen">
+  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="card">
+    <h1 id="marathon-result-title">🏁 Марафон окончен</h1>
+    <div id="marathon-new-record" style="display:none;">
+      <div class="record-badge">🎉 Новый рекорд!</div>
+    </div>
+    <div class="result-stats">
+      <div class="stat stat-ok">
+        <div class="stat-num" id="marathon-r-correct">0</div>
+        <div class="stat-label">Правильно</div>
+      </div>
+      <div class="stat stat-skip">
+        <div class="stat-num" id="marathon-r-streak">0</div>
+        <div class="stat-label">Лучшая серия</div>
+      </div>
+    </div>
+    <p style="text-align:center; opacity:0.7; margin:0 0 8px;">Личный рекорд: <b id="marathon-r-best">0</b></p>
+    <button id="btn-marathon-again" class="btn btn-primary btn-big">Ещё раз</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>

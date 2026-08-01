@@ -156,6 +156,23 @@ async def get_questions(difficulty: str = Query("easy"), limit: int = Query(50))
     return {"questions": questions[:limit]}
 
 
+@app.get("/api/marathon")
+async def get_marathon(difficulty: str = Query("mixed"), limit: int = Query(200)):
+    """Для Марафона: 'mixed' — medium+hard из общей базы; иначе — конкретный уровень."""
+    if difficulty == "mixed":
+        pool = (
+            QUESTIONS["informatika"]["medium"]
+            + QUESTIONS["informatika"]["hard"]
+        )
+    elif difficulty in ("easy", "medium", "hard"):
+        pool = QUESTIONS["informatika"][difficulty]
+    else:
+        raise HTTPException(status_code=400, detail="Bad difficulty")
+    pool = pool.copy()
+    random.shuffle(pool)
+    return {"questions": pool[:limit]}
+
+
 # ---------- Раздача статики фронтенда ----------
 # Всё, что не /api/*, отдаём как статику
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

@@ -19,6 +19,9 @@ const SCREENS = {
   aliasSetup: "screen-alias-setup",
   alias: "screen-alias",
   aliasResult: "screen-alias-result",
+  marathonSetup: "screen-marathon-setup",
+  marathon: "screen-marathon",
+  marathonResult: "screen-marathon-result",
 };
 
 function showScreen(name) {
@@ -62,6 +65,7 @@ document.querySelectorAll(".game-card:not(.locked)").forEach((card) => {
     if (game === "crocodile") showScreen("crocoSetup");
     if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
     if (game === "alias") showScreen("aliasSetup");
+    if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
   });
 });
 
@@ -429,6 +433,180 @@ document.getElementById("btn-alias-fail").addEventListener("click", () => {
   hapticError();
   aliasNextWord();
 });
+
+// ==============================
+// ========= МАРАФОН ============
+// ==============================
+const marathon = {
+  difficulty: "mixed",
+  lives: 5,
+  questions: [],
+  qIndex: 0,
+  livesLeft: 5,
+  correct: 0,
+  streak: 0,
+  bestStreak: 0,
+  locked: false,
+};
+
+setupPills("marathon-difficulty", (v) => (marathon.difficulty = v));
+setupPills("marathon-lives", (v) => (marathon.lives = v), (v) => parseInt(v, 10));
+
+function marathonRecordKey() {
+  return `marathon_${marathon.difficulty}_${marathon.lives}`;
+}
+function getMarathonRecord() { return records[marathonRecordKey()] || 0; }
+function saveMarathonRecord(score) {
+  const k = marathonRecordKey();
+  if (score > (records[k] || 0)) {
+    records[k] = score;
+    tg?.CloudStorage?.setItem?.(k, String(score), () => {});
+    return true;
+  }
+  return false;
+}
+function renderMarathonRecord() {
+  const rec = getMarathonRecord();
+  const hint = document.getElementById("marathon-record-hint");
+  if (rec > 0) {
+    document.getElementById("marathon-record").textContent = rec;
+    hint.style.display = "block";
+  } else {
+    hint.style.display = "none";
+  }
+}
+
+function marathonRenderLives() {
+  const wrap = document.getElementById("marathon-lives-view");
+  wrap.innerHTML = "";
+  for (let i = 0; i < marathon.lives; i++) {
+    const span = document.createElement("span");
+    span.textContent = "❤️";
+    if (i >= marathon.livesLeft) span.classList.add("lost");
+    wrap.appendChild(span);
+  }
+}
+
+function marathonRenderStreak() {
+  const wrap = document.getElementById("marathon-streak-wrap");
+  const el = document.getElementById("marathon-streak");
+  if (marathon.streak >= 3) {
+    el.textContent = marathon.streak;
+    wrap.style.display = "flex";
+  } else {
+    wrap.style.display = "none";
+  }
+}
+
+async function marathonLoad() {
+  const r = await fetch(`/api/marathon?difficulty=${marathon.difficulty}&limit=300`);
+  const d = await r.json();
+  marathon.questions = d.questions;
+  marathon.qIndex = 0;
+}
+
+function marathonRenderQ() {
+  if (marathon.qIndex >= marathon.questions.length) {
+    // Дозагрузим ещё пачку
+    marathonLoad().then(marathonRenderQ);
+    return;
+  }
+  const q = marathon.questions[marathon.qIndex];
+  document.getElementById("marathon-question").textContent = q.q;
+  const wrap = document.getElementById("marathon-answers");
+  wrap.innerHTML = "";
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "answer-btn";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => marathonAnswer(i, btn));
+    wrap.appendChild(btn);
+  });
+  marathon.locked = false;
+}
+
+function marathonAnswer(chosen, btnEl) {
+  if (marathon.locked) return;
+  marathon.locked = true;
+  const q = marathon.questions[marathon.qIndex];
+  const isCorrect = chosen === q.correct;
+  const allBtns = document.querySelectorAll("#marathon-answers .answer-btn");
+
+  if (isCorrect) {
+    btnEl.classList.add("correct");
+    marathon.correct++;
+    marathon.streak++;
+    if (marathon.streak > marathon.bestStreak) marathon.bestStreak = marathon.streak;
+    hapticSuccess();
+  } else {
+    btnEl.classList.add("wrong");
+    // подсветим правильный
+    allBtns[q.correct].classList.add("correct");
+    marathon.livesLeft--;
+    marathon.streak = 0;
+    hapticError();
+  }
+  allBtns.forEach((b) => (b.disabled = true));
+  document.getElementById("marathon-answered").textContent = marathon.correct;
+  marathonRenderLives();
+  marathonRenderStreak();
+
+  const delay = isCorrect ? 500 : 1200;
+  setTimeout(() => {
+    marathon.qIndex++;
+    if (marathon.livesLeft <= 0) {
+      marathonFinish(false);
+    } else {
+      marathonRenderQ();
+    }
+  }, delay);
+}
+
+async function marathonStart() {
+  hapticMedium();
+  await marathonLoad();
+  marathon.livesLeft = marathon.lives;
+  marathon.correct = 0;
+  marathon.streak = 0;
+  marathon.bestStreak = 0;
+  document.getElementById("marathon-answered").textContent = 0;
+  marathonRenderLives();
+  marathonRenderStreak();
+  showScreen("marathon");
+  marathonRenderQ();
+}
+
+function marathonFinish(userQuit) {
+  const isNew = saveMarathonRecord(marathon.correct);
+  document.getElementById("marathon-r-correct").textContent = marathon.correct;
+  document.getElementById("marathon-r-streak").textContent = marathon.bestStreak;
+  document.getElementById("marathon-r-best").textContent = getMarathonRecord();
+  document.getElementById("marathon-result-title").textContent =
+    userQuit ? "🏳 Сдался" : "🏁 Марафон окончен";
+  document.getElementById("marathon-new-record").style.display =
+    isNew && marathon.correct > 0 ? "block" : "none";
+  showScreen("marathonResult");
+  hapticSuccess();
+}
+
+document.getElementById("btn-marathon-start").addEventListener("click", marathonStart);
+document.getElementById("btn-marathon-again").addEventListener("click", marathonStart);
+document.getElementById("btn-marathon-stop").addEventListener("click", () => marathonFinish(true));
+
+// ==== Загрузка рекордов Марафона из облака ====
+(function preloadMarathonRecords() {
+  if (!tg?.CloudStorage) return;
+  const keys = [];
+  for (const d of ["medium", "hard", "mixed"]) {
+    for (const l of [3, 5, 7]) keys.push(`marathon_${d}_${l}`);
+  }
+  tg.CloudStorage.getItems(keys, (err, values) => {
+    if (err || !values) return;
+    Object.entries(values).forEach(([k, v]) => {
+      if (v) records[k] = parseInt(v, 10) || 0;
+    });
+  });
+})();
 
 // ==== Проверка подписки: кнопка ====
 document.getElementById("btn-recheck").addEventListener("click", checkSubscription);

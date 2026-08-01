@@ -371,6 +371,42 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .stat-ok .stat-num { color: var(--brand-purple); }
 .stat-skip .stat-num { color: var(--skip); }
 
+/* ========== Игра Марафон ========== */
+#screen-marathon {
+  padding: 12px;
+  background: var(--bg);
+}
+.marathon-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 8px 16px;
+  gap: 8px;
+}
+.marathon-topbar .lives {
+  font-size: 22px;
+  letter-spacing: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.marathon-topbar .lives .lost {
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+.streak-badge {
+  background: linear-gradient(135deg, #FF8C42, var(--danger));
+  color: white;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 16px;
+  white-space: nowrap;
+}
+.marathon-topbar .score-big {
+  font-size: 18px;
+  padding: 8px 14px;
+}
+
 /* ========== Игра Alias ========== */
 #screen-alias {
   padding: 12px;
