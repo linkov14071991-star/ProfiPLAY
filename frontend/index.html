@@ -708,6 +708,16 @@
 
     <div id="duel-achievements" class="result-achievements reveal"></div>
 
+    <!-- Виральная карточка результата -->
+    <div class="duel-card-wrap reveal" id="duel-card-wrap" style="display:none;">
+      <img id="duel-card-img" class="duel-card-img" alt="Карточка дуэли">
+      <canvas id="duel-card-canvas" width="640" height="640" style="display:none;"></canvas>
+      <div class="duel-card-actions">
+        <button id="btn-duel-download" class="btn btn-secondary" style="margin-top:0;">📸 Скачать</button>
+        <button id="btn-duel-share-card" class="btn btn-primary" style="margin-top:0;">📤 Поделиться</button>
+      </div>
+    </div>
+
     <div class="reveal">
       <button id="btn-duel-rematch" class="btn btn-primary btn-big">⚔ Новая дуэль</button>
       <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>

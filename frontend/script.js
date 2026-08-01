@@ -1769,6 +1769,36 @@ function duelShowResult(info) {
   }
 
   showScreen("duelResult");
+
+  // Готовим и показываем виральную карточку
+  const cardWrap = document.getElementById("duel-card-wrap");
+  try {
+    const dataUrl = renderDuelCard({
+      me: {
+        id: myObj?.id,
+        name: myObj?.name || "Ты",
+        score: myScore || 0,
+        league_emoji: myObj?.league?.emoji,
+        league_name: myObj?.league?.name,
+      },
+      opp: {
+        id: oppObj?.id,
+        name: oppObj?.name || "Соперник",
+        score: oppScore || 0,
+        league_emoji: oppObj?.league?.emoji,
+        league_name: oppObj?.league?.name,
+      },
+      is_draw: info.is_draw,
+      winner_id: info.winner_id,
+      myDelta,
+    });
+    document.getElementById("duel-card-img").src = dataUrl;
+    cardWrap.style.display = "block";
+  } catch (e) {
+    console.error("card render failed", e);
+    cardWrap.style.display = "none";
+  }
+
   // Ревил
   revealResultScreen("screen-duel-result", {stepDelay: 200});
   // Counter-up для очков
@@ -1815,6 +1845,133 @@ let DUEL_BOT_USERNAME = "your_bot";
 fetch("/api/config").then(r => r.json()).then(cfg => {
   if (cfg && cfg.bot_username) DUEL_BOT_USERNAME = cfg.bot_username;
 }).catch(() => {});
+
+/**
+ * Рисует красивую карточку результата дуэли на Canvas.
+ * Возвращает data URL PNG.
+ */
+function renderDuelCard(info) {
+  const canvas = document.getElementById("duel-card-canvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width;   // 640
+  const H = canvas.height;  // 640
+
+  // === Фон: фиолетовый градиент ===
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#2A1B4A");
+  bg.addColorStop(0.5, "#4020B0");
+  bg.addColorStop(1, "#2A1B4A");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Декоративные полупрозрачные круги
+  ctx.fillStyle = "rgba(180, 242, 77, 0.08)";
+  ctx.beginPath();
+  ctx.arc(90, 90, 120, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(W - 90, H - 90, 120, 0, Math.PI * 2);
+  ctx.fill();
+
+  // === Шапка: логотип «профиматика» + название ===
+  ctx.fillStyle = "#B4F24D";
+  const badgeW = 240, badgeH = 44, badgeX = (W - badgeW) / 2, badgeY = 40;
+  roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 22);
+  ctx.fill();
+  ctx.fillStyle = "#2A1B4A";
+  ctx.font = "900 22px 'Segoe UI', Roboto, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("профиматика", W / 2, badgeY + badgeH / 2);
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "900 34px 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText("ПРОФИК АРЕНА", W / 2, 130);
+  ctx.fillStyle = "rgba(180, 242, 77, 0.9)";
+  ctx.font = "600 18px 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText("⚔  Блиц-дуэль", W / 2, 162);
+
+  // === Верхний эмоджи: победа/поражение/ничья ===
+  const isDraw = info.is_draw;
+  const isMe = info.winner_id === (info.me?.id);
+  const emoji = isDraw ? "🤝" : (isMe ? "🏆" : "⚔");
+  ctx.font = "72px sans-serif";
+  ctx.fillText(emoji, W / 2, 230);
+
+  const titleText = isDraw ? "Ничья" : (isMe ? "Победа!" : "Поражение");
+  ctx.fillStyle = isDraw ? "#B6A9D9" : (isMe ? "#B4F24D" : "#FF4D6D");
+  ctx.font = "900 36px 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText(titleText, W / 2, 285);
+
+  // === Центр: VS-блок ===
+  const boxY = 320;
+  const boxH = 180;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+  roundRect(ctx, 40, boxY, W - 80, boxH, 20);
+  ctx.fill();
+
+  // Левый игрок
+  drawPlayerBlock(ctx, info.me, 90, boxY + 30, boxH - 60);
+  // Правый игрок
+  drawPlayerBlock(ctx, info.opp, W - 90, boxY + 30, boxH - 60, true);
+
+  // "VS" в центре
+  ctx.fillStyle = "#B4F24D";
+  ctx.font = "900 44px 'Segoe UI', Roboto, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("VS", W / 2, boxY + boxH / 2 + 14);
+
+  // === Изменение рейтинга ===
+  const myDelta = info.myDelta || 0;
+  ctx.fillStyle = myDelta > 0 ? "#B4F24D" : (myDelta < 0 ? "#FF4D6D" : "#B6A9D9");
+  ctx.font = "900 28px 'Segoe UI', Roboto, sans-serif";
+  const deltaTxt = (myDelta > 0 ? "+" : "") + myDelta + "  рейтинга";
+  ctx.textAlign = "center";
+  ctx.fillText(deltaTxt, W / 2, 540);
+
+  // === CTA снизу ===
+  ctx.fillStyle = "#fff";
+  ctx.font = "700 20px 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText("Прими вызов на Профик Арене!", W / 2, 585);
+  ctx.fillStyle = "rgba(180, 242, 77, 0.8)";
+  ctx.font = "500 15px 'Courier New', monospace";
+  ctx.fillText("t.me/" + DUEL_BOT_USERNAME, W / 2, 610);
+
+  return canvas.toDataURL("image/png");
+}
+
+function drawPlayerBlock(ctx, player, x, y, h, alignRight = false) {
+  if (!player) return;
+  ctx.textAlign = "center";
+  // Имя
+  ctx.fillStyle = "#fff";
+  ctx.font = "700 20px 'Segoe UI', Roboto, sans-serif";
+  const name = ellipsize(player.name || "Игрок", 12);
+  ctx.fillText(name, x, y + 22);
+  // Счёт (крупно)
+  ctx.fillStyle = "#B4F24D";
+  ctx.font = "900 56px 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText(String(player.score || 0), x, y + 90);
+  // Лига
+  ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+  ctx.font = "600 14px 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText(`${player.league_emoji || ""} ${player.league_name || ""}`.trim(), x, y + h);
+}
+
+function ellipsize(s, n) {
+  s = String(s);
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
 
 function duelShare() {
   const link = duelGetShareLink();
@@ -1893,6 +2050,48 @@ document.getElementById("btn-duel-copy").addEventListener("click", duelCopy);
 document.getElementById("btn-duel-rematch").addEventListener("click", () => {
   duel.duelId = null;
   showScreen("duelSetup");
+});
+
+// === Скачать карточку PNG ===
+document.getElementById("btn-duel-download").addEventListener("click", () => {
+  const img = document.getElementById("duel-card-img");
+  if (!img.src || img.src.length < 100) return;
+  const a = document.createElement("a");
+  a.href = img.src;
+  a.download = `profik-arena-duel-${duel.duelId || "result"}.png`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  hapticSuccess();
+});
+
+// === Поделиться карточкой в Telegram ===
+document.getElementById("btn-duel-share-card").addEventListener("click", async () => {
+  hapticMedium();
+  const link = duelGetShareLink();
+  const shareText = "⚔ Смотри как я сыграл в Профик Арене! Прими вызов: " + link;
+  // Пытаемся native share (файл), с fallback на Telegram share URL
+  if (navigator.share && document.getElementById("duel-card-img").src) {
+    try {
+      // Конвертируем dataURL в Blob и делимся файлом
+      const dataUrl = document.getElementById("duel-card-img").src;
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "profik-arena-duel.png", {type: "image/png"});
+      if (navigator.canShare && navigator.canShare({files: [file]})) {
+        await navigator.share({files: [file], text: shareText, title: "Профик Арена"});
+        return;
+      }
+    } catch (e) {
+      console.warn("navigator.share failed", e);
+    }
+  }
+  // Fallback: обычный Telegram share (без картинки)
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`);
+  } else {
+    duelCopy();
+  }
 });
 
 async function openDuelHistory() {
