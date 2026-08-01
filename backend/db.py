@@ -84,12 +84,26 @@ K_FACTOR = 32
 
 def calculate_elo(rating_a: int, rating_b: int, score_a: float) -> tuple[int, int]:
     """
-    Возвращает (delta_a, delta_b).
+    Асимметричный ELO: проигравший теряет вдвое меньше, чем получает победитель.
+    Пример: победа даёт +30, поражение снимает -15.
+    Ничья — обычное симметричное изменение (обычно близко к 0).
+
     score_a: 1.0 (A победил), 0.0 (A проиграл), 0.5 (ничья)
     """
     expected_a = 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
-    delta_a = round(K_FACTOR * (score_a - expected_a))
-    delta_b = -delta_a
+    base = round(K_FACTOR * (score_a - expected_a))
+    if score_a == 1.0:
+        # A победил
+        delta_a = base                  # полный выигрыш
+        delta_b = -int(abs(base) / 2)   # половинный проигрыш
+    elif score_a == 0.0:
+        # A проиграл
+        delta_a = -int(abs(base) / 2)   # половинный проигрыш
+        delta_b = abs(base)             # полный выигрыш соперника
+    else:
+        # ничья — симметрично
+        delta_a = base
+        delta_b = -base
     return delta_a, delta_b
 
 

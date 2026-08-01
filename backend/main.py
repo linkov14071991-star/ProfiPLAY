@@ -199,10 +199,8 @@ async def get_alias_words(difficulty: str = Query("easy")):
 
 @app.get("/api/questions")
 async def get_questions(difficulty: str = Query("easy"), limit: int = Query(50)):
-    """Возвращает перемешанный список вопросов (для Спринта / Марафона)."""
-    if difficulty not in ("easy", "medium", "hard"):
-        raise HTTPException(status_code=400, detail="Bad difficulty")
-    questions = QUESTIONS["informatika"][difficulty].copy()
+    """Возвращает перемешанный список вопросов (для Спринта). Микс всех дисциплин."""
+    questions = _pool_for_difficulty(difficulty).copy()
     random.shuffle(questions)
     return {"questions": questions[:limit]}
 
@@ -241,18 +239,9 @@ async def get_spy(difficulty: str = Query("easy")):
 
 
 @app.get("/api/marathon")
-async def get_marathon(difficulty: str = Query("mixed"), limit: int = Query(200)):
-    """Для Марафона: 'mixed' — medium+hard из общей базы; иначе — конкретный уровень."""
-    if difficulty == "mixed":
-        pool = (
-            QUESTIONS["informatika"]["medium"]
-            + QUESTIONS["informatika"]["hard"]
-        )
-    elif difficulty in ("easy", "medium", "hard"):
-        pool = QUESTIONS["informatika"][difficulty]
-    else:
-        raise HTTPException(status_code=400, detail="Bad difficulty")
-    pool = pool.copy()
+async def get_marathon(difficulty: str = Query("easy"), limit: int = Query(200)):
+    """Для Марафона: возвращает пул вопросов выбранной сложности со всех дисциплин."""
+    pool = _pool_for_difficulty(difficulty).copy()
     random.shuffle(pool)
     return {"questions": pool[:limit]}
 
@@ -404,11 +393,20 @@ def _gen_duel_id() -> str:
 
 
 def _pool_for_difficulty(difficulty: str) -> list:
-    if difficulty == "mixed":
-        return QUESTIONS["informatika"]["medium"] + QUESTIONS["informatika"]["hard"]
-    if difficulty in ("easy", "medium", "hard"):
-        return QUESTIONS["informatika"][difficulty]
-    raise HTTPException(status_code=400, detail="Bad difficulty")
+    """
+    Собирает пул вопросов заданной сложности со всех дисциплин
+    (информатика + математика + программирование, если есть).
+    """
+    if difficulty not in ("easy", "medium", "hard"):
+        raise HTTPException(status_code=400, detail="Bad difficulty")
+    pool = []
+    for discipline_key in QUESTIONS:
+        section = QUESTIONS[discipline_key]
+        if difficulty in section:
+            pool.extend(section[difficulty])
+    if not pool:
+        raise HTTPException(status_code=500, detail="Empty question pool")
+    return pool
 
 
 def _score_answers(questions: list, answers: list) -> int:
@@ -656,6 +654,53 @@ async def duel_submit(
         _try_finalize_duel(db, duel_id)
         duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
         return _duel_public_view(db, duel, my_id)
+
+
+@app.post("/api/duels/history")
+async def duels_history(
+    init_data: str = Body(...),
+    limit: int = Body(30),
+):
+    """Последние завершённые дуэли текущего игрока."""
+    tg_user = get_verified_user(init_data)
+    limit = max(1, min(100, limit))
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        my_id = me["telegram_id"]
+        rows = db.execute(
+            """
+            SELECT * FROM duels
+            WHERE (creator_id = ? OR opponent_id = ?)
+              AND status = 'complete'
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (my_id, my_id, limit),
+        ).fetchall()
+
+        history = []
+        for d in rows:
+            is_creator = d["creator_id"] == my_id
+            opp_id = d["opponent_id"] if is_creator else d["creator_id"]
+            my_score = d["creator_score"] if is_creator else d["opponent_score"]
+            opp_score = d["opponent_score"] if is_creator else d["creator_score"]
+            my_delta = d["creator_delta"] if is_creator else d["opponent_delta"]
+            opp_row = db.execute(
+                "SELECT * FROM users WHERE telegram_id = ?", (opp_id,)
+            ).fetchone()
+            history.append({
+                "duel_id": d["id"],
+                "opponent_name": _display_name(opp_row),
+                "opponent_rating": opp_row["rating"] if opp_row else 0,
+                "my_score": my_score or 0,
+                "opp_score": opp_score or 0,
+                "my_delta": my_delta or 0,
+                "won": d["winner_id"] == my_id,
+                "draw": bool(d["is_draw"]),
+                "created_at": d["created_at"],
+                "difficulty": d["difficulty"],
+            })
+    return {"history": history}
 
 
 @app.post("/api/duel/{duel_id}")

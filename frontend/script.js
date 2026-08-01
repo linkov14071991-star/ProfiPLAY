@@ -18,6 +18,7 @@ const SCREENS = {
   duelPlay: "screen-duel-play",
   duelWaiting: "screen-duel-waiting",
   duelResult: "screen-duel-result",
+  duelHistory: "screen-duel-history",
   crocoSetup: "screen-croco-setup",
   game: "screen-game",           // игра Крокодил
   result: "screen-result",       // итоги Крокодила
@@ -483,7 +484,7 @@ document.getElementById("btn-alias-fail").addEventListener("click", () => {
 // ========= МАРАФОН ============
 // ==============================
 const marathon = {
-  difficulty: "mixed",
+  difficulty: "easy",
   lives: 5,
   questions: [],
   qIndex: 0,
@@ -1208,7 +1209,7 @@ function showRatingToast(res) {
 // ========== ДУЭЛЬ =============
 // ==============================
 const duel = {
-  difficulty: "mixed",
+  difficulty: "medium",
   duelId: null,
   role: null,          // 'creator' | 'opponent'
   questions: [],
@@ -1463,6 +1464,50 @@ document.getElementById("btn-duel-rematch").addEventListener("click", () => {
   duel.duelId = null;
   showScreen("duelSetup");
 });
+
+async function openDuelHistory() {
+  showScreen("duelHistory");
+  const wrap = document.getElementById("duel-history-list");
+  wrap.innerHTML = '<p class="dh-empty">Загружаем...</p>';
+  const res = await apiPost("/api/duels/history", {init_data: INIT_DATA, limit: 30});
+  if (!res || !res.history) {
+    wrap.innerHTML = '<p class="dh-empty">Не смог загрузить историю</p>';
+    return;
+  }
+  if (res.history.length === 0) {
+    wrap.innerHTML = '<p class="dh-empty">Пока боёв не было.<br>Создай первую дуэль!</p>';
+    return;
+  }
+  wrap.innerHTML = "";
+  res.history.forEach((h) => {
+    const row = document.createElement("div");
+    let outcome = "draw", badge = "=", cls = "draw";
+    if (h.won) { outcome = "win"; badge = "W"; cls = "win"; }
+    else if (!h.draw) { outcome = "loss"; badge = "L"; cls = "loss"; }
+    row.className = "dh-row " + outcome;
+    const deltaCls = h.my_delta > 0 ? "pos" : h.my_delta < 0 ? "neg" : "";
+    const deltaTxt = (h.my_delta > 0 ? "+" : "") + h.my_delta;
+    const dateShort = (h.created_at || "").split(" ")[0].split("-").reverse().slice(0, 2).join(".");
+    row.innerHTML = `
+      <div class="dh-badge ${cls}">${badge}</div>
+      <div class="dh-info">
+        <div class="dh-opp">vs ${escapeHtml(h.opponent_name)}</div>
+        <div class="dh-date">${dateShort}</div>
+      </div>
+      <div class="dh-score">${h.my_score}:${h.opp_score}</div>
+      <div class="dh-delta ${deltaCls}">${deltaTxt}</div>
+    `;
+    wrap.appendChild(row);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+document.getElementById("btn-duel-history").addEventListener("click", openDuelHistory);
 
 // Экспортируем для checkSubscription — она вызывает после успеха
 window._maybeOpenIncomingDuel = async function() {

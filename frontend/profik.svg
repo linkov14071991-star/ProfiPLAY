@@ -1,44 +1,100 @@
-<svg viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg">
-  <!-- Тень под капюшоном -->
-  <ellipse cx="60" cy="132" rx="42" ry="4" fill="#000" opacity="0.25"/>
+<svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hoodie" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1a2e"/>
+      <stop offset="1" stop-color="#0a0a15"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2a3e"/>
+      <stop offset="1" stop-color="#141422"/>
+    </linearGradient>
+    <radialGradient id="eyeGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#d4ff6a"/>
+      <stop offset="1" stop-color="#8fce30"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Тень -->
+  <ellipse cx="100" cy="210" rx="72" ry="6" fill="#000" opacity="0.25"/>
 
   <!-- Тело в толстовке -->
-  <path d="M 22 128 L 22 100 Q 22 78 40 72 L 80 72 Q 98 78 98 100 L 98 128 Z" fill="#1a1a2e"/>
+  <path d="M 30 210 L 30 145
+           Q 30 120 55 108
+           L 145 108
+           Q 170 120 170 145
+           L 170 210 Z"
+        fill="url(#hoodie)"/>
 
-  <!-- Капюшон (задняя часть) -->
-  <path d="M 18 90 Q 18 42 60 40 Q 102 42 102 90 L 96 96 Q 90 60 60 58 Q 30 60 24 96 Z" fill="#0f0f1e"/>
+  <!-- Плечевые складки -->
+  <path d="M 40 210 L 40 165 Q 40 152 52 148 L 30 148 L 30 210 Z" fill="#000" opacity="0.35"/>
+  <path d="M 160 210 L 160 165 Q 160 152 148 148 L 170 148 L 170 210 Z" fill="#000" opacity="0.35"/>
 
-  <!-- Голова кота -->
-  <ellipse cx="60" cy="70" rx="34" ry="30" fill="#1a1a2e"/>
+  <!-- Карман-муфта -->
+  <path d="M 55 165 Q 100 178 145 165 L 148 190 Q 100 202 52 190 Z"
+        fill="#000" opacity="0.5"/>
 
-  <!-- Уши (пробиваются через капюшон) -->
-  <path d="M 32 42 L 30 66 L 48 54 Z" fill="#1a1a2e"/>
-  <path d="M 88 42 L 90 66 L 72 54 Z" fill="#1a1a2e"/>
-  <path d="M 34 46 L 34 62 L 44 55 Z" fill="#B4F24D" opacity="0.35"/>
-  <path d="M 86 46 L 86 62 L 76 55 Z" fill="#B4F24D" opacity="0.35"/>
+  <!-- Задняя часть капюшона (за головой) -->
+  <path d="M 25 118 Q 25 55 100 50 Q 175 55 175 118 L 168 140
+           Q 158 78 100 76 Q 42 78 32 140 Z"
+        fill="url(#hoodie)"/>
 
-  <!-- Капюшон (передний обвод) -->
-  <path d="M 24 72 Q 26 46 60 44 Q 94 46 96 72 L 92 76 Q 88 60 60 58 Q 32 60 28 76 Z" fill="#0a0a15"/>
+  <!-- Уши кота -->
+  <path d="M 42 68 L 40 105 L 68 82 Z" fill="#141422"/>
+  <path d="M 158 68 L 160 105 L 132 82 Z" fill="#141422"/>
+  <!-- Внутренняя часть ушей -->
+  <path d="M 46 74 L 46 95 L 62 82 Z" fill="#B4F24D" opacity="0.4"/>
+  <path d="M 154 74 L 154 95 L 138 82 Z" fill="#B4F24D" opacity="0.4"/>
 
-  <!-- Пиксельные глаза -->
-  <rect x="38" y="66" width="14" height="10" fill="#B4F24D"/>
-  <rect x="68" y="66" width="14" height="10" fill="#B4F24D"/>
-  <rect x="42" y="68" width="4" height="6" fill="#0a0a15"/>
-  <rect x="72" y="68" width="4" height="6" fill="#0a0a15"/>
+  <!-- Голова -->
+  <path d="M 40 118 Q 40 78 100 76 Q 160 78 160 118
+           Q 160 148 130 156 L 70 156 Q 40 148 40 118 Z"
+        fill="url(#face)"/>
+
+  <!-- Передний обвод капюшона -->
+  <path d="M 30 110 Q 32 72 100 68 Q 168 72 170 110 L 162 118
+           Q 155 84 100 82 Q 45 84 38 118 Z"
+        fill="#050510"/>
+
+  <!-- Тень на лбу от капюшона -->
+  <ellipse cx="100" cy="98" rx="55" ry="12" fill="#000" opacity="0.5"/>
+
+  <!-- Пиксельные глаза (крупные, "thug life" стиль) -->
+  <g>
+    <!-- Левый глаз -->
+    <rect x="55" y="110" width="34" height="20" fill="url(#eyeGlow)" rx="2"/>
+    <rect x="59" y="114" width="6" height="8" fill="#0a0a15"/>
+    <rect x="67" y="114" width="6" height="8" fill="#0a0a15"/>
+    <rect x="75" y="114" width="6" height="8" fill="#0a0a15"/>
+    <!-- Правый глаз -->
+    <rect x="111" y="110" width="34" height="20" fill="url(#eyeGlow)" rx="2"/>
+    <rect x="115" y="114" width="6" height="8" fill="#0a0a15"/>
+    <rect x="123" y="114" width="6" height="8" fill="#0a0a15"/>
+    <rect x="131" y="114" width="6" height="8" fill="#0a0a15"/>
+  </g>
 
   <!-- Нос -->
-  <path d="M 56 82 L 64 82 L 60 87 Z" fill="#B4F24D"/>
+  <path d="M 92 138 L 108 138 L 100 146 Z" fill="#B4F24D"/>
 
-  <!-- Ротик -->
-  <path d="M 60 87 Q 56 92 52 90" stroke="#0a0a15" stroke-width="1.5" fill="none"/>
-  <path d="M 60 87 Q 64 92 68 90" stroke="#0a0a15" stroke-width="1.5" fill="none"/>
+  <!-- Ротик (кошачий) -->
+  <path d="M 100 146 Q 92 154 84 148" stroke="#0a0a15" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <path d="M 100 146 Q 108 154 116 148" stroke="#0a0a15" stroke-width="2.5" stroke-linecap="round" fill="none"/>
 
   <!-- Усы -->
-  <line x1="18" y1="82" x2="34" y2="82" stroke="#3a2a5c" stroke-width="1.2"/>
-  <line x1="18" y1="88" x2="34" y2="86" stroke="#3a2a5c" stroke-width="1.2"/>
-  <line x1="86" y1="82" x2="102" y2="82" stroke="#3a2a5c" stroke-width="1.2"/>
-  <line x1="86" y1="86" x2="102" y2="88" stroke="#3a2a5c" stroke-width="1.2"/>
+  <g stroke="#5a4a7c" stroke-width="1.5" stroke-linecap="round">
+    <line x1="18" y1="135" x2="52" y2="138"/>
+    <line x1="18" y1="145" x2="52" y2="144"/>
+    <line x1="182" y1="135" x2="148" y2="138"/>
+    <line x1="182" y1="145" x2="148" y2="144"/>
+  </g>
 
-  <!-- Кодовые скобки на груди -->
-  <text x="60" y="118" text-anchor="middle" font-family="'Courier New', monospace" font-weight="900" font-size="16" fill="#B4F24D">&lt;/&gt;</text>
+  <!-- Кодовые скобки на груди (эмблема) -->
+  <g>
+    <rect x="66" y="176" width="68" height="26" rx="6" fill="#B4F24D"/>
+    <text x="100" y="196" text-anchor="middle"
+          font-family="'Courier New', 'Menlo', monospace"
+          font-weight="900" font-size="18" fill="#0a0a15">&lt;/&gt;</text>
+  </g>
+
+  <!-- Блик на носу -->
+  <ellipse cx="97" cy="140" rx="2" ry="1.2" fill="#e8ffb0" opacity="0.7"/>
 </svg>

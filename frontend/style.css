@@ -51,53 +51,29 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   padding: 8px 0 20px;
 }
 .brand-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--brand-purple-dark);
-  color: #ffffff;
+  background: var(--brand-lime);
+  color: var(--text-on-light);
   font-weight: 800;
-  font-size: 15px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  letter-spacing: 0.3px;
+  font-size: 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
   text-transform: lowercase;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  border: 1px solid rgba(180, 242, 77, 0.3);
-  box-shadow: 0 2px 12px rgba(180, 242, 77, 0.15);
-}
-.brand-badge .brand-phi {
-  color: var(--brand-lime);
-  font-weight: 900;
-  font-size: 1.15em;
-  line-height: 1;
-  padding: 0 1px;
-  font-family: "Times New Roman", "PT Serif", Georgia, serif;
-  transform: translateY(-1px);
-  display: inline-block;
-}
-.brand-badge .brand-brackets {
-  color: var(--brand-lime);
-  font-family: "Courier New", monospace;
-  font-weight: 700;
-  font-size: 0.85em;
-  margin-left: 6px;
-  opacity: 0.9;
 }
 
 /* Маскот Profik */
 .profik {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 6px rgba(180, 242, 77, 0.2));
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.25));
 }
-.profik-lg { width: 100px; height: 100px; }
-.profik-xl { width: 140px; height: 140px; }
+.profik-lg { width: 140px; height: 140px; }
+.profik-xl { width: 200px; height: 200px; }
 
 /* ========== Заголовки ========== */
 h1, h2, h3 { color: var(--text-on-dark); }
@@ -405,6 +381,65 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .stat-label { color: var(--text-muted); font-size: 13px; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
 .stat-ok .stat-num { color: var(--brand-purple); }
 .stat-skip .stat-num { color: var(--skip); }
+
+/* ========== История дуэлей ========== */
+.dh-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(102, 54, 233, 0.05);
+  margin-bottom: 6px;
+}
+.dh-row.win { background: linear-gradient(135deg, rgba(180, 242, 77, 0.2), rgba(180, 242, 77, 0.05)); }
+.dh-row.loss { background: linear-gradient(135deg, rgba(255, 77, 109, 0.15), rgba(255, 77, 109, 0.04)); }
+.dh-row.draw { background: rgba(158, 158, 158, 0.15); }
+.dh-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: white;
+}
+.dh-badge.win { background: var(--ok); color: var(--text-on-light); }
+.dh-badge.loss { background: var(--danger); }
+.dh-badge.draw { background: #9E9E9E; }
+.dh-info { min-width: 0; }
+.dh-opp {
+  font-weight: 700;
+  color: var(--text-on-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+.dh-date { font-size: 11px; color: var(--text-on-light); opacity: 0.55; }
+.dh-score {
+  font-weight: 800;
+  color: var(--text-on-light);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.dh-delta {
+  font-weight: 800;
+  font-size: 15px;
+  min-width: 40px;
+  text-align: right;
+}
+.dh-delta.pos { color: var(--ok); }
+.dh-delta.neg { color: var(--danger); }
+.dh-empty {
+  text-align: center;
+  padding: 40px 12px;
+  color: var(--text-on-light);
+  opacity: 0.6;
+}
 
 /* ========== Блиц-дуэль: результат VS ========== */
 .duel-vs {
