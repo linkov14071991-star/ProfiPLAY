@@ -42,6 +42,20 @@
   <h1 style="text-align:center; margin-bottom:6px;">ProfikArena</h1>
   <p class="subtitle" style="text-align:center;">Тренируйся, сражайся, побеждай</p>
 
+  <!-- Персональная плашка: лига + рейтинг -->
+  <div id="my-strip" class="my-strip" onclick="showScreen('profile')" style="display:none;">
+    <div class="my-strip-left">
+      <div class="my-strip-league" id="my-strip-league">🎓 Юниор</div>
+      <div class="my-strip-rating" id="my-strip-rating">1000</div>
+    </div>
+    <div class="my-strip-arrow">→</div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+    <button class="btn btn-secondary" onclick="showScreen('profile')" style="margin-top:0;">👤 Профиль</button>
+    <button class="btn btn-secondary" onclick="openLeaderboard()" style="margin-top:0;">🏆 Лидерборд</button>
+  </div>
+
   <h3 style="padding-left:4px;">🎯 Тренировки соло</h3>
   <div class="games-grid">
     <div class="game-card" data-game="sprint">
@@ -464,6 +478,76 @@
     <p style="text-align:center; font-size:20px; margin:8px 0 0;">Итог: <b id="alias-r-total">0</b> очков</p>
     <button id="btn-alias-again" class="btn btn-primary btn-big">Ещё раунд</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
+<!-- ==== Экран: Мой профиль ==== -->
+<section id="screen-profile" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
+
+  <div class="card">
+    <h1>👤 <span id="profile-name">Игрок</span></h1>
+
+    <div class="profile-hero">
+      <div class="profile-league-emoji" id="profile-league-emoji">🎓</div>
+      <div>
+        <div class="profile-league-name" id="profile-league-name">Юниор</div>
+        <div class="profile-rating"><span id="profile-rating">1000</span> <span style="opacity:0.6;">очков</span></div>
+      </div>
+    </div>
+
+    <div class="profile-progress" id="profile-progress-wrap">
+      <div class="profile-progress-labels">
+        <span id="profile-progress-cur">1000</span>
+        <span>до <span id="profile-progress-next-name">Мидла</span>: <b id="profile-progress-left">0</b></span>
+        <span id="profile-progress-next">1300</span>
+      </div>
+      <div class="profile-progress-bar"><div class="profile-progress-fill" id="profile-progress-fill"></div></div>
+    </div>
+
+    <h3>Сегодня</h3>
+    <div class="profile-stats">
+      <div class="profile-stat">
+        <div class="profile-stat-num" id="profile-today-earned">0</div>
+        <div class="profile-stat-label">очков за тренировки</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-num"><span id="profile-cap-remaining">100</span>/100</div>
+        <div class="profile-stat-label">осталось до капа</div>
+      </div>
+    </div>
+
+    <h3>Всего</h3>
+    <div class="profile-stats">
+      <div class="profile-stat">
+        <div class="profile-stat-num" id="profile-games-played">0</div>
+        <div class="profile-stat-label">сыграно партий</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-num">#<span id="profile-place">—</span></div>
+        <div class="profile-stat-label">место в общем топе</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="openLeaderboard()">🏆 Открыть лидерборд</button>
+    <button class="btn btn-link btn-back" data-back="menu">← На арену</button>
+  </div>
+</section>
+
+<!-- ==== Экран: Лидерборд ==== -->
+<section id="screen-leaderboard" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
+  <div class="card">
+    <h1>🏆 Лидерборд</h1>
+    <p class="subtitle" id="leaderboard-subtitle">Топ игроков по рейтингу</p>
+    <div id="leaderboard-list"></div>
+    <button class="btn btn-link btn-back" data-back="menu">← На арену</button>
   </div>
 </section>
 

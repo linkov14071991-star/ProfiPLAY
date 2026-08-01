@@ -11,6 +11,8 @@ const SCREENS = {
   needSub: "screen-need-sub",
   menu: "screen-menu",
   party: "screen-party",
+  profile: "screen-profile",
+  leaderboard: "screen-leaderboard",
   crocoSetup: "screen-croco-setup",
   game: "screen-game",           // игра Крокодил
   result: "screen-result",       // итоги Крокодила
@@ -44,7 +46,11 @@ function showScreen(name) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
   document.getElementById(SCREENS[name]).classList.add("active");
   window.scrollTo(0, 0);
+  // при возврате на меню — обновим плашку рейтинга
+  if (name === "menu") refreshProfile();
+  if (name === "profile") loadProfileScreen();
 }
+window.showScreen = showScreen;  // для onclick в HTML
 
 // ==== Проверка подписки ====
 async function checkSubscription() {
@@ -157,13 +163,15 @@ async function crocoStart() {
   crocoStartTimer();
 }
 
-function crocoStop() {
+async function crocoStop() {
   clearInterval(croco.timer);
   croco.timer = null;
   document.getElementById("result-guessed").textContent = croco.guessed;
   document.getElementById("result-skipped").textContent = croco.skipped;
   showScreen("result");
   hapticSuccess();
+  const res = await awardTraining("party", 5);
+  showRatingToast(res);
 }
 
 document.getElementById("btn-croco-start").addEventListener("click", crocoStart);
@@ -334,7 +342,7 @@ async function sprintStart() {
   sprintStartTimer();
 }
 
-function sprintFinish() {
+async function sprintFinish() {
   clearInterval(sprint.timer);
   sprint.timer = null;
   const isNewRecord = saveRecord(sprint.correct);
@@ -344,6 +352,11 @@ function sprintFinish() {
   document.getElementById("sprint-new-record").style.display = isNewRecord && sprint.correct > 0 ? "block" : "none";
   showScreen("sprintResult");
   hapticSuccess();
+  // +1 очко за каждый правильный
+  if (sprint.correct > 0) {
+    const res = await awardTraining("sprint", sprint.correct);
+    showRatingToast(res);
+  }
 }
 
 document.getElementById("btn-sprint-start").addEventListener("click", sprintStart);
@@ -421,7 +434,7 @@ async function aliasStart() {
   aliasStartTimer();
 }
 
-function aliasStop() {
+async function aliasStop() {
   clearInterval(alias.timer);
   alias.timer = null;
   const total = alias.ok - alias.fail;
@@ -431,6 +444,8 @@ function aliasStop() {
   document.getElementById("alias-r-total").textContent = total;
   showScreen("aliasResult");
   hapticSuccess();
+  const res = await awardTraining("party", 5);
+  showRatingToast(res);
 }
 
 document.getElementById("btn-alias-start").addEventListener("click", aliasStart);
@@ -597,7 +612,7 @@ async function marathonStart() {
   marathonRenderQ();
 }
 
-function marathonFinish(userQuit) {
+async function marathonFinish(userQuit) {
   const isNew = saveMarathonRecord(marathon.correct);
   document.getElementById("marathon-r-correct").textContent = marathon.correct;
   document.getElementById("marathon-r-streak").textContent = marathon.bestStreak;
@@ -608,6 +623,11 @@ function marathonFinish(userQuit) {
     isNew && marathon.correct > 0 ? "block" : "none";
   showScreen("marathonResult");
   hapticSuccess();
+  // +2 очка за каждый правильный
+  if (marathon.correct > 0) {
+    const res = await awardTraining("marathon", marathon.correct * 2);
+    showRatingToast(res);
+  }
 }
 
 document.getElementById("btn-marathon-start").addEventListener("click", marathonStart);
@@ -722,7 +742,8 @@ function fiveResolve(success) {
   setTimeout(fiveShowTurn, 500);
 }
 
-function fiveShowResult() {
+async function fiveShowResult() {
+  awardTraining("party", 5).then(showRatingToast);
   const wrap = document.getElementById("five-score-list");
   wrap.innerHTML = "";
   const maxScore = Math.max(...five.scores);
@@ -891,6 +912,7 @@ function spyShowResult(citizensWin, text) {
   document.getElementById("spy-result-spy").textContent = `Игрок ${spy.spyIndex + 1}`;
   showScreen("spyResult");
   if (citizensWin) hapticSuccess(); else hapticError();
+  awardTraining("party", 5).then(showRatingToast);
 }
 
 document.getElementById("btn-spy-start").addEventListener("click", spyStart);
@@ -985,7 +1007,8 @@ function whoamiEndTurn() {
   whoamiShowTurn();
 }
 
-function whoamiShowResult() {
+async function whoamiShowResult() {
+  awardTraining("party", 5).then(showRatingToast);
   const wrap = document.getElementById("whoami-score-list");
   wrap.innerHTML = "";
   const maxScore = Math.max(...whoami.scores);
@@ -1025,6 +1048,152 @@ document.getElementById("btn-whoami-skip").addEventListener("click", () => {
   whoamiNextWord();
 });
 document.getElementById("btn-whoami-stop").addEventListener("click", whoamiEndTurn);
+
+// ==============================
+// ==== ФУНДАМЕНТ РЕЙТИНГА ======
+// ==============================
+const INIT_DATA = tg?.initData || "";
+let currentProfile = null;
+
+async function apiPost(path, body) {
+  try {
+    const r = await fetch(path, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body || {}),
+    });
+    return await r.json();
+  } catch (e) {
+    console.error(path, e);
+    return null;
+  }
+}
+
+async function refreshProfile() {
+  const p = await apiPost("/api/profile", {init_data: INIT_DATA});
+  if (!p || !p.rating) return;
+  currentProfile = p;
+  // обновляем плашку на главной
+  const strip = document.getElementById("my-strip");
+  if (strip) {
+    document.getElementById("my-strip-league").textContent = `${p.league.emoji} ${p.league.name}`;
+    document.getElementById("my-strip-rating").textContent = p.rating;
+    strip.style.display = "flex";
+  }
+}
+
+async function loadProfileScreen() {
+  const p = await apiPost("/api/profile", {init_data: INIT_DATA});
+  if (!p || !p.rating) return;
+  currentProfile = p;
+  const name = p.username ? "@" + p.username : (p.first_name || "Игрок");
+  document.getElementById("profile-name").textContent = name;
+  document.getElementById("profile-league-emoji").textContent = p.league.emoji;
+  document.getElementById("profile-league-name").textContent = p.league.name;
+  document.getElementById("profile-rating").textContent = p.rating;
+  document.getElementById("profile-today-earned").textContent = p.training_earned_today;
+  document.getElementById("profile-cap-remaining").textContent = p.training_remaining_today;
+  document.getElementById("profile-games-played").textContent = p.games_played;
+
+  // Прогресс до следующей лиги
+  const wrap = document.getElementById("profile-progress-wrap");
+  if (p.league.next_threshold) {
+    const cur = p.league.threshold;
+    const next = p.league.next_threshold;
+    const filled = Math.max(0, Math.min(100, ((p.rating - cur) / (next - cur)) * 100));
+    document.getElementById("profile-progress-cur").textContent = cur;
+    document.getElementById("profile-progress-next").textContent = next;
+    document.getElementById("profile-progress-left").textContent = Math.max(0, next - p.rating);
+    // Название следующей лиги
+    const leagues = [
+      {t: 1000, n: "Мидла"}, {t: 1300, n: "Синьора"},
+      {t: 1600, n: "Стара"}, {t: 1900, n: "Легенды"},
+    ];
+    const nextLeague = leagues.find(l => l.t === next);
+    document.getElementById("profile-progress-next-name").textContent = nextLeague ? nextLeague.n : "следующей лиги";
+    document.getElementById("profile-progress-fill").style.width = filled + "%";
+    wrap.style.display = "block";
+  } else {
+    wrap.style.display = "none";
+  }
+
+  // Место в топе
+  const me = await apiPost("/api/leaderboard/me", {init_data: INIT_DATA});
+  if (me && me.place) {
+    document.getElementById("profile-place").textContent = me.place + " из " + me.total;
+  }
+}
+
+async function openLeaderboard() {
+  showScreen("leaderboard");
+  const wrap = document.getElementById("leaderboard-list");
+  wrap.innerHTML = '<p style="text-align:center; opacity:0.5;">Загружаем...</p>';
+  const r = await fetch("/api/leaderboard?limit=100");
+  const data = await r.json();
+  const myId = tg?.initDataUnsafe?.user?.id;
+  wrap.innerHTML = "";
+  if (!data.leaders || data.leaders.length === 0) {
+    wrap.innerHTML = '<p style="text-align:center; opacity:0.7;">Пока никого. Играй тренировки — попадёшь первым!</p>';
+    return;
+  }
+  data.leaders.forEach((row) => {
+    const div = document.createElement("div");
+    div.className = "lb-row";
+    if (row.telegram_id === myId) div.classList.add("me");
+    const placeClass = row.place === 1 ? "gold" : row.place === 2 ? "silver" : row.place === 3 ? "bronze" : "";
+    const displayName = row.username ? "@" + row.username : (row.first_name || "Игрок");
+    div.innerHTML = `
+      <div class="lb-place ${placeClass}">${row.place}</div>
+      <div class="lb-info">
+        <div class="lb-name">${displayName}</div>
+        <div class="lb-league">${row.league.emoji} ${row.league.name}</div>
+      </div>
+      <div class="lb-rating">${row.rating}</div>
+    `;
+    wrap.appendChild(div);
+  });
+}
+window.openLeaderboard = openLeaderboard;
+
+/**
+ * Начисление очков от тренировки.
+ * source: 'sprint' | 'marathon' | 'party'
+ * points: сколько запрашиваем (сервер применит дневной кап)
+ * Возвращает {delta_awarded, new_rating, cap_reached} или null.
+ */
+async function awardTraining(source, points) {
+  if (points <= 0) return null;
+  const res = await apiPost("/api/rating/training", {
+    init_data: INIT_DATA, source: source, points: points,
+  });
+  if (res && res.new_rating) {
+    // обновим текущий рейтинг локально
+    if (currentProfile) currentProfile.rating = res.new_rating;
+  }
+  return res;
+}
+
+/**
+ * Показать небольшой тост с итогом начисления очков.
+ */
+function showRatingToast(res) {
+  if (!res) return;
+  const toast = document.createElement("div");
+  toast.className = "rating-toast";
+  if (res.delta_awarded > 0) {
+    toast.innerHTML = `<b>+${res.delta_awarded}</b> очков к рейтингу<br><small>Итого: ${res.new_rating}</small>`;
+    toast.classList.add("ok");
+  } else {
+    toast.innerHTML = `Дневной кап тренировок достигнут (100). Заходи завтра!`;
+    toast.classList.add("cap");
+  }
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add("show"), 10);
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
 
 // ==== Проверка подписки: кнопка ====
 document.getElementById("btn-recheck").addEventListener("click", checkSubscription);

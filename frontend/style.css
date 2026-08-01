@@ -406,6 +406,194 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .stat-ok .stat-num { color: var(--brand-purple); }
 .stat-skip .stat-num { color: var(--skip); }
 
+/* ========== Тост начисления очков ========== */
+.rating-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translate(-50%, -80px);
+  background: var(--brand-purple-dark);
+  color: white;
+  padding: 14px 24px;
+  border-radius: 12px;
+  border: 2px solid var(--brand-lime);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  font-size: 14px;
+  text-align: center;
+  z-index: 9999;
+  opacity: 0;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+  min-width: 240px;
+}
+.rating-toast.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+.rating-toast b { font-size: 22px; color: var(--brand-lime); }
+.rating-toast small { opacity: 0.75; }
+.rating-toast.cap { border-color: #FF8C42; }
+.rating-toast.cap b { color: #FF8C42; }
+
+/* ========== Персональная плашка на главной ========== */
+.my-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, var(--brand-purple), var(--brand-purple-deep));
+  border-radius: var(--radius);
+  margin: 0 0 12px;
+  cursor: pointer;
+  border: 1.5px solid rgba(180, 242, 77, 0.4);
+  transition: transform 0.1s;
+}
+.my-strip:active { transform: scale(0.98); }
+.my-strip-left { flex: 1; }
+.my-strip-league {
+  font-size: 13px;
+  color: var(--brand-lime);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.my-strip-rating {
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+.my-strip-arrow {
+  font-size: 22px;
+  color: var(--brand-lime);
+  font-weight: 700;
+}
+
+/* ========== Профиль ========== */
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(102, 54, 233, 0.08), rgba(180, 242, 77, 0.08));
+  border-radius: var(--radius-sm);
+}
+.profile-league-emoji { font-size: 56px; line-height: 1; }
+.profile-league-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand-purple);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.profile-rating {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--text-on-light);
+  line-height: 1.1;
+}
+
+.profile-progress {
+  margin: 12px 0 20px;
+}
+.profile-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-on-light);
+  opacity: 0.75;
+  margin-bottom: 6px;
+}
+.profile-progress-labels > span:nth-child(2) { font-size: 12px; opacity: 1; }
+.profile-progress-bar {
+  height: 8px;
+  background: rgba(102, 54, 233, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.profile-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand-lime), var(--brand-lime-dark));
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.profile-stat {
+  background: rgba(102, 54, 233, 0.06);
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+.profile-stat-num {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--brand-purple);
+}
+.profile-stat-label {
+  font-size: 12px;
+  color: var(--text-on-light);
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+/* ========== Лидерборд ========== */
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(102, 54, 233, 0.05);
+  margin-bottom: 6px;
+}
+.lb-row.me {
+  background: linear-gradient(135deg, rgba(180, 242, 77, 0.25), rgba(180, 242, 77, 0.08));
+  border: 2px solid var(--brand-lime);
+}
+.lb-place {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--brand-purple);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.lb-place.gold { background: linear-gradient(135deg, #FFD700, #FFA500); color: #4a2500; }
+.lb-place.silver { background: linear-gradient(135deg, #E5E5E5, #B0B0B0); color: #333; }
+.lb-place.bronze { background: linear-gradient(135deg, #CD7F32, #8B4513); color: #fff; }
+
+.lb-info { flex: 1; min-width: 0; }
+.lb-name {
+  font-weight: 700;
+  color: var(--text-on-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-league {
+  font-size: 12px;
+  color: var(--brand-purple);
+  opacity: 0.8;
+}
+.lb-rating {
+  font-weight: 800;
+  color: var(--brand-purple);
+  font-size: 18px;
+}
+
 /* ========== Игры 5 секунд / Шпион — общие ========== */
 #screen-five-turn, #screen-spy-pass, #screen-spy-role, #screen-whoami-turn {
   display: none;

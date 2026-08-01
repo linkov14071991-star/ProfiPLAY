@@ -18,10 +18,19 @@ from pathlib import Path
 from urllib.parse import parse_qsl
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+
+from db import (
+    DAILY_TRAINING_CAP,
+    TRAINING_SOURCES,
+    get_db,
+    get_league,
+    get_training_earned_today,
+    init_db,
+)
 
 # ---------- Настройки ----------
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
@@ -43,7 +52,8 @@ with open(CATEGORIES_FILE, "r", encoding="utf-8") as f:
     CATEGORIES = json.load(f)
 
 # ---------- Приложение ----------
-app = FastAPI(title="ProfiPlay API")
+app = FastAPI(title="ProfikArena API")
+init_db()
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,6 +98,39 @@ def verify_telegram_init_data(init_data: str) -> dict | None:
         return parsed
     except Exception:
         return None
+
+
+def get_verified_user(init_data: str) -> dict:
+    """
+    Возвращает Telegram user dict {id, first_name, username, ...}.
+    В dev-режиме (без BOT_TOKEN) — фейковый пользователь.
+    Иначе — 401 если initData некорректна.
+    """
+    verified = verify_telegram_init_data(init_data)
+    if verified and isinstance(verified.get("user"), dict):
+        return verified["user"]
+    if not BOT_TOKEN:
+        # локальная разработка / smoke-тест
+        return {"id": 12345, "first_name": "Dev", "username": "dev"}
+    raise HTTPException(status_code=401, detail="Invalid Telegram init data")
+
+
+def upsert_user(db, tg_user: dict):
+    """Создаём или обновляем игрока в БД. Возвращаем строку users."""
+    db.execute(
+        """
+        INSERT INTO users (telegram_id, first_name, username)
+        VALUES (?, ?, ?)
+        ON CONFLICT(telegram_id) DO UPDATE SET
+            first_name = excluded.first_name,
+            username = excluded.username,
+            last_seen_at = datetime('now')
+        """,
+        (tg_user["id"], tg_user.get("first_name", ""), tg_user.get("username")),
+    )
+    return db.execute(
+        "SELECT * FROM users WHERE telegram_id = ?", (tg_user["id"],)
+    ).fetchone()
 
 
 # ---------- Эндпоинты API ----------
@@ -208,6 +251,129 @@ async def get_marathon(difficulty: str = Query("mixed"), limit: int = Query(200)
     pool = pool.copy()
     random.shuffle(pool)
     return {"questions": pool[:limit]}
+
+
+# ==============================
+# ==== ФУНДАМЕНТ РЕЙТИНГА =====
+# ==============================
+
+
+def _user_to_dict(row) -> dict:
+    """Sqlite Row + служебные поля лиги."""
+    d = dict(row)
+    d["league"] = get_league(d["rating"])
+    return d
+
+
+@app.post("/api/profile")
+async def get_or_create_profile(init_data: str = Body(..., embed=True)):
+    """Возвращает профиль игрока. Создаёт, если новичок."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        row = upsert_user(db, tg_user)
+        earned_today = get_training_earned_today(db, row["telegram_id"])
+        # Кол-во сыгранных игр (по записям в лог)
+        games_played = db.execute(
+            "SELECT COUNT(*) AS c FROM rating_log WHERE user_id = ?",
+            (row["telegram_id"],),
+        ).fetchone()["c"]
+    profile = _user_to_dict(row)
+    profile["training_earned_today"] = earned_today
+    profile["training_cap"] = DAILY_TRAINING_CAP
+    profile["training_remaining_today"] = max(0, DAILY_TRAINING_CAP - earned_today)
+    profile["games_played"] = games_played
+    return profile
+
+
+@app.post("/api/rating/training")
+async def add_training_points(
+    init_data: str = Body(...),
+    source: str = Body(...),
+    points: int = Body(...),
+):
+    """Начисляем очки от тренировки с учётом дневного капа."""
+    if source not in TRAINING_SOURCES:
+        raise HTTPException(status_code=400, detail="Bad source")
+    if points <= 0 or points > 200:
+        raise HTTPException(status_code=400, detail="Bad points")
+
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        row = upsert_user(db, tg_user)
+        user_id = row["telegram_id"]
+
+        earned = get_training_earned_today(db, user_id)
+        remaining = max(0, DAILY_TRAINING_CAP - earned)
+        actual_delta = min(points, remaining)
+
+        if actual_delta > 0:
+            db.execute(
+                "UPDATE users SET rating = rating + ? WHERE telegram_id = ?",
+                (actual_delta, user_id),
+            )
+            new_rating = db.execute(
+                "SELECT rating FROM users WHERE telegram_id = ?", (user_id,)
+            ).fetchone()["rating"]
+            db.execute(
+                """
+                INSERT INTO rating_log (user_id, delta, source, balance_after)
+                VALUES (?, ?, ?, ?)
+                """,
+                (user_id, actual_delta, source, new_rating),
+            )
+        else:
+            new_rating = row["rating"]
+
+    return {
+        "delta_awarded": actual_delta,
+        "requested": points,
+        "new_rating": new_rating,
+        "league": get_league(new_rating),
+        "cap_reached": remaining <= actual_delta,
+        "training_remaining_today": max(0, remaining - actual_delta),
+    }
+
+
+@app.get("/api/leaderboard")
+async def get_leaderboard(limit: int = Query(50)):
+    """Топ игроков по рейтингу."""
+    limit = max(1, min(200, limit))
+    with get_db() as db:
+        rows = db.execute(
+            """
+            SELECT telegram_id, first_name, username, rating
+            FROM users
+            ORDER BY rating DESC, joined_at ASC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    leaders = []
+    for i, r in enumerate(rows, start=1):
+        d = dict(r)
+        d["place"] = i
+        d["league"] = get_league(d["rating"])
+        leaders.append(d)
+    return {"leaders": leaders}
+
+
+@app.post("/api/leaderboard/me")
+async def get_my_place(init_data: str = Body(..., embed=True)):
+    """Возвращает моё место в общем рейтинге."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        row = upsert_user(db, tg_user)
+        # Место = количество игроков с большим рейтингом + 1
+        place = db.execute(
+            """
+            SELECT COUNT(*) + 1 AS place FROM users
+            WHERE rating > ?
+               OR (rating = ? AND joined_at < ?)
+            """,
+            (row["rating"], row["rating"], row["joined_at"]),
+        ).fetchone()["place"]
+        total = db.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+    return {"place": place, "total": total, "rating": row["rating"], "league": get_league(row["rating"])}
 
 
 # ---------- Раздача статики фронтенда ----------
