@@ -16,6 +16,9 @@ const SCREENS = {
   sprintSetup: "screen-sprint-setup",
   sprint: "screen-sprint",
   sprintResult: "screen-sprint-result",
+  aliasSetup: "screen-alias-setup",
+  alias: "screen-alias",
+  aliasResult: "screen-alias-result",
 };
 
 function showScreen(name) {
@@ -58,6 +61,7 @@ document.querySelectorAll(".game-card:not(.locked)").forEach((card) => {
     hapticMedium();
     if (game === "crocodile") showScreen("crocoSetup");
     if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
+    if (game === "alias") showScreen("aliasSetup");
   });
 });
 
@@ -320,6 +324,111 @@ function sprintFinish() {
 document.getElementById("btn-sprint-start").addEventListener("click", sprintStart);
 document.getElementById("btn-sprint-again").addEventListener("click", sprintStart);
 document.getElementById("btn-sprint-stop").addEventListener("click", sprintFinish);
+
+// ==============================
+// ========== ALIAS =============
+// ==============================
+const alias = {
+  difficulty: "easy",
+  duration: 90,
+  items: [],
+  idx: 0,
+  timer: null,
+  timeLeft: 0,
+  ok: 0,
+  skip: 0,
+  fail: 0,
+};
+
+setupPills("alias-difficulty", (v) => (alias.difficulty = v));
+setupPills("alias-duration", (v) => (alias.duration = v), (v) => parseInt(v, 10));
+
+async function aliasLoad() {
+  const r = await fetch(`/api/alias?difficulty=${alias.difficulty}`);
+  const d = await r.json();
+  alias.items = d.items;
+  alias.idx = 0;
+}
+
+function aliasNextWord() {
+  if (alias.idx >= alias.items.length) {
+    alias.items.sort(() => Math.random() - 0.5);
+    alias.idx = 0;
+  }
+  const it = alias.items[alias.idx++];
+  document.getElementById("alias-word").textContent = it.word;
+  const ul = document.getElementById("alias-banned");
+  ul.innerHTML = "";
+  (it.banned || []).forEach((w) => {
+    const li = document.createElement("li");
+    li.textContent = w;
+    ul.appendChild(li);
+  });
+}
+
+function aliasUpdateTimer() {
+  const el = document.getElementById("alias-timer");
+  el.textContent = alias.timeLeft;
+  el.classList.remove("warn", "danger");
+  if (alias.timeLeft <= 5) el.classList.add("danger");
+  else if (alias.timeLeft <= 15) el.classList.add("warn");
+}
+
+function aliasStartTimer() {
+  alias.timeLeft = alias.duration;
+  aliasUpdateTimer();
+  alias.timer = setInterval(() => {
+    alias.timeLeft--;
+    aliasUpdateTimer();
+    if (alias.timeLeft <= 0) aliasStop();
+  }, 1000);
+}
+
+async function aliasStart() {
+  hapticMedium();
+  await aliasLoad();
+  alias.ok = 0; alias.skip = 0; alias.fail = 0;
+  document.getElementById("alias-score-ok").textContent = 0;
+  document.getElementById("alias-score-skip").textContent = 0;
+  document.getElementById("alias-score-fail").textContent = 0;
+  showScreen("alias");
+  aliasNextWord();
+  aliasStartTimer();
+}
+
+function aliasStop() {
+  clearInterval(alias.timer);
+  alias.timer = null;
+  const total = alias.ok - alias.fail;
+  document.getElementById("alias-r-ok").textContent = alias.ok;
+  document.getElementById("alias-r-skip").textContent = alias.skip;
+  document.getElementById("alias-r-fail").textContent = alias.fail;
+  document.getElementById("alias-r-total").textContent = total;
+  showScreen("aliasResult");
+  hapticSuccess();
+}
+
+document.getElementById("btn-alias-start").addEventListener("click", aliasStart);
+document.getElementById("btn-alias-again").addEventListener("click", aliasStart);
+document.getElementById("btn-alias-stop").addEventListener("click", aliasStop);
+document.getElementById("btn-alias-ok").addEventListener("click", () => {
+  alias.ok++;
+  document.getElementById("alias-score-ok").textContent = alias.ok;
+  hapticLight();
+  aliasNextWord();
+});
+document.getElementById("btn-alias-skip").addEventListener("click", () => {
+  alias.skip++;
+  document.getElementById("alias-score-skip").textContent = alias.skip;
+  hapticLight();
+  aliasNextWord();
+});
+document.getElementById("btn-alias-fail").addEventListener("click", () => {
+  alias.fail++;
+  document.getElementById("alias-score-fail").textContent = alias.fail;
+  hapticError();
+  aliasNextWord();
+});
 
 // ==== Проверка подписки: кнопка ====
 document.getElementById("btn-recheck").addEventListener("click", checkSubscription);

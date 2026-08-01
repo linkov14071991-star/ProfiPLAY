@@ -119,12 +119,31 @@ async def check_subscription(user_id: int = Query(...)):
 
 @app.get("/api/words")
 async def get_words(difficulty: str = Query("easy")):
-    """Возвращает перемешанный список слов заданной сложности (для Крокодила)."""
+    """Возвращает перемешанный список слов (только термины) для Крокодила."""
     if difficulty not in ("easy", "medium", "hard"):
         raise HTTPException(status_code=400, detail="Bad difficulty")
-    words = WORDS["informatika"][difficulty].copy()
-    random.shuffle(words)
+    items = WORDS["informatika"][difficulty].copy()
+    random.shuffle(items)
+    # Крокодилу нужны только термины
+    words = [item["word"] if isinstance(item, dict) else item for item in items]
     return {"words": words}
+
+
+@app.get("/api/alias")
+async def get_alias_words(difficulty: str = Query("easy")):
+    """Возвращает слова с запретными словами для Alias."""
+    if difficulty not in ("easy", "medium", "hard"):
+        raise HTTPException(status_code=400, detail="Bad difficulty")
+    items = WORDS["informatika"][difficulty].copy()
+    random.shuffle(items)
+    # Нормализуем: если вдруг где-то остались просто строки — добавим пустой banned
+    result = []
+    for it in items:
+        if isinstance(it, dict):
+            result.append({"word": it["word"], "banned": it.get("banned", [])})
+        else:
+            result.append({"word": it, "banned": []})
+    return {"items": result}
 
 
 @app.get("/api/questions")

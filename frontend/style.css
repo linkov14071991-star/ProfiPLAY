@@ -371,6 +371,67 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .stat-ok .stat-num { color: var(--brand-purple); }
 .stat-skip .stat-num { color: var(--skip); }
 
+/* ========== Игра Alias ========== */
+#screen-alias {
+  padding: 12px;
+  background: var(--bg);
+}
+.alias-word-box {
+  flex: 1;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  margin: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 300px;
+}
+.alias-word {
+  font-size: 36px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--text-on-light);
+  line-height: 1.15;
+  padding: 8px 0 16px;
+  border-bottom: 2px dashed rgba(102, 54, 233, 0.2);
+  width: 100%;
+}
+.alias-banned-title {
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 16px;
+  margin-bottom: 10px;
+  align-self: flex-start;
+}
+.alias-banned {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+.alias-banned li {
+  color: var(--text-on-light);
+  font-size: 18px;
+  font-weight: 600;
+  padding: 6px 12px;
+  background: rgba(255, 77, 109, 0.1);
+  border-left: 3px solid var(--danger);
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.alias-actions {
+  grid-template-columns: 1fr 1fr 1.2fr !important;
+}
+.alias-actions .btn {
+  padding: 16px 8px;
+  font-size: 15px;
+}
+
 .record-badge {
   background: linear-gradient(135deg, var(--brand-lime), var(--brand-lime-dark));
   color: var(--text-on-light);
