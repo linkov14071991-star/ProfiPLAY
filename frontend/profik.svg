@@ -1,0 +1,44 @@
+<svg viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg">
+  <!-- Тень под капюшоном -->
+  <ellipse cx="60" cy="132" rx="42" ry="4" fill="#000" opacity="0.25"/>
+
+  <!-- Тело в толстовке -->
+  <path d="M 22 128 L 22 100 Q 22 78 40 72 L 80 72 Q 98 78 98 100 L 98 128 Z" fill="#1a1a2e"/>
+
+  <!-- Капюшон (задняя часть) -->
+  <path d="M 18 90 Q 18 42 60 40 Q 102 42 102 90 L 96 96 Q 90 60 60 58 Q 30 60 24 96 Z" fill="#0f0f1e"/>
+
+  <!-- Голова кота -->
+  <ellipse cx="60" cy="70" rx="34" ry="30" fill="#1a1a2e"/>
+
+  <!-- Уши (пробиваются через капюшон) -->
+  <path d="M 32 42 L 30 66 L 48 54 Z" fill="#1a1a2e"/>
+  <path d="M 88 42 L 90 66 L 72 54 Z" fill="#1a1a2e"/>
+  <path d="M 34 46 L 34 62 L 44 55 Z" fill="#B4F24D" opacity="0.35"/>
+  <path d="M 86 46 L 86 62 L 76 55 Z" fill="#B4F24D" opacity="0.35"/>
+
+  <!-- Капюшон (передний обвод) -->
+  <path d="M 24 72 Q 26 46 60 44 Q 94 46 96 72 L 92 76 Q 88 60 60 58 Q 32 60 28 76 Z" fill="#0a0a15"/>
+
+  <!-- Пиксельные глаза -->
+  <rect x="38" y="66" width="14" height="10" fill="#B4F24D"/>
+  <rect x="68" y="66" width="14" height="10" fill="#B4F24D"/>
+  <rect x="42" y="68" width="4" height="6" fill="#0a0a15"/>
+  <rect x="72" y="68" width="4" height="6" fill="#0a0a15"/>
+
+  <!-- Нос -->
+  <path d="M 56 82 L 64 82 L 60 87 Z" fill="#B4F24D"/>
+
+  <!-- Ротик -->
+  <path d="M 60 87 Q 56 92 52 90" stroke="#0a0a15" stroke-width="1.5" fill="none"/>
+  <path d="M 60 87 Q 64 92 68 90" stroke="#0a0a15" stroke-width="1.5" fill="none"/>
+
+  <!-- Усы -->
+  <line x1="18" y1="82" x2="34" y2="82" stroke="#3a2a5c" stroke-width="1.2"/>
+  <line x1="18" y1="88" x2="34" y2="86" stroke="#3a2a5c" stroke-width="1.2"/>
+  <line x1="86" y1="82" x2="102" y2="82" stroke="#3a2a5c" stroke-width="1.2"/>
+  <line x1="86" y1="86" x2="102" y2="88" stroke="#3a2a5c" stroke-width="1.2"/>
+
+  <!-- Кодовые скобки на груди -->
+  <text x="60" y="118" text-anchor="middle" font-family="'Courier New', monospace" font-weight="900" font-size="16" fill="#B4F24D">&lt;/&gt;</text>
+</svg>

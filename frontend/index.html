@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ProfiPlay</title>
+<title>ProfikArena</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="/style.css">
 </head>
@@ -11,16 +11,23 @@
 
 <!-- ==== Экран: проверка подписки ==== -->
 <section id="screen-check" class="screen active">
+  <img src="/profik.svg" alt="Profik" class="profik profik-xl">
   <div class="loader"></div>
-  <p>Проверяем подписку...</p>
+  <p>Profik проверяет подписку...</p>
 </section>
 
 <!-- ==== Экран: нужна подписка ==== -->
 <section id="screen-need-sub" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
-    <h1>📢 Подпишитесь на канал</h1>
-    <p>Чтобы играть в <b>ProfiPlay</b>, подпишитесь на канал <b>@profimatika_inf</b>.</p>
+    <div style="text-align:center; margin-bottom:8px;">
+      <img src="/profik.svg" alt="Profik" class="profik profik-lg">
+    </div>
+    <h1 style="text-align:center;">📢 Подпишитесь на канал</h1>
+    <p>Profik пускает на <b>ProfikArena</b> только подписчиков канала <b>@profimatika_inf</b>. Присоединяйся!</p>
     <a href="https://t.me/profimatika_inf" target="_blank" class="btn btn-primary">Подписаться</a>
     <button id="btn-recheck" class="btn btn-secondary">Я подписался, проверить</button>
   </div>
@@ -28,81 +35,127 @@
 
 <!-- ==== Экран: главное меню (выбор игры) ==== -->
 <section id="screen-menu" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
-  <h1 style="text-align:center; margin-bottom:6px;">ProfiPlay</h1>
-  <p class="subtitle" style="text-align:center;">Игры для тех, кто любит информатику</p>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
+  <h1 style="text-align:center; margin-bottom:6px;">ProfikArena</h1>
+  <p class="subtitle" style="text-align:center;">Тренируйся, сражайся, побеждай</p>
 
-  <h3 style="padding-left:4px;">Выберите игру</h3>
+  <h3 style="padding-left:4px;">🎯 Тренировки соло</h3>
   <div class="games-grid">
-    <div class="game-card" data-game="crocodile">
-      <div class="icon">🐊</div>
-      <div class="info">
-        <div class="title">Крокодил</div>
-        <div class="desc">Объясняй термины жестами. Для компании 2+ человек.</div>
-      </div>
-    </div>
     <div class="game-card" data-game="sprint">
       <div class="icon">⚡</div>
       <div class="info">
         <div class="title">Спринт</div>
-        <div class="desc">Один игрок. Максимум правильных ответов за 60 секунд.</div>
+        <div class="desc">Максимум правильных ответов за 60 секунд.</div>
       </div>
     </div>
     <div class="game-card" data-game="marathon">
       <div class="icon">🏆</div>
       <div class="info">
         <div class="title">Марафон</div>
-        <div class="desc">Соло. Пройди как можно дальше с 3 жизнями.</div>
+        <div class="desc">Пройди как можно дальше с 3 жизнями.</div>
       </div>
     </div>
-    <div class="game-card" data-game="alias">
-      <div class="icon">🗣</div>
+  </div>
+
+  <h3 style="padding-left:4px; margin-top:24px;">🎉 Тусовка (для компании)</h3>
+  <div class="games-grid">
+    <div class="game-card" data-game="party">
+      <div class="icon">🎭</div>
       <div class="info">
-        <div class="title">Alias</div>
-        <div class="desc">Объясняй термин словами. Запрещённые слова нельзя!</div>
+        <div class="title">Играть в компании</div>
+        <div class="desc">Крокодил, Alias, 5 секунд, Шпион, Кто я? — все командные игры.</div>
       </div>
     </div>
+  </div>
 
-    <div class="game-card" data-game="fivesec">
-      <div class="icon">⏱</div>
-      <div class="info">
-        <div class="title">5 секунд</div>
-        <div class="desc">Назови 3 ответа на категорию за 5 секунд. Для компании.</div>
-      </div>
-    </div>
-
-    <div class="game-card" data-game="spy">
-      <div class="icon">🕵</div>
-      <div class="info">
-        <div class="title">Шпион</div>
-        <div class="desc">Найди шпиона среди своих. Все знают слово — кроме одного.</div>
-      </div>
-    </div>
-
-    <div class="game-card" data-game="whoami">
-      <div class="icon">❓</div>
-      <div class="info">
-        <div class="title">Кто я?</div>
-        <div class="desc">Держи телефон ко лбу — угадай, кто ты, задавая «да/нет» вопросы.</div>
-      </div>
-    </div>
-
-    <h3 style="padding-left:4px; margin-top:24px;">Скоро в игре</h3>
-
+  <h3 style="padding-left:4px; margin-top:24px;">⚔ Соревнования</h3>
+  <div class="games-grid">
     <div class="game-card locked">
-      <div class="icon" style="background:#B6A9D9;">⚔</div>
+      <div class="icon" style="background:#B6A9D9;">⚡⚔</div>
       <div class="info">
-        <div class="title">ProfiDuel</div>
-        <div class="desc">Турниры и дуэли онлайн. Рейтинг, чемпионаты, достижения.</div>
+        <div class="title">Блиц-дуэль</div>
+        <div class="desc">1×1 асинхронно. Вызови друга или соперника по рейтингу.</div>
+      </div>
+      <div class="badge-soon">скоро</div>
+    </div>
+    <div class="game-card locked">
+      <div class="icon" style="background:#B6A9D9;">🥇</div>
+      <div class="info">
+        <div class="title">ProfikCup</div>
+        <div class="desc">Недельный турнир. Пн–Пт квалификация, Сб–Вс плей-офф на 128 игроков.</div>
+      </div>
+      <div class="badge-soon">скоро</div>
+    </div>
+    <div class="game-card locked">
+      <div class="icon" style="background:#B6A9D9;">📈</div>
+      <div class="info">
+        <div class="title">Лига</div>
+        <div class="desc">Сезонный рейтинг. Топ недели — в канале профиматика.</div>
       </div>
       <div class="badge-soon">скоро</div>
     </div>
   </div>
 </section>
 
+<!-- ==== Экран: Тусовка (сабменю командных игр) ==== -->
+<section id="screen-party" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
+  <h1 style="text-align:center; margin-bottom:6px;">🎉 Тусовка</h1>
+  <p class="subtitle" style="text-align:center;">Игры для компании 2+ человек</p>
+
+  <div class="games-grid">
+    <div class="game-card" data-game="crocodile">
+      <div class="icon">🐊</div>
+      <div class="info">
+        <div class="title">Крокодил</div>
+        <div class="desc">Объясняй термины жестами.</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="alias">
+      <div class="icon">🗣</div>
+      <div class="info">
+        <div class="title">Alias</div>
+        <div class="desc">Объясняй словами. Запретные слова нельзя!</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="fivesec">
+      <div class="icon">⏱</div>
+      <div class="info">
+        <div class="title">5 секунд</div>
+        <div class="desc">Назови 3 ответа за 5 секунд.</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="spy">
+      <div class="icon">🕵</div>
+      <div class="info">
+        <div class="title">Шпион</div>
+        <div class="desc">Найди шпиона среди своих.</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="whoami">
+      <div class="icon">❓</div>
+      <div class="info">
+        <div class="title">Кто я?</div>
+        <div class="desc">Держи телефон ко лбу, задавай «да/нет».</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-link btn-back" data-back="menu" style="margin-top:16px;">← На арену</button>
+</section>
+
 <!-- ==== Экран: настройка Крокодила ==== -->
 <section id="screen-croco-setup" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🐊 Крокодил</h1>
     <p class="subtitle">Информатика</p>
@@ -151,7 +204,10 @@
 
 <!-- ==== Экран: итоги Крокодила ==== -->
 <section id="screen-result" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🏁 Раунд окончен</h1>
     <div class="result-stats">
@@ -171,7 +227,10 @@
 
 <!-- ==== Экран: настройка Спринта ==== -->
 <section id="screen-sprint-setup" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>⚡ Спринт</h1>
     <p class="subtitle">Информатика · соло</p>
@@ -220,7 +279,10 @@
 
 <!-- ==== Экран: итоги Спринта ==== -->
 <section id="screen-sprint-result" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1 id="sprint-result-title">🏁 Готово!</h1>
     <div id="sprint-new-record" style="display:none;">
@@ -244,7 +306,10 @@
 
 <!-- ==== Экран: настройка Марафона ==== -->
 <section id="screen-marathon-setup" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🏆 Марафон</h1>
     <p class="subtitle">Информатика · соло</p>
@@ -296,7 +361,10 @@
 
 <!-- ==== Экран: итоги Марафона ==== -->
 <section id="screen-marathon-result" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1 id="marathon-result-title">🏁 Марафон окончен</h1>
     <div id="marathon-new-record" style="display:none;">
@@ -320,7 +388,10 @@
 
 <!-- ==== Экран: настройка Alias ==== -->
 <section id="screen-alias-setup" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🗣 Alias</h1>
     <p class="subtitle">Информатика · командная</p>
@@ -373,7 +444,10 @@
 
 <!-- ==== Экран: итоги Alias ==== -->
 <section id="screen-alias-result" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🏁 Раунд окончен</h1>
     <div class="result-stats">
@@ -395,7 +469,10 @@
 
 <!-- ==== Экраны: Кто я? ==== -->
 <section id="screen-whoami-setup" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>❓ Кто я?</h1>
     <p class="subtitle">Информатика · для компании</p>
@@ -459,7 +536,10 @@
 </section>
 
 <section id="screen-whoami-result" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🏁 Итоги</h1>
     <div id="whoami-score-list"></div>
@@ -471,7 +551,10 @@
 
 <!-- ==== Экраны: 5 секунд ==== -->
 <section id="screen-five-setup" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>⏱ 5 секунд</h1>
     <p class="subtitle">Информатика · для компании</p>
@@ -529,7 +612,10 @@
 </section>
 
 <section id="screen-five-result" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🏁 Итоги</h1>
     <div id="five-score-list"></div>
@@ -541,7 +627,10 @@
 
 <!-- ==== Экраны: Шпион ==== -->
 <section id="screen-spy-setup" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🕵 Шпион</h1>
     <p class="subtitle">Информатика · для компании</p>
@@ -596,7 +685,10 @@
 
 <!-- Экран обсуждения -->
 <section id="screen-spy-discuss" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div style="text-align:center; margin-top:20px;">
     <h1>💬 Обсуждение</h1>
     <p>Задавайте друг другу вопросы про слово. Не говорите слово напрямую! Шпион пытается понять, что это.</p>
@@ -607,7 +699,10 @@
 
 <!-- Голосование -->
 <section id="screen-spy-vote" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🗳 Кто шпион?</h1>
     <p>Обсудите и выберите подозреваемого.</p>
@@ -617,7 +712,10 @@
 
 <!-- Экран догадки шпиона (если поймали) -->
 <section id="screen-spy-guess" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1>🎯 Шанс шпиона</h1>
     <p>Вы поймали шпиона! Теперь <b>шпион угадывает слово</b>. Если угадает — победа шпиона.</p>
@@ -627,7 +725,10 @@
 
 <!-- Итог -->
 <section id="screen-spy-result" class="screen">
-  <div class="brand-header"><span class="brand-badge">профиматика</span></div>
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
   <div class="card">
     <h1 id="spy-result-title">🏁 Итог</h1>
     <p id="spy-result-text" style="font-size:18px; text-align:center;"></p>

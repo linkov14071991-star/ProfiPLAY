@@ -10,6 +10,7 @@ const SCREENS = {
   check: "screen-check",
   needSub: "screen-need-sub",
   menu: "screen-menu",
+  party: "screen-party",
   crocoSetup: "screen-croco-setup",
   game: "screen-game",           // игра Крокодил
   result: "screen-result",       // итоги Крокодила
@@ -72,19 +73,21 @@ function setupPills(containerId, onChange, cast = (v) => v) {
   });
 }
 
-// ==== Меню игр ====
-document.querySelectorAll(".game-card:not(.locked)").forEach((card) => {
-  card.addEventListener("click", () => {
-    const game = card.dataset.game;
-    hapticMedium();
-    if (game === "crocodile") showScreen("crocoSetup");
-    if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
-    if (game === "alias") showScreen("aliasSetup");
-    if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
-    if (game === "fivesec") showScreen("fiveSetup");
-    if (game === "spy") showScreen("spySetup");
-    if (game === "whoami") showScreen("whoamiSetup");
-  });
+// ==== Меню игр (делегирование по клику) ====
+document.body.addEventListener("click", (e) => {
+  const card = e.target.closest(".game-card");
+  if (!card || card.classList.contains("locked")) return;
+  const game = card.dataset.game;
+  if (!game) return;
+  hapticMedium();
+  if (game === "party") showScreen("party");
+  if (game === "crocodile") showScreen("crocoSetup");
+  if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
+  if (game === "alias") showScreen("aliasSetup");
+  if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
+  if (game === "fivesec") showScreen("fiveSetup");
+  if (game === "spy") showScreen("spySetup");
+  if (game === "whoami") showScreen("whoamiSetup");
 });
 
 // Кнопка "В меню" на любом экране

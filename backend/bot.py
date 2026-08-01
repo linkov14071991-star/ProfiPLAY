@@ -1,5 +1,5 @@
 """
-ProfiPlay - Telegram-бот
+ProfikArena - Telegram-бот
 Роль: единственная задача бота — открыть мини-приложение по команде /start.
 """
 
@@ -32,7 +32,7 @@ async def start(message: Message):
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎮 Играть в ProfiPlay",
+                    text="🎮 Играть в ProfikArena",
                     web_app=WebAppInfo(url=WEBAPP_URL),
                 )
             ],
@@ -46,7 +46,7 @@ async def start(message: Message):
     )
     await message.answer(
         f"Привет, {message.from_user.first_name}! 👋\n\n"
-        f"Это <b>ProfiPlay</b> — игры по информатике для компании и в одиночку.\n\n"
+        f"Это <b>ProfikArena</b> — арена по информатике: тренируйся, сражайся, побеждай.\n\n"
         f"⚠️ Для игры нужна подписка на канал {CHANNEL_USERNAME}.",
         reply_markup=kb,
         parse_mode="HTML",
