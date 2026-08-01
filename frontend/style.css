@@ -643,6 +643,123 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   text-align: right;
 }
 
+/* ========== Ачивки ========== */
+.ach-progress-bar {
+  height: 10px;
+  background: rgba(102, 54, 233, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0 20px;
+}
+.ach-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand-lime), var(--brand-lime-dark));
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+.ach-tile {
+  aspect-ratio: 1;
+  background: rgba(102, 54, 233, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.ach-tile:active { transform: scale(0.97); }
+.ach-tile.earned {
+  background: linear-gradient(135deg, rgba(180, 242, 77, 0.25), rgba(180, 242, 77, 0.08));
+  border-color: var(--brand-lime);
+}
+.ach-tile.locked {
+  filter: grayscale(0.9);
+  opacity: 0.6;
+}
+.ach-tile-icon {
+  font-size: 34px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.ach-tile-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-on-light);
+  line-height: 1.15;
+  letter-spacing: 0.2px;
+}
+.ach-tile-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(0,0,0,0.1);
+}
+.ach-tile-progress-fill {
+  height: 100%;
+  background: var(--brand-purple);
+  transition: width 0.4s ease;
+}
+
+/* Модалка ачивки */
+.ach-card {
+  background: linear-gradient(135deg, #FFD700 0%, #FF8C42 60%, var(--brand-purple) 100%) !important;
+  border-color: #FFD700 !important;
+  box-shadow: 0 0 60px rgba(255, 215, 0, 0.7) !important;
+  padding: 26px 22px !important;
+}
+.ach-modal-label {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #fff;
+  opacity: 0.95;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.ach-modal-icon {
+  font-size: 76px;
+  margin: 10px 0 4px;
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
+  animation: sparkle 1.2s ease infinite alternate;
+}
+.ach-modal-title {
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  margin: 4px 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.35);
+}
+.ach-modal-desc {
+  font-size: 13px;
+  color: #fff;
+  opacity: 0.9;
+  padding: 0 8px;
+  margin-bottom: 10px;
+}
+.ach-modal-xp {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 6px 16px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-bottom: 18px;
+}
+
 /* ========== Ежедневные задания ========== */
 .quests-box {
   margin: 20px 0 12px;

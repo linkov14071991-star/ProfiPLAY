@@ -26,6 +26,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import (
+    ACHIEVEMENTS,
     DAILY_STREAK_BASE_XP,
     DAILY_TRAINING_CAP,
     QUEST_TEMPLATES,
@@ -135,6 +136,94 @@ def get_verified_user(init_data: str) -> dict:
         # локальная разработка / smoke-тест
         return {"id": 12345, "first_name": "Dev", "username": "dev"}
     raise HTTPException(status_code=401, detail="Invalid Telegram init data")
+
+
+def _compute_user_stats(db, user_id: int) -> dict:
+    """Собирает метрики для проверки ачивок."""
+    row = db.execute(
+        "SELECT xp, rating, longest_streak FROM users WHERE telegram_id = ?",
+        (user_id,),
+    ).fetchone()
+    stats = {
+        "xp_total": row["xp"] or 0,
+        "rating": row["rating"] or 0,
+        "longest_streak": row["longest_streak"] or 0,
+        "level": get_level_info(row["xp"] or 0)["level"],
+    }
+    # Количество партий по источникам
+    play_counts = db.execute(
+        """
+        SELECT source, COUNT(*) AS c FROM rating_log
+        WHERE user_id = ? AND source IN ('sprint','marathon','party','duel')
+        GROUP BY source
+        """,
+        (user_id,),
+    ).fetchall()
+    for pc in play_counts:
+        stats[f"{pc['source']}_played"] = pc["c"]
+    for k in ("sprint_played", "marathon_played", "party_played", "duel_played"):
+        stats.setdefault(k, 0)
+    # Дуэли: победы
+    won = db.execute(
+        "SELECT COUNT(*) AS c FROM duels WHERE winner_id = ? AND status = 'complete'",
+        (user_id,),
+    ).fetchone()["c"]
+    stats["duel_won"] = won
+    stats["games_played"] = (
+        stats["sprint_played"] + stats["marathon_played"]
+        + stats["party_played"] + stats["duel_played"]
+    )
+    # Правильные ответы (примерная оценка по rating_log: спринт=1:1, марафон=1:2)
+    correct = db.execute(
+        """
+        SELECT COALESCE(SUM(
+            CASE
+                WHEN source='sprint' THEN delta
+                WHEN source='marathon' THEN delta / 2
+                ELSE 0
+            END
+        ), 0) AS total
+        FROM rating_log WHERE user_id = ?
+        """,
+        (user_id,),
+    ).fetchone()["total"]
+    stats["correct_answer"] = correct or 0
+    return stats
+
+
+def _check_and_grant_achievements(db, user_id: int) -> list:
+    """
+    Проверяет все ачивки для игрока, выдаёт новые.
+    Возвращает список свежевыданных ачивок с XP.
+    """
+    stats = _compute_user_stats(db, user_id)
+    # Уже полученные ачивки
+    earned_rows = db.execute(
+        "SELECT achievement_id FROM user_achievements WHERE user_id = ?",
+        (user_id,),
+    ).fetchall()
+    earned = {r["achievement_id"] for r in earned_rows}
+
+    newly = []
+    for ach in ACHIEVEMENTS:
+        if ach["id"] in earned:
+            continue
+        actual = stats.get(ach["cond"], 0)
+        if actual >= ach["target"]:
+            # Выдаём
+            try:
+                db.execute(
+                    "INSERT INTO user_achievements (user_id, achievement_id) VALUES (?, ?)",
+                    (user_id, ach["id"]),
+                )
+                award_xp(db, user_id, ach["xp"], f"ach:{ach['id']}")
+                newly.append({
+                    "id": ach["id"], "title": ach["title"], "desc": ach["desc"],
+                    "icon": ach["icon"], "xp": ach["xp"],
+                })
+            except Exception:
+                pass  # уже была
+    return newly
 
 
 def _ensure_daily_quests(db, user_id: int):
@@ -546,6 +635,9 @@ async def add_training_points(
             update_quest_progress(db, user_id, "party_played", 1)
         update_quest_progress(db, user_id, "xp_earned", xp_amount)
 
+        # Проверка ачивок после тренировки
+        newly_ach = _check_and_grant_achievements(db, user_id)
+
     return {
         "delta_awarded": actual_delta,
         "requested": points,
@@ -557,6 +649,48 @@ async def add_training_points(
         "new_xp": new_xp,
         "level_info": level_info,
         "leveled_up": leveled_up,
+        "newly_earned_achievements": newly_ach,
+    }
+
+
+@app.post("/api/achievements")
+async def get_achievements(init_data: str = Body(..., embed=True)):
+    """Список всех ачивок с флагом получения + прогрессом."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        row = upsert_user(db, tg_user)
+        user_id = row["telegram_id"]
+        # Проверяем и выдаём новые
+        newly = _check_and_grant_achievements(db, user_id)
+        earned_rows = db.execute(
+            "SELECT achievement_id, earned_at FROM user_achievements WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+        earned_map = {r["achievement_id"]: r["earned_at"] for r in earned_rows}
+        stats = _compute_user_stats(db, user_id)
+
+    items = []
+    for a in ACHIEVEMENTS:
+        actual = stats.get(a["cond"], 0)
+        items.append({
+            "id": a["id"],
+            "title": a["title"],
+            "desc": a["desc"],
+            "icon": a["icon"],
+            "target": a["target"],
+            "progress": min(actual, a["target"]),
+            "xp": a["xp"],
+            "cat": a["cat"],
+            "earned": a["id"] in earned_map,
+            "earned_at": earned_map.get(a["id"]),
+        })
+    total = len(ACHIEVEMENTS)
+    earned_count = len(earned_map)
+    return {
+        "items": items,
+        "total": total,
+        "earned": earned_count,
+        "newly_earned": newly,  # клиент покажет модалку
     }
 
 
@@ -760,6 +894,10 @@ def _try_finalize_duel(db, duel_id: str):
         update_quest_progress(db, winner_id_local, "duel_won", 1)
     update_quest_progress(db, creator["telegram_id"], "xp_earned", xp_a)
     update_quest_progress(db, opponent["telegram_id"], "xp_earned", xp_b)
+
+    # Проверка ачивок для обоих
+    _check_and_grant_achievements(db, creator["telegram_id"])
+    _check_and_grant_achievements(db, opponent["telegram_id"])
 
     db.execute(
         """

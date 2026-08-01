@@ -13,6 +13,7 @@ const SCREENS = {
   party: "screen-party",
   profile: "screen-profile",
   leaderboard: "screen-leaderboard",
+  achievements: "screen-achievements",
   duelSetup: "screen-duel-setup",
   duelAccept: "screen-duel-accept",
   duelPlay: "screen-duel-play",
@@ -1285,6 +1286,10 @@ async function awardTraining(source, points) {
   if (res && res.leveled_up) {
     setTimeout(() => showLevelUpModal(res.level_info.level), 1200);
   }
+  // Свежевыданные ачивки
+  if (res && res.newly_earned_achievements && res.newly_earned_achievements.length) {
+    setTimeout(() => enqueueAchievements(res.newly_earned_achievements), 2000);
+  }
   return res;
 }
 
@@ -1358,6 +1363,86 @@ function showStreakModal(update) {
 document.getElementById("streak-btn").addEventListener("click", () => {
   document.getElementById("streak-modal").style.display = "none";
 });
+
+/**
+ * Показать модалку новой ачивки (по очереди если несколько).
+ */
+const achievementQueue = [];
+let achievementModalOpen = false;
+
+function enqueueAchievements(list) {
+  if (!list || !list.length) return;
+  list.forEach((a) => achievementQueue.push(a));
+  if (!achievementModalOpen) showNextAchievement();
+}
+
+function showNextAchievement() {
+  const a = achievementQueue.shift();
+  if (!a) { achievementModalOpen = false; return; }
+  achievementModalOpen = true;
+  document.getElementById("ach-modal-icon").textContent = a.icon;
+  document.getElementById("ach-modal-title").textContent = a.title;
+  document.getElementById("ach-modal-desc").textContent = a.desc;
+  document.getElementById("ach-modal-xp").textContent = a.xp;
+  document.getElementById("ach-modal").style.display = "flex";
+  hapticSuccess();
+}
+document.getElementById("ach-modal-btn").addEventListener("click", () => {
+  document.getElementById("ach-modal").style.display = "none";
+  setTimeout(showNextAchievement, 200);
+});
+window.enqueueAchievements = enqueueAchievements;
+
+/**
+ * Открыть экран ачивок.
+ */
+async function openAchievements() {
+  showScreen("achievements");
+  const wrap = document.getElementById("ach-grid");
+  wrap.innerHTML = '<p style="text-align:center; grid-column: 1/-1; opacity:0.5;">Загружаем...</p>';
+  const res = await apiPost("/api/achievements", {init_data: INIT_DATA});
+  if (!res || !res.items) {
+    wrap.innerHTML = '<p style="text-align:center; grid-column: 1/-1;">Ошибка загрузки</p>';
+    return;
+  }
+  document.getElementById("ach-earned-count").textContent = res.earned;
+  document.getElementById("ach-total-count").textContent = res.total;
+  const pct = Math.round(res.earned * 100 / res.total);
+  document.getElementById("ach-progress-fill").style.width = pct + "%";
+
+  // Сортируем: полученные сверху, потом по прогрессу
+  const items = res.items.slice().sort((a, b) => {
+    if (a.earned !== b.earned) return b.earned - a.earned;
+    return (b.progress / b.target) - (a.progress / a.target);
+  });
+
+  wrap.innerHTML = "";
+  items.forEach((it) => {
+    const percent = Math.round(it.progress * 100 / it.target);
+    const tile = document.createElement("div");
+    tile.className = "ach-tile" + (it.earned ? " earned" : " locked");
+    tile.innerHTML = `
+      <div class="ach-tile-icon">${it.icon}</div>
+      <div class="ach-tile-title">${escapeHtml(it.title)}</div>
+      ${!it.earned ? `<div class="ach-tile-progress"><div class="ach-tile-progress-fill" style="width:${percent}%"></div></div>` : ""}
+    `;
+    tile.addEventListener("click", () => {
+      hapticLight();
+      alert(`${it.icon} ${it.title}\n\n${it.desc}\n\nНаграда: +${it.xp} XP\nПрогресс: ${it.progress}/${it.target}${it.earned ? "\n\n✅ Получено!" : ""}`);
+    });
+    wrap.appendChild(tile);
+  });
+
+  // Показываем свежевыданные ачивки модалкой (если пришли с сервера)
+  if (res.newly_earned && res.newly_earned.length) {
+    enqueueAchievements(res.newly_earned);
+  }
+
+  // Обновляем счётчик на кнопке в профиле
+  const badge = document.getElementById("profile-ach-badge");
+  if (badge) badge.textContent = `${res.earned}/${res.total}`;
+}
+window.openAchievements = openAchievements;
 
 // ==============================
 // ========== ДУЭЛЬ =============
@@ -1520,6 +1605,13 @@ function duelShowResult(info) {
     setTimeout(() => showLevelUpModal(info.my_level_info.level), 1500);
   }
   refreshProfile();
+  // Проверяем новые ачивки после дуэли
+  setTimeout(async () => {
+    const res = await apiPost("/api/achievements", {init_data: INIT_DATA});
+    if (res && res.newly_earned && res.newly_earned.length) {
+      enqueueAchievements(res.newly_earned);
+    }
+  }, 2500);
 }
 
 async function duelCheckResult() {

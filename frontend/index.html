@@ -716,8 +716,24 @@
       </div>
     </div>
 
-    <button class="btn btn-primary" onclick="openLeaderboard()">🏆 Открыть лидерборд</button>
+    <button class="btn btn-primary" onclick="openAchievements()">🏆 Ачивки <span id="profile-ach-badge" style="opacity:0.75;"></span></button>
+    <button class="btn btn-secondary" onclick="openLeaderboard()">📊 Лидерборд</button>
     <button class="btn btn-link btn-back" data-back="menu">← На арену</button>
+  </div>
+</section>
+
+<!-- ==== Экран: Ачивки ==== -->
+<section id="screen-achievements" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🏆 Ачивки</h1>
+    <p class="subtitle">Получено: <b id="ach-earned-count">0</b> из <b id="ach-total-count">27</b></p>
+    <div class="ach-progress-bar"><div id="ach-progress-fill" class="ach-progress-fill" style="width:0%"></div></div>
+    <div id="ach-grid" class="ach-grid"></div>
+    <button class="btn btn-link btn-back" data-back="profile">← Назад</button>
   </div>
 </section>
 
@@ -1006,6 +1022,18 @@
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>
+
+<!-- ==== Модалка новой ачивки ==== -->
+<div id="ach-modal" class="levelup-overlay" style="display:none;">
+  <div class="levelup-card ach-card">
+    <div class="ach-modal-label">🏆 АЧИВКА ПОЛУЧЕНА!</div>
+    <div class="ach-modal-icon" id="ach-modal-icon">🥚</div>
+    <div class="ach-modal-title" id="ach-modal-title">Первая партия</div>
+    <div class="ach-modal-desc" id="ach-modal-desc">Сыграй свою первую игру</div>
+    <div class="ach-modal-xp">+<span id="ach-modal-xp">20</span> XP</div>
+    <button id="ach-modal-btn" class="btn btn-lime btn-big">Круто! 🎉</button>
+  </div>
+</div>
 
 <!-- ==== Модалка стрика (новый день) ==== -->
 <div id="streak-modal" class="levelup-overlay" style="display:none;">

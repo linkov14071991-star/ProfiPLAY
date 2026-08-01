@@ -124,8 +124,71 @@ def init_db():
         """
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_quests_user_date ON daily_quests (user_id, date)")
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_achievements (
+            user_id         INTEGER NOT NULL,
+            achievement_id  TEXT NOT NULL,
+            earned_at       TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (user_id, achievement_id)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ach_user ON user_achievements (user_id)")
+
     conn.commit()
     conn.close()
+
+
+# ---------- Каталог ачивок ----------
+# Условия (cond):
+#   games_played, sprint_played, marathon_played, party_played, duel_played,
+#   duel_won, correct_answer, xp_total, level, longest_streak, rating
+ACHIEVEMENTS = [
+    # Первые шаги
+    {"id": "first_game",    "title": "Первая партия",     "desc": "Сыграй свою первую игру",         "icon": "🥚", "cond": "games_played",    "target": 1,   "xp": 20,  "cat": "start"},
+    {"id": "first_duel",    "title": "Первая дуэль",      "desc": "Сыграй первую дуэль",             "icon": "⚔",  "cond": "duel_played",     "target": 1,   "xp": 30,  "cat": "start"},
+    {"id": "first_winner",  "title": "Первая победа",     "desc": "Победи в первой дуэли",           "icon": "🥇", "cond": "duel_won",        "target": 1,   "xp": 50,  "cat": "start"},
+    {"id": "first_lvl_up",  "title": "Взлёт!",            "desc": "Достигни 2-го уровня",            "icon": "🚀", "cond": "level",           "target": 2,   "xp": 25,  "cat": "start"},
+
+    # Спринт
+    {"id": "sprint_10",     "title": "Бегунок",           "desc": "Сыграй 10 спринтов",              "icon": "🏃", "cond": "sprint_played",   "target": 10,  "xp": 40,  "cat": "sprint"},
+    {"id": "sprint_50",     "title": "Спринтер",          "desc": "Сыграй 50 спринтов",              "icon": "💨", "cond": "sprint_played",   "target": 50,  "xp": 150, "cat": "sprint"},
+    {"id": "sprint_200",    "title": "Молния",            "desc": "Сыграй 200 спринтов",             "icon": "⚡", "cond": "sprint_played",   "target": 200, "xp": 500, "cat": "sprint"},
+
+    # Марафон
+    {"id": "marathon_5",    "title": "Марафонец",         "desc": "Пройди 5 марафонов",              "icon": "🐢", "cond": "marathon_played", "target": 5,   "xp": 50,  "cat": "marathon"},
+    {"id": "marathon_25",   "title": "Восходитель",       "desc": "Пройди 25 марафонов",             "icon": "🏔",  "cond": "marathon_played", "target": 25,  "xp": 200, "cat": "marathon"},
+
+    # Дуэли
+    {"id": "duel_5",        "title": "Дуэлянт",           "desc": "Сыграй 5 дуэлей",                 "icon": "🗡", "cond": "duel_played",     "target": 5,   "xp": 60,  "cat": "duel"},
+    {"id": "duel_win_5",    "title": "Победитель",        "desc": "Выиграй 5 дуэлей",                "icon": "🏆", "cond": "duel_won",        "target": 5,   "xp": 100, "cat": "duel"},
+    {"id": "duel_win_25",   "title": "Чемпион",           "desc": "Выиграй 25 дуэлей",               "icon": "👑", "cond": "duel_won",        "target": 25,  "xp": 300, "cat": "duel"},
+    {"id": "duel_win_100",  "title": "Легенда арены",     "desc": "Выиграй 100 дуэлей",              "icon": "🌟", "cond": "duel_won",        "target": 100, "xp": 1000,"cat": "duel"},
+
+    # Уровни
+    {"id": "level_5",       "title": "Мидл",              "desc": "Достигни 5-го уровня",            "icon": "💻", "cond": "level",           "target": 5,   "xp": 80,  "cat": "level"},
+    {"id": "level_10",      "title": "Синьор",            "desc": "Достигни 10-го уровня",           "icon": "🚀", "cond": "level",           "target": 10,  "xp": 200, "cat": "level"},
+    {"id": "level_25",      "title": "Стар",              "desc": "Достигни 25-го уровня",           "icon": "⭐", "cond": "level",           "target": 25,  "xp": 500, "cat": "level"},
+    {"id": "level_50",      "title": "Мастер",            "desc": "Достигни 50-го уровня",           "icon": "🎓", "cond": "level",           "target": 50,  "xp": 1500,"cat": "level"},
+
+    # Стрик
+    {"id": "streak_7",      "title": "Неделя силы",       "desc": "7 дней подряд в игре",            "icon": "🔥", "cond": "longest_streak",  "target": 7,   "xp": 100, "cat": "streak"},
+    {"id": "streak_30",     "title": "Железная воля",     "desc": "30 дней подряд",                  "icon": "🔥", "cond": "longest_streak",  "target": 30,  "xp": 500, "cat": "streak"},
+    {"id": "streak_100",    "title": "Легенда серии",     "desc": "100 дней подряд",                 "icon": "🔥", "cond": "longest_streak",  "target": 100, "xp": 2000,"cat": "streak"},
+
+    # Разное
+    {"id": "party_10",      "title": "Тусовщик",          "desc": "Сыграй 10 партий в Тусовке",      "icon": "🎉", "cond": "party_played",    "target": 10,  "xp": 100, "cat": "misc"},
+    {"id": "correct_500",   "title": "Умник",             "desc": "500 правильных ответов",          "icon": "🎯", "cond": "correct_answer",  "target": 500, "xp": 150, "cat": "misc"},
+    {"id": "correct_2000",  "title": "Гений",             "desc": "2000 правильных ответов",         "icon": "🧠", "cond": "correct_answer",  "target": 2000,"xp": 500, "cat": "misc"},
+    {"id": "xp_5000",       "title": "Копилка",           "desc": "Накопи 5 000 XP",                 "icon": "💎", "cond": "xp_total",        "target": 5000,"xp": 300, "cat": "misc"},
+    {"id": "xp_20000",      "title": "Магнат",            "desc": "Накопи 20 000 XP",                "icon": "💰", "cond": "xp_total",        "target": 20000,"xp": 1000,"cat": "misc"},
+
+    # Лига
+    {"id": "rating_1600",   "title": "Восход к Звёздам",  "desc": "Достигни рейтинга 1600 (Стар)",   "icon": "⭐", "cond": "rating",          "target": 1600,"xp": 200, "cat": "rating"},
+    {"id": "rating_1900",   "title": "Легенда лиги",      "desc": "Достигни рейтинга 1900",          "icon": "👑", "cond": "rating",          "target": 1900,"xp": 500, "cat": "rating"},
+]
 
 
 # ---------- Шаблоны ежедневных заданий ----------
