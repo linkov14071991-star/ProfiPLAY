@@ -1336,6 +1336,39 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   margin-top: 4px;
 }
 
+/* ========== Табы лидерборда ========== */
+.lb-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(102, 54, 233, 0.08);
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+}
+.lb-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  color: var(--brand-purple);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.lb-tab.active {
+  background: var(--brand-purple);
+  color: white;
+}
+.lb-week-gain {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brand-lime-dark);
+  display: block;
+  margin-top: 2px;
+}
+
 /* ========== Лидерборд ========== */
 .lb-row {
   display: flex;

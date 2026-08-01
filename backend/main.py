@@ -75,7 +75,7 @@ with open(CATEGORIES_FILE, "r", encoding="utf-8") as f:
     CATEGORIES = json.load(f)
 
 # ---------- Приложение ----------
-app = FastAPI(title="ProfikArena API")
+app = FastAPI(title="Профик Арена API")
 init_db()
 
 app.add_middleware(
@@ -481,7 +481,8 @@ async def get_questions(difficulty: str = Query("easy"), limit: int = Query(50))
     """Возвращает перемешанный список вопросов (для Спринта). Микс всех дисциплин."""
     questions = _pool_for_difficulty(difficulty).copy()
     random.shuffle(questions)
-    return {"questions": questions[:limit]}
+    # Перемешиваем варианты внутри каждого вопроса, чтобы правильный не был всегда первым
+    return {"questions": [shuffle_question(q) for q in questions[:limit]]}
 
 
 @app.get("/api/categories")
@@ -522,7 +523,7 @@ async def get_marathon(difficulty: str = Query("easy"), limit: int = Query(200))
     """Для Марафона: возвращает пул вопросов выбранной сложности со всех дисциплин."""
     pool = _pool_for_difficulty(difficulty).copy()
     random.shuffle(pool)
-    return {"questions": pool[:limit]}
+    return {"questions": [shuffle_question(q) for q in pool[:limit]]}
 
 
 @app.get("/api/config")
@@ -769,6 +770,84 @@ async def get_leaderboard(limit: int = Query(50)):
     return {"leaders": leaders}
 
 
+@app.post("/api/leaderboard/neighbors")
+async def get_neighbors(
+    init_data: str = Body(...),
+    radius: int = Body(5),
+):
+    """Соседи в лидерборде: игроки в диапазоне ±radius позиций от текущего."""
+    tg_user = get_verified_user(init_data)
+    radius = max(1, min(20, radius))
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        my_id = me["telegram_id"]
+        my_place = db.execute(
+            """
+            SELECT COUNT(*) + 1 AS place FROM users
+            WHERE rating > ?
+               OR (rating = ? AND joined_at < ?)
+            """,
+            (me["rating"], me["rating"], me["joined_at"]),
+        ).fetchone()["place"]
+        total = db.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+
+        offset = max(0, my_place - radius - 1)
+        count = min(2 * radius + 1, total - offset)
+        rows = db.execute(
+            """
+            SELECT telegram_id, first_name, username, rating, joined_at
+            FROM users
+            ORDER BY rating DESC, joined_at ASC
+            LIMIT ? OFFSET ?
+            """,
+            (count, offset),
+        ).fetchall()
+
+    leaders = []
+    for i, r in enumerate(rows):
+        d = dict(r)
+        d["place"] = offset + i + 1
+        d["league"] = get_league(d["rating"])
+        d["is_me"] = d["telegram_id"] == my_id
+        leaders.append(d)
+    return {"leaders": leaders, "my_place": my_place, "total": total}
+
+
+@app.get("/api/leaderboard/weekly")
+async def get_weekly_leaderboard(limit: int = Query(50)):
+    """
+    Топ по приросту рейтинга за последние 7 дней.
+    Смотрим сумму delta из rating_log с created_at ≥ 7 дней назад.
+    """
+    limit = max(1, min(100, limit))
+    with get_db() as db:
+        rows = db.execute(
+            """
+            SELECT
+              u.telegram_id, u.first_name, u.username, u.rating,
+              COALESCE(SUM(rl.delta), 0) AS gain
+            FROM users u
+            LEFT JOIN rating_log rl
+              ON rl.user_id = u.telegram_id
+              AND rl.created_at >= datetime('now', '-7 days')
+            GROUP BY u.telegram_id
+            HAVING gain > 0
+            ORDER BY gain DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+    leaders = []
+    for i, r in enumerate(rows, start=1):
+        d = dict(r)
+        d["place"] = i
+        d["league"] = get_league(d["rating"])
+        d["weekly_gain"] = d["gain"]
+        leaders.append(d)
+    return {"leaders": leaders}
+
+
 @app.post("/api/leaderboard/me")
 async def get_my_place(init_data: str = Body(..., embed=True)):
     """Возвращает моё место в общем рейтинге."""
@@ -800,6 +879,20 @@ def _gen_duel_id() -> str:
     """Короткий URL-безопасный ID (8 символов)."""
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+def shuffle_question(q: dict) -> dict:
+    """
+    Возвращает копию вопроса со случайно перемешанными вариантами и
+    обновлённым индексом правильного ответа.
+    """
+    opts = list(q["options"])
+    correct = q["correct"]
+    indexed = [(opt, i == correct) for i, opt in enumerate(opts)]
+    random.shuffle(indexed)
+    new_options = [opt for opt, _ in indexed]
+    new_correct = next(i for i, (_, is_c) in enumerate(indexed) if is_c)
+    return {"q": q["q"], "options": new_options, "correct": new_correct}
 
 
 def _pool_for_difficulty(difficulty: str) -> list:
@@ -990,7 +1083,8 @@ async def duel_create(
     pool = _pool_for_difficulty(difficulty)
     if len(pool) < DUEL_QUESTIONS_COUNT:
         raise HTTPException(status_code=500, detail="Not enough questions")
-    selected = random.sample(pool, DUEL_QUESTIONS_COUNT)
+    # Перемешиваем варианты каждого вопроса. Сохраняется этот вариант — оба игрока увидят один и тот же порядок.
+    selected = [shuffle_question(q) for q in random.sample(pool, DUEL_QUESTIONS_COUNT)]
 
     with get_db() as db:
         creator = upsert_user(db, tg_user)

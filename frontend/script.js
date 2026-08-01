@@ -1345,36 +1345,84 @@ async function renderDailyQuests() {
   });
 }
 
+let currentLbTab = "top";
+
 async function openLeaderboard() {
   showScreen("leaderboard");
+  currentLbTab = "top";
+  updateLbTabsUI();
+  await renderLeaderboardTab("top");
+}
+window.openLeaderboard = openLeaderboard;
+
+function updateLbTabsUI() {
+  document.querySelectorAll(".lb-tab").forEach((t) => {
+    t.classList.toggle("active", t.dataset.tab === currentLbTab);
+  });
+}
+
+// Обработчики табов (делегирование, чтобы подхватило и после первого рендера)
+document.addEventListener("click", (e) => {
+  const tab = e.target.closest(".lb-tab");
+  if (!tab) return;
+  currentLbTab = tab.dataset.tab;
+  updateLbTabsUI();
+  hapticLight();
+  renderLeaderboardTab(currentLbTab);
+});
+
+async function renderLeaderboardTab(tab) {
   const wrap = document.getElementById("leaderboard-list");
+  const sub = document.getElementById("leaderboard-subtitle");
   wrap.innerHTML = '<p style="text-align:center; opacity:0.5;">Загружаем...</p>';
-  const r = await fetch("/api/leaderboard?limit=100");
-  const data = await r.json();
   const myId = tg?.initDataUnsafe?.user?.id;
+
+  let leaders = [];
+  let showWeekly = false;
+  if (tab === "top") {
+    sub.textContent = "Топ игроков по рейтингу";
+    const r = await fetch("/api/leaderboard?limit=100");
+    leaders = (await r.json()).leaders || [];
+  } else if (tab === "neighbors") {
+    sub.textContent = "Твоё окружение — 5 сверху, 5 снизу";
+    const data = await apiPost("/api/leaderboard/neighbors", {init_data: INIT_DATA, radius: 5});
+    leaders = data?.leaders || [];
+  } else if (tab === "weekly") {
+    sub.textContent = "Топ по приросту рейтинга за 7 дней";
+    const r = await fetch("/api/leaderboard/weekly?limit=50");
+    leaders = (await r.json()).leaders || [];
+    showWeekly = true;
+  }
+
   wrap.innerHTML = "";
-  if (!data.leaders || data.leaders.length === 0) {
-    wrap.innerHTML = '<p style="text-align:center; opacity:0.7;">Пока никого. Играй тренировки — попадёшь первым!</p>';
+  if (!leaders.length) {
+    wrap.innerHTML = `<p style="text-align:center; opacity:0.7; padding:20px;">${
+      tab === "weekly"
+        ? "На неделе никто ещё не играл. Стань первым!"
+        : "Пока никого. Играй тренировки — попадёшь первым!"
+    }</p>`;
     return;
   }
-  data.leaders.forEach((row) => {
+  leaders.forEach((row) => {
     const div = document.createElement("div");
     div.className = "lb-row";
-    if (row.telegram_id === myId) div.classList.add("me");
+    const isMe = row.is_me || row.telegram_id === myId;
+    if (isMe) div.classList.add("me");
     const placeClass = row.place === 1 ? "gold" : row.place === 2 ? "silver" : row.place === 3 ? "bronze" : "";
     const displayName = row.username ? "@" + row.username : (row.first_name || "Игрок");
+    const gainHtml = showWeekly ? `<span class="lb-week-gain">+${row.weekly_gain} за неделю</span>` : "";
     div.innerHTML = `
       <div class="lb-place ${placeClass}">${row.place}</div>
       <div class="lb-info">
-        <div class="lb-name">${displayName}</div>
+        <div class="lb-name">${escapeHtml(displayName)}${isMe ? " · это ты" : ""}</div>
         <div class="lb-league">${row.league.emoji} ${row.league.name}</div>
+        ${gainHtml}
       </div>
       <div class="lb-rating">${row.rating}</div>
     `;
     wrap.appendChild(div);
   });
 }
-window.openLeaderboard = openLeaderboard;
 
 /**
  * Начисление очков от тренировки.
@@ -1770,9 +1818,9 @@ fetch("/api/config").then(r => r.json()).then(cfg => {
 
 function duelShare() {
   const link = duelGetShareLink();
-  const text = `⚔ Я вызываю тебя на Блиц-дуэль в ProfikArena! Прими вызов: ${link}`;
+  const text = `⚔ Я вызываю тебя на Блиц-дуэль в Профик Арене! Прими вызов: ${link}`;
   if (tg?.openTelegramLink) {
-    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("⚔ Я вызываю тебя на Блиц-дуэль в ProfikArena!")}`);
+    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("⚔ Я вызываю тебя на Блиц-дуэль в Профик Арене!")}`);
   } else {
     // fallback: копируем ссылку
     duelCopy();
