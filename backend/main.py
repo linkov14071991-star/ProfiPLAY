@@ -564,11 +564,20 @@ async def get_or_create_profile(init_data: str = Body(..., embed=True)):
             "SELECT COUNT(*) AS c FROM rating_log WHERE user_id = ?",
             (user_id,),
         ).fetchone()["c"]
+        xp_today = db.execute(
+            """
+            SELECT COALESCE(SUM(delta), 0) AS total
+            FROM xp_log
+            WHERE user_id = ? AND date(created_at) = date('now')
+            """,
+            (user_id,),
+        ).fetchone()["total"]
     profile = _user_to_dict(row)
     profile["training_earned_today"] = earned_today
     profile["training_cap"] = DAILY_TRAINING_CAP
     profile["training_remaining_today"] = max(0, DAILY_TRAINING_CAP - earned_today)
     profile["games_played"] = games_played
+    profile["xp_earned_today"] = xp_today or 0
     profile["current_streak"] = row["current_streak"] or 0
     profile["longest_streak"] = row["longest_streak"] or 0
     profile["next_milestone"] = next_streak_milestone(profile["current_streak"])

@@ -33,14 +33,12 @@
   </div>
 </section>
 
-<!-- ==== Экран: главное меню (выбор игры) ==== -->
+<!-- ==== Экран: главное меню (дашборд) ==== -->
 <section id="screen-menu" class="screen">
   <div class="brand-header">
     <img src="/profik.svg" alt="Profik" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
-  <h1 style="text-align:center; margin-bottom:6px;">ProfikArena</h1>
-  <p class="subtitle" style="text-align:center;">Тренируйся, сражайся, побеждай</p>
 
   <!-- Персональная плашка: уровень + лига + рейтинг -->
   <div id="my-strip" class="my-strip" onclick="showScreen('profile')" style="display:none;">
@@ -61,7 +59,45 @@
     <div class="my-strip-arrow">→</div>
   </div>
 
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+  <!-- Приветственная карточка от Profik -->
+  <div class="profik-hello" id="profik-hello" style="display:none;">
+    <img src="/profik.svg" alt="Profik" class="profik-hello-img">
+    <div class="profik-hello-bubble">
+      <div class="profik-hello-title" id="profik-hello-title">Привет!</div>
+      <div class="profik-hello-msg" id="profik-hello-msg">Готов сегодня?</div>
+    </div>
+  </div>
+
+  <!-- Дневная сводка: 3 плашки -->
+  <div class="today-strip" id="today-strip" style="display:none;">
+    <div class="today-tile">
+      <div class="today-tile-icon">🔥</div>
+      <div class="today-tile-val" id="today-streak">0</div>
+      <div class="today-tile-label">дней</div>
+    </div>
+    <div class="today-tile">
+      <div class="today-tile-icon">🎯</div>
+      <div class="today-tile-val" id="today-quests">0/3</div>
+      <div class="today-tile-label">задания</div>
+    </div>
+    <div class="today-tile">
+      <div class="today-tile-icon">💎</div>
+      <div class="today-tile-val" id="today-xp">0</div>
+      <div class="today-tile-label">XP сегодня</div>
+    </div>
+  </div>
+
+  <!-- Быстрая игра — большой CTA -->
+  <button id="btn-quick-play" class="btn btn-cta btn-big" style="display:none;">
+    <span class="cta-icon" id="cta-icon">⚡</span>
+    <span class="cta-txt">
+      <span class="cta-title" id="cta-title">Быстрая игра</span>
+      <span class="cta-sub" id="cta-sub">Спринт · 60 сек</span>
+    </span>
+    <span class="cta-arrow">→</span>
+  </button>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0 8px;">
     <button class="btn btn-secondary" onclick="showScreen('profile')" style="margin-top:0;">👤 Профиль</button>
     <button class="btn btn-secondary" onclick="openLeaderboard()" style="margin-top:0;">🏆 Лидерборд</button>
   </div>

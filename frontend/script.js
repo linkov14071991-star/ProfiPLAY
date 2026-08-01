@@ -1124,6 +1124,102 @@ async function refreshProfile() {
   if (p.streak_update && p.streak_update.was_updated && p.streak_update.bonus_xp > 0) {
     setTimeout(() => showStreakModal(p.streak_update), 400);
   }
+  // Дашборд: приветствие Profik, дневные плашки, «Быстрая игра»
+  renderDashboard(p);
+}
+
+/**
+ * Рендерит дашборд на главной.
+ */
+async function renderDashboard(profile) {
+  const streak = profile.current_streak || 0;
+  const xpToday = profile.xp_earned_today || 0;
+
+  document.getElementById("today-streak").textContent = streak;
+  document.getElementById("today-xp").textContent = xpToday;
+  document.getElementById("today-strip").style.display = "grid";
+
+  // Свежие квесты
+  let quests = [];
+  try {
+    const qr = await apiPost("/api/quests/daily", {init_data: INIT_DATA});
+    quests = qr?.quests || [];
+  } catch (e) {}
+  const doneCount = quests.filter((q) => q.completed === 1).length;
+  const claimableCount = quests.filter((q) => q.completed === 1 && q.claimed === 0).length;
+  document.getElementById("today-quests").textContent = `${doneCount}/${quests.length || 3}`;
+
+  // Приветствие Profik
+  const helloBox = document.getElementById("profik-hello");
+  const helloTitle = document.getElementById("profik-hello-title");
+  const helloMsg = document.getElementById("profik-hello-msg");
+  const firstName = tg?.initDataUnsafe?.user?.first_name || "Игрок";
+  helloTitle.textContent = greetingByHour() + ", " + firstName + "!";
+
+  const level = profile.level_info?.level || 1;
+  const toNext = profile.level_info?.to_next || 0;
+  const activeQuests = quests.filter((q) => q.completed === 0);
+
+  let msg;
+  if (claimableCount > 0) {
+    msg = `У тебя ${claimableCount} невзятая награда за задания. Забирай!`;
+  } else if (streak >= 3) {
+    msg = `Держим серию — ${streak} дней подряд! 🔥`;
+  } else if (streak === 0) {
+    msg = "Готов начать серию? Первая игра — уже стрик!";
+  } else if (toNext > 0 && toNext <= 60) {
+    msg = `До ${level + 1}-го уровня всего ${toNext} XP — почти там!`;
+  } else if (activeQuests.length > 0) {
+    const q = activeQuests[0];
+    msg = `Задание дня: «${q.title}» — ${q.progress}/${q.target}`;
+  } else {
+    msg = "Отличная форма! Продолжаем в том же духе.";
+  }
+  helloMsg.textContent = msg;
+  helloBox.style.display = "flex";
+
+  setupQuickPlay(quests);
+}
+
+function greetingByHour() {
+  const h = new Date().getHours();
+  if (h < 5)  return "Доброй ночи";
+  if (h < 12) return "Доброе утро";
+  if (h < 18) return "Добрый день";
+  return "Добрый вечер";
+}
+
+function setupQuickPlay(quests) {
+  const btn = document.getElementById("btn-quick-play");
+  const iconEl = document.getElementById("cta-icon");
+  const titleEl = document.getElementById("cta-title");
+  const subEl = document.getElementById("cta-sub");
+
+  const active = (quests || []).filter((q) => q.completed === 0);
+  const modeByQuest = {
+    "sprint_played":   {mode: "sprint",   icon: "⚡", title: "Играть Спринт",   sub: "Задание дня"},
+    "marathon_played": {mode: "marathon", icon: "🏆", title: "Играть Марафон",  sub: "Задание дня"},
+    "party_played":    {mode: "party",    icon: "🎉", title: "Открыть Тусовку", sub: "Задание дня"},
+    "duel_won":        {mode: "duel",     icon: "⚔",  title: "Начать Блиц-дуэль","sub": "Задание дня"},
+  };
+  let choice = null;
+  for (const q of active) {
+    if (modeByQuest[q.task_type]) { choice = modeByQuest[q.task_type]; break; }
+  }
+  if (!choice) {
+    choice = {mode: "sprint", icon: "⚡", title: "Быстрый Спринт", sub: "60 секунд · любая сложность"};
+  }
+  iconEl.textContent = choice.icon;
+  titleEl.textContent = choice.title;
+  subEl.textContent = choice.sub;
+  btn.style.display = "flex";
+  btn.onclick = () => {
+    hapticMedium();
+    if (choice.mode === "sprint")   { renderSprintRecord(); showScreen("sprintSetup"); }
+    if (choice.mode === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
+    if (choice.mode === "party")    { showScreen("party"); }
+    if (choice.mode === "duel")     { showScreen("duelSetup"); }
+  };
 }
 
 async function loadProfileScreen() {

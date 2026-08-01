@@ -632,6 +632,139 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .rating-toast.cap { border-color: #FF8C42; }
 .rating-toast.cap b { color: #FF8C42; }
 
+/* ========== Дашборд: приветствие Profik ========== */
+.profik-hello {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(180, 242, 77, 0.15), rgba(102, 54, 233, 0.08));
+  border: 1.5px solid rgba(180, 242, 77, 0.3);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.profik-hello-img {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.25));
+}
+.profik-hello-bubble {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.profik-hello-bubble::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 20px;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid #fff;
+}
+.profik-hello-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brand-purple);
+  line-height: 1.2;
+}
+.profik-hello-msg {
+  font-size: 13px;
+  color: var(--text-on-light);
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+/* ========== Дневная сводка ========== */
+.today-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.today-tile {
+  background: rgba(102, 54, 233, 0.06);
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  border: 1px solid rgba(102, 54, 233, 0.1);
+}
+.today-tile-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.today-tile-val {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--brand-purple);
+  margin-top: 2px;
+  line-height: 1.1;
+}
+.today-tile-label {
+  font-size: 10px;
+  color: var(--text-on-light);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+/* ========== Большая CTA-кнопка «Быстрая игра» ========== */
+.btn.btn-cta {
+  background: linear-gradient(135deg, var(--brand-purple), var(--brand-purple-deep));
+  color: #fff;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  border-radius: var(--radius);
+  border: 2px solid rgba(180, 242, 77, 0.4);
+  box-shadow: 0 6px 24px rgba(102, 54, 233, 0.35);
+  margin-top: 0;
+}
+.btn.btn-cta:active { transform: scale(0.98); }
+.cta-icon {
+  font-size: 36px;
+  line-height: 1;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-lime);
+  border-radius: 12px;
+  color: var(--text-on-light);
+  flex-shrink: 0;
+}
+.cta-txt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cta-title {
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+.cta-sub {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+.cta-arrow {
+  font-size: 24px;
+  color: var(--brand-lime);
+  font-weight: 900;
+}
+
 /* ========== Персональная плашка на главной ========== */
 .my-strip {
   display: flex;
