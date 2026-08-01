@@ -23,21 +23,30 @@ def init_db():
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
-            telegram_id  INTEGER PRIMARY KEY,
-            first_name   TEXT,
-            username     TEXT,
-            rating       INTEGER NOT NULL DEFAULT 1000,
-            xp           INTEGER NOT NULL DEFAULT 0,
-            joined_at    TEXT NOT NULL DEFAULT (datetime('now')),
-            last_seen_at TEXT NOT NULL DEFAULT (datetime('now'))
+            telegram_id       INTEGER PRIMARY KEY,
+            first_name        TEXT,
+            username          TEXT,
+            rating            INTEGER NOT NULL DEFAULT 1000,
+            xp                INTEGER NOT NULL DEFAULT 0,
+            current_streak    INTEGER NOT NULL DEFAULT 0,
+            longest_streak    INTEGER NOT NULL DEFAULT 0,
+            last_streak_date  TEXT,
+            joined_at         TEXT NOT NULL DEFAULT (datetime('now')),
+            last_seen_at      TEXT NOT NULL DEFAULT (datetime('now'))
         )
         """
     )
     # Миграция для старых баз (безопасно — если колонка уже есть, catch)
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN xp INTEGER NOT NULL DEFAULT 0")
-    except Exception:
-        pass
+    for stmt in (
+        "ALTER TABLE users ADD COLUMN xp INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN current_streak INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN longest_streak INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN last_streak_date TEXT",
+    ):
+        try:
+            conn.execute(stmt)
+        except Exception:
+            pass
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS rating_log (
@@ -208,6 +217,44 @@ def get_level_info(xp: int) -> dict:
         "to_next": to_next,
         "progress_percent": round(in_level * 100 / total_in_level) if total_in_level else 0,
     }
+
+
+# ---------- Стрик заходов ----------
+from datetime import datetime, timedelta, timezone
+
+MSK_TZ = timezone(timedelta(hours=3))
+
+# Милстоуны: {день: бонус XP}
+STREAK_MILESTONES = {
+    3:   50,
+    7:   100,
+    14:  200,
+    30:  500,
+    60:  1000,
+    100: 2000,
+    365: 5000,
+}
+DAILY_STREAK_BASE_XP = 10  # +XP просто за вход в новый день
+
+
+def today_msk() -> str:
+    return datetime.now(MSK_TZ).date().isoformat()
+
+
+def yesterday_msk() -> str:
+    return (datetime.now(MSK_TZ) - timedelta(days=1)).date().isoformat()
+
+
+def next_streak_milestone(current_streak: int) -> dict | None:
+    """Ближайший неполученный милстоун и сколько дней до него."""
+    for day in sorted(STREAK_MILESTONES.keys()):
+        if day > current_streak:
+            return {
+                "day": day,
+                "bonus_xp": STREAK_MILESTONES[day],
+                "days_to_go": day - current_streak,
+            }
+    return None  # все милстоуны собраны (>365)
 
 
 # ---------- Дневной кап тренировок ----------

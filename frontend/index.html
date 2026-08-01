@@ -49,7 +49,10 @@
       <div class="my-strip-level-label">УРОВЕНЬ</div>
     </div>
     <div class="my-strip-left">
-      <div class="my-strip-league" id="my-strip-league">🎓 Юниор</div>
+      <div class="my-strip-topline">
+        <span class="my-strip-league" id="my-strip-league">🎓 Юниор</span>
+        <span class="my-strip-streak" id="my-strip-streak" style="display:none;">🔥 <span id="my-strip-streak-num">0</span></span>
+      </div>
       <div class="my-strip-rating">🏆 <span id="my-strip-rating">1000</span></div>
       <div class="my-strip-xpbar">
         <div class="my-strip-xpfill" id="my-strip-xpfill" style="width:0%"></div>
@@ -670,6 +673,16 @@
       <div class="profile-progress-bar"><div class="profile-progress-fill" id="profile-progress-fill"></div></div>
     </div>
 
+    <!-- Стрик -->
+    <div class="streak-box" id="streak-box">
+      <div class="streak-emoji">🔥</div>
+      <div class="streak-info">
+        <div class="streak-num"><span id="profile-streak-num">0</span> <span style="font-size:16px; opacity:0.75;">дней подряд</span></div>
+        <div class="streak-record">Рекорд: <b id="profile-streak-record">0</b></div>
+        <div class="streak-next" id="profile-streak-next"></div>
+      </div>
+    </div>
+
     <h3>Сегодня</h3>
     <div class="profile-stats">
       <div class="profile-stat">
@@ -984,6 +997,18 @@
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>
+
+<!-- ==== Модалка стрика (новый день) ==== -->
+<div id="streak-modal" class="levelup-overlay" style="display:none;">
+  <div class="levelup-card streak-card">
+    <div class="streak-modal-emoji">🔥</div>
+    <div class="levelup-title" id="streak-modal-title">ДЕНЬ 1 ПОДРЯД!</div>
+    <div class="streak-modal-days"><span id="streak-modal-days">1</span></div>
+    <div class="streak-modal-bonus">+<span id="streak-modal-bonus">10</span> XP</div>
+    <div class="streak-modal-sub" id="streak-modal-sub">Заходи завтра — серия сохранится!</div>
+    <button id="streak-btn" class="btn btn-lime btn-big">Продолжаем! 🔥</button>
+  </div>
+</div>
 
 <!-- ==== Модалка Level-up ==== -->
 <div id="levelup-modal" class="levelup-overlay" style="display:none;">

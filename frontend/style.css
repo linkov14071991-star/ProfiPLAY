@@ -547,6 +547,21 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   margin-top: 2px;
 }
 .my-strip-left { flex: 1; min-width: 0; }
+.my-strip-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.my-strip-streak {
+  font-size: 13px;
+  color: #fff;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FF8C42, #FF4D6D);
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 .my-strip-league {
   font-size: 12px;
   color: var(--brand-lime);
@@ -626,6 +641,81 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   opacity: 0.7;
   margin-top: 4px;
   text-align: right;
+}
+
+/* ========== Стрик-бокс в профиле ========== */
+.streak-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(255, 140, 66, 0.15), rgba(255, 77, 109, 0.08));
+  border-radius: var(--radius);
+  margin: 16px 0;
+  border: 1.5px solid rgba(255, 140, 66, 0.3);
+}
+.streak-emoji {
+  font-size: 44px;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(255, 140, 66, 0.5));
+  animation: streakPulse 1.6s ease-in-out infinite;
+}
+@keyframes streakPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1) rotate(-3deg); }
+}
+.streak-info { flex: 1; min-width: 0; }
+.streak-num {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text-on-light);
+  line-height: 1.15;
+}
+.streak-record {
+  font-size: 13px;
+  color: var(--text-on-light);
+  opacity: 0.7;
+  margin-top: 2px;
+}
+.streak-next {
+  font-size: 12px;
+  color: #FF6B35;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* ========== Модалка стрика ========== */
+.streak-card {
+  background: linear-gradient(135deg, #4a2500 0%, #FF4D6D 50%, #FF8C42 100%) !important;
+  border-color: #FFD700 !important;
+  box-shadow: 0 0 60px rgba(255, 140, 66, 0.7) !important;
+}
+.streak-modal-emoji {
+  font-size: 76px;
+  animation: streakPulse 1s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.7));
+}
+.streak-modal-days {
+  font-size: 88px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+  margin: 4px 0;
+}
+.streak-modal-bonus {
+  font-size: 26px;
+  font-weight: 900;
+  color: #FFD700;
+  margin: 6px 0 4px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.streak-modal-sub {
+  font-size: 14px;
+  color: #fff;
+  opacity: 0.95;
+  margin-bottom: 20px;
+  padding: 0 12px;
 }
 
 /* ========== Модалка Level-up ========== */

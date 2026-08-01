@@ -1091,7 +1091,19 @@ async function refreshProfile() {
     const lvl = p.level_info || {level: 1, progress_percent: 0};
     document.getElementById("my-strip-level-num").textContent = lvl.level;
     document.getElementById("my-strip-xpfill").style.width = (lvl.progress_percent || 0) + "%";
+    // Стрик — показываем только если ≥1
+    const streakEl = document.getElementById("my-strip-streak");
+    if (p.current_streak && p.current_streak > 0) {
+      document.getElementById("my-strip-streak-num").textContent = p.current_streak;
+      streakEl.style.display = "inline-flex";
+    } else {
+      streakEl.style.display = "none";
+    }
     strip.style.display = "flex";
+  }
+  // Модалка нового дня (только при первом заходе за сутки)
+  if (p.streak_update && p.streak_update.was_updated && p.streak_update.bonus_xp > 0) {
+    setTimeout(() => showStreakModal(p.streak_update), 400);
   }
 }
 
@@ -1113,6 +1125,18 @@ async function loadProfileScreen() {
   document.getElementById("profile-xp-current").textContent = p.xp || 0;
   document.getElementById("profile-xp-next").textContent = lvl.next_threshold;
   document.getElementById("profile-xp-fill").style.width = (lvl.progress_percent || 0) + "%";
+  // Стрик
+  document.getElementById("profile-streak-num").textContent = p.current_streak || 0;
+  document.getElementById("profile-streak-record").textContent = p.longest_streak || 0;
+  const nextM = p.next_milestone;
+  const nextEl = document.getElementById("profile-streak-next");
+  if (nextM && p.current_streak > 0) {
+    nextEl.textContent = `До ${nextM.day} дней подряд: ${nextM.days_to_go} · награда +${nextM.bonus_xp} XP`;
+  } else if (p.current_streak === 0) {
+    nextEl.textContent = "Заходи каждый день — серия начнёт расти";
+  } else {
+    nextEl.textContent = "Все милстоуны собраны! 🏆";
+  }
 
   // Прогресс до следующей лиги
   const wrap = document.getElementById("profile-progress-wrap");
@@ -1239,6 +1263,37 @@ function showLevelUpModal(newLevel) {
 }
 document.getElementById("levelup-btn").addEventListener("click", () => {
   document.getElementById("levelup-modal").style.display = "none";
+});
+
+/**
+ * Показать модалку стрика (новый день серии).
+ */
+function showStreakModal(update) {
+  const modal = document.getElementById("streak-modal");
+  const days = update.current_streak;
+  document.getElementById("streak-modal-days").textContent = days;
+  document.getElementById("streak-modal-bonus").textContent = update.bonus_xp;
+  // Заголовок: специальный для милстоуна
+  const title = document.getElementById("streak-modal-title");
+  const sub = document.getElementById("streak-modal-sub");
+  if (update.milestone_reached) {
+    title.textContent = `МИЛСТОУН! ${days} ДНЕЙ!`;
+    sub.textContent = `Ты получил бонус за ${days} дней подряд! Продолжай в том же духе.`;
+  } else if (days === 1 && update.was_broken) {
+    title.textContent = "СЕРИЯ ПОТЕРЯНА";
+    sub.textContent = "Ничего страшного — начнём заново с сегодняшнего дня.";
+  } else if (days === 1) {
+    title.textContent = "ПЕРВЫЙ ДЕНЬ!";
+    sub.textContent = "Приходи завтра — начнётся серия.";
+  } else {
+    title.textContent = `${days} ДНЕЙ ПОДРЯД!`;
+    sub.textContent = "Не пропускай — серия продолжает расти!";
+  }
+  modal.style.display = "flex";
+  hapticSuccess();
+}
+document.getElementById("streak-btn").addEventListener("click", () => {
+  document.getElementById("streak-modal").style.display = "none";
 });
 
 // ==============================

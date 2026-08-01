@@ -26,7 +26,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import (
+    DAILY_STREAK_BASE_XP,
     DAILY_TRAINING_CAP,
+    STREAK_MILESTONES,
     TRAINING_SOURCES,
     calculate_elo,
     get_db,
@@ -34,6 +36,9 @@ from db import (
     get_level_info,
     get_training_earned_today,
     init_db,
+    next_streak_milestone,
+    today_msk,
+    yesterday_msk,
 )
 
 # XP-множители для тренировок (сколько XP за каждое очко рейтинга)
@@ -129,6 +134,75 @@ def get_verified_user(init_data: str) -> dict:
         # локальная разработка / smoke-тест
         return {"id": 12345, "first_name": "Dev", "username": "dev"}
     raise HTTPException(status_code=401, detail="Invalid Telegram init data")
+
+
+def update_streak(db, user_id: int) -> dict:
+    """
+    Обновляет ежедневный стрик пользователя. Идемпотентно в пределах суток (MSK).
+    Возвращает {was_updated, current_streak, longest_streak, bonus_xp,
+                base_bonus, milestone_bonus, milestone_reached, was_broken}.
+    """
+    row = db.execute(
+        "SELECT current_streak, longest_streak, last_streak_date FROM users WHERE telegram_id = ?",
+        (user_id,),
+    ).fetchone()
+    if not row:
+        return {"was_updated": False}
+
+    cur = row["current_streak"] or 0
+    longest = row["longest_streak"] or 0
+    last = row["last_streak_date"]
+    today = today_msk()
+    yesterday = yesterday_msk()
+
+    # Уже отметились сегодня — ничего не делаем
+    if last == today:
+        return {
+            "was_updated": False,
+            "current_streak": cur,
+            "longest_streak": longest,
+            "bonus_xp": 0,
+            "base_bonus": 0,
+            "milestone_bonus": 0,
+            "milestone_reached": None,
+            "was_broken": False,
+        }
+
+    was_broken = last is not None and last != yesterday and cur > 0
+
+    if last == yesterday:
+        new_streak = cur + 1
+    else:
+        new_streak = 1  # первый день или после пропуска
+
+    # Бонусы
+    base_bonus = DAILY_STREAK_BASE_XP
+    milestone_bonus = STREAK_MILESTONES.get(new_streak, 0)
+    milestone_reached = new_streak if milestone_bonus > 0 else None
+    total_bonus = base_bonus + milestone_bonus
+
+    new_longest = max(longest, new_streak)
+    db.execute(
+        """
+        UPDATE users
+        SET current_streak = ?, longest_streak = ?, last_streak_date = ?
+        WHERE telegram_id = ?
+        """,
+        (new_streak, new_longest, today, user_id),
+    )
+    # Начисляем XP за стрик
+    award_xp(db, user_id, total_bonus, "streak")
+
+    return {
+        "was_updated": True,
+        "current_streak": new_streak,
+        "longest_streak": new_longest,
+        "bonus_xp": total_bonus,
+        "base_bonus": base_bonus,
+        "milestone_bonus": milestone_bonus,
+        "milestone_reached": milestone_reached,
+        "was_broken": was_broken,
+    }
 
 
 def award_xp(db, user_id: int, amount: int, source: str) -> tuple[int, dict, bool]:
@@ -314,21 +388,29 @@ def _user_to_dict(row) -> dict:
 
 @app.post("/api/profile")
 async def get_or_create_profile(init_data: str = Body(..., embed=True)):
-    """Возвращает профиль игрока. Создаёт, если новичок."""
+    """Возвращает профиль игрока. Создаёт, если новичок. Обновляет стрик."""
     tg_user = get_verified_user(init_data)
     with get_db() as db:
         row = upsert_user(db, tg_user)
-        earned_today = get_training_earned_today(db, row["telegram_id"])
-        # Кол-во сыгранных игр (по записям в лог)
+        user_id = row["telegram_id"]
+        # Обновляем стрик (идемпотентно в пределах суток)
+        streak_update = update_streak(db, user_id)
+        # Перечитываем после стрика — XP и колонки могли измениться
+        row = db.execute("SELECT * FROM users WHERE telegram_id = ?", (user_id,)).fetchone()
+        earned_today = get_training_earned_today(db, user_id)
         games_played = db.execute(
             "SELECT COUNT(*) AS c FROM rating_log WHERE user_id = ?",
-            (row["telegram_id"],),
+            (user_id,),
         ).fetchone()["c"]
     profile = _user_to_dict(row)
     profile["training_earned_today"] = earned_today
     profile["training_cap"] = DAILY_TRAINING_CAP
     profile["training_remaining_today"] = max(0, DAILY_TRAINING_CAP - earned_today)
     profile["games_played"] = games_played
+    profile["current_streak"] = row["current_streak"] or 0
+    profile["longest_streak"] = row["longest_streak"] or 0
+    profile["next_milestone"] = next_streak_milestone(profile["current_streak"])
+    profile["streak_update"] = streak_update  # для показа модалки клиентом
     return profile
 
 
