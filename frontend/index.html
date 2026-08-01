@@ -307,11 +307,13 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1 id="sprint-result-title">🏁 Готово!</h1>
-    <div id="sprint-new-record" style="display:none;">
-      <div class="record-badge">🎉 Новый рекорд!</div>
+    <h1 id="sprint-result-title" class="reveal reveal-bounce">🏁 Готово!</h1>
+
+    <div id="sprint-new-record" class="reveal reveal-pop" style="display:none; text-align:center;">
+      <div class="result-record">НОВЫЙ РЕКОРД</div>
     </div>
-    <div class="result-stats">
+
+    <div class="result-stats reveal">
       <div class="stat stat-ok">
         <div class="stat-num" id="sprint-r-correct">0</div>
         <div class="stat-label">Правильно</div>
@@ -321,9 +323,26 @@
         <div class="stat-label">Ошибок</div>
       </div>
     </div>
-    <p style="text-align:center; opacity:0.7; margin:0 0 8px;">Личный рекорд: <b id="sprint-r-best">0</b></p>
-    <button id="btn-sprint-again" class="btn btn-primary btn-big">Ещё раз</button>
-    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+
+    <div class="reward-strip reveal">
+      <div class="reward-chip rating pos">🏆 <span id="sprint-r-rating">0</span></div>
+      <div class="reward-chip xp pos">💎 <span id="sprint-r-xp">0</span> XP</div>
+    </div>
+
+    <div id="sprint-levelup" class="result-levelup reveal reveal-pop" style="display:none;">
+      <div class="result-levelup-label">✨ НОВЫЙ УРОВЕНЬ</div>
+      <div class="result-levelup-num" id="sprint-levelup-num">2</div>
+      <div class="result-levelup-sub">Так держать!</div>
+    </div>
+
+    <div id="sprint-achievements" class="result-achievements reveal"></div>
+
+    <p class="reveal" style="text-align:center; opacity:0.7; margin:12px 0 8px;">Личный рекорд: <b id="sprint-r-best">0</b></p>
+
+    <div class="reveal">
+      <button id="btn-sprint-again" class="btn btn-primary btn-big">Ещё раз</button>
+      <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+    </div>
   </div>
 </section>
 
@@ -389,11 +408,13 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1 id="marathon-result-title">🏁 Марафон окончен</h1>
-    <div id="marathon-new-record" style="display:none;">
-      <div class="record-badge">🎉 Новый рекорд!</div>
+    <h1 id="marathon-result-title" class="reveal reveal-bounce">🏁 Марафон окончен</h1>
+
+    <div id="marathon-new-record" class="reveal reveal-pop" style="display:none; text-align:center;">
+      <div class="result-record">НОВЫЙ РЕКОРД</div>
     </div>
-    <div class="result-stats">
+
+    <div class="result-stats reveal">
       <div class="stat stat-ok">
         <div class="stat-num" id="marathon-r-correct">0</div>
         <div class="stat-label">Правильно</div>
@@ -403,9 +424,25 @@
         <div class="stat-label">Лучшая серия</div>
       </div>
     </div>
-    <p style="text-align:center; opacity:0.7; margin:0 0 8px;">Личный рекорд: <b id="marathon-r-best">0</b></p>
-    <button id="btn-marathon-again" class="btn btn-primary btn-big">Ещё раз</button>
-    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+
+    <div class="reward-strip reveal">
+      <div class="reward-chip rating pos">🏆 <span id="marathon-r-rating">0</span></div>
+      <div class="reward-chip xp pos">💎 <span id="marathon-r-xp">0</span> XP</div>
+    </div>
+
+    <div id="marathon-levelup" class="result-levelup reveal reveal-pop" style="display:none;">
+      <div class="result-levelup-label">✨ НОВЫЙ УРОВЕНЬ</div>
+      <div class="result-levelup-num" id="marathon-levelup-num">2</div>
+      <div class="result-levelup-sub">Так держать!</div>
+    </div>
+
+    <div id="marathon-achievements" class="result-achievements reveal"></div>
+
+    <p class="reveal" style="text-align:center; opacity:0.7; margin:12px 0 8px;">Личный рекорд: <b id="marathon-r-best">0</b></p>
+    <div class="reveal">
+      <button id="btn-marathon-again" class="btn btn-primary btn-big">Ещё раз</button>
+      <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+    </div>
   </div>
 </section>
 
@@ -608,10 +645,10 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <div id="duel-result-emoji" style="text-align:center; font-size:80px; line-height:1;">🎉</div>
-    <h1 id="duel-result-title" style="text-align:center;">Победа!</h1>
+    <div id="duel-result-emoji" class="reveal reveal-bounce" style="text-align:center; font-size:80px; line-height:1;">🎉</div>
+    <h1 id="duel-result-title" class="reveal" style="text-align:center;">Победа!</h1>
 
-    <div class="duel-vs">
+    <div class="duel-vs reveal">
       <div class="duel-vs-player">
         <div class="duel-vs-name" id="duel-you-name">Ты</div>
         <div class="duel-vs-score" id="duel-you-score">0</div>
@@ -623,12 +660,22 @@
       </div>
     </div>
 
-    <div class="record-badge" id="duel-elo-badge">
+    <div class="record-badge reveal" id="duel-elo-badge">
       Рейтинг: <b id="duel-elo-delta">+16</b>
     </div>
 
-    <button id="btn-duel-rematch" class="btn btn-primary btn-big">⚔ Новая дуэль</button>
-    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+    <div id="duel-levelup" class="result-levelup reveal reveal-pop" style="display:none;">
+      <div class="result-levelup-label">✨ НОВЫЙ УРОВЕНЬ</div>
+      <div class="result-levelup-num" id="duel-levelup-num">2</div>
+      <div class="result-levelup-sub">Так держать!</div>
+    </div>
+
+    <div id="duel-achievements" class="result-achievements reveal"></div>
+
+    <div class="reveal">
+      <button id="btn-duel-rematch" class="btn btn-primary btn-big">⚔ Новая дуэль</button>
+      <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+    </div>
   </div>
 </section>
 

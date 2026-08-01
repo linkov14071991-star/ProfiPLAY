@@ -357,17 +357,27 @@ async function sprintFinish() {
   clearInterval(sprint.timer);
   sprint.timer = null;
   const isNewRecord = saveRecord(sprint.correct);
-  document.getElementById("sprint-r-correct").textContent = sprint.correct;
-  document.getElementById("sprint-r-wrong").textContent = sprint.wrong;
   document.getElementById("sprint-r-best").textContent = getRecord();
-  document.getElementById("sprint-new-record").style.display = isNewRecord && sprint.correct > 0 ? "block" : "none";
-  showScreen("sprintResult");
+  document.getElementById("sprint-new-record").style.display =
+    isNewRecord && sprint.correct > 0 ? "block" : "none";
+
+  // Начисляем очки на сервере
+  const res = sprint.correct > 0
+    ? await awardTraining("sprint", sprint.correct)
+    : {delta_awarded: 0, xp_awarded: 0};
+
+  showTrainingResult({
+    screenName: "sprintResult",
+    screenId: "screen-sprint-result",
+    correctEl: document.getElementById("sprint-r-correct"), correctTo: sprint.correct,
+    wrongEl:   document.getElementById("sprint-r-wrong"),   wrongTo:   sprint.wrong,
+    ratingEl:  document.getElementById("sprint-r-rating"),
+    xpEl:      document.getElementById("sprint-r-xp"),
+    res,
+    levelupBlockId: "sprint-levelup", levelupNumId: "sprint-levelup-num",
+    achContainerId: "sprint-achievements",
+  });
   hapticSuccess();
-  // +1 очко за каждый правильный
-  if (sprint.correct > 0) {
-    const res = await awardTraining("sprint", sprint.correct);
-    showRatingToast(res);
-  }
 }
 
 document.getElementById("btn-sprint-start").addEventListener("click", sprintStart);
@@ -625,20 +635,28 @@ async function marathonStart() {
 
 async function marathonFinish(userQuit) {
   const isNew = saveMarathonRecord(marathon.correct);
-  document.getElementById("marathon-r-correct").textContent = marathon.correct;
-  document.getElementById("marathon-r-streak").textContent = marathon.bestStreak;
   document.getElementById("marathon-r-best").textContent = getMarathonRecord();
   document.getElementById("marathon-result-title").textContent =
     userQuit ? "🏳 Сдался" : "🏁 Марафон окончен";
   document.getElementById("marathon-new-record").style.display =
     isNew && marathon.correct > 0 ? "block" : "none";
-  showScreen("marathonResult");
+
+  const res = marathon.correct > 0
+    ? await awardTraining("marathon", marathon.correct * 2)
+    : {delta_awarded: 0, xp_awarded: 0};
+
+  showTrainingResult({
+    screenName: "marathonResult",
+    screenId: "screen-marathon-result",
+    correctEl: document.getElementById("marathon-r-correct"), correctTo: marathon.correct,
+    wrongEl:   document.getElementById("marathon-r-streak"),  wrongTo:   marathon.bestStreak,
+    ratingEl:  document.getElementById("marathon-r-rating"),
+    xpEl:      document.getElementById("marathon-r-xp"),
+    res,
+    levelupBlockId: "marathon-levelup", levelupNumId: "marathon-levelup-num",
+    achContainerId: "marathon-achievements",
+  });
   hapticSuccess();
-  // +2 очка за каждый правильный
-  if (marathon.correct > 0) {
-    const res = await awardTraining("marathon", marathon.correct * 2);
-    showRatingToast(res);
-  }
 }
 
 document.getElementById("btn-marathon-start").addEventListener("click", marathonStart);
@@ -1282,14 +1300,8 @@ async function awardTraining(source, points) {
   }
   // Обновим плашку на главной
   refreshProfile();
-  // Level-up!
-  if (res && res.leveled_up) {
-    setTimeout(() => showLevelUpModal(res.level_info.level), 1200);
-  }
-  // Свежевыданные ачивки
-  if (res && res.newly_earned_achievements && res.newly_earned_achievements.length) {
-    setTimeout(() => enqueueAchievements(res.newly_earned_achievements), 2000);
-  }
+  // NB: level-up и ачивки теперь показываются прямо на экране результата
+  //     (через showTrainingResult), поэтому здесь не дублируем.
   return res;
 }
 
@@ -1593,25 +1605,46 @@ function duelShowResult(info) {
   }
   document.getElementById("duel-result-emoji").textContent = emoji;
   document.getElementById("duel-result-title").textContent = title;
+  document.getElementById("duel-you-score").textContent = "0";
+  document.getElementById("duel-opp-score").textContent = "0";
+
   const deltaEl = document.getElementById("duel-elo-delta");
   const xpTxt = info.xp_awarded ? ` · <b style="color:var(--brand-lime);">+${info.xp_awarded} XP</b>` : "";
   deltaEl.innerHTML = (myDelta > 0 ? "+" : "") + myDelta + xpTxt;
   deltaEl.style.color = myDelta > 0 ? "var(--ok)" : (myDelta < 0 ? "var(--danger)" : "");
 
-  showScreen("duelResult");
-
-  // Level-up после дуэли
-  if (info.my_level_info && currentProfile && info.my_level_info.level > (currentProfile.level_info?.level || 1)) {
-    setTimeout(() => showLevelUpModal(info.my_level_info.level), 1500);
+  // Level-up блок в результате
+  const prevLvl = currentProfile?.level_info?.level || 1;
+  const newLvl = info.my_level_info?.level || prevLvl;
+  const luBlock = document.getElementById("duel-levelup");
+  if (newLvl > prevLvl) {
+    document.getElementById("duel-levelup-num").textContent = newLvl;
+    luBlock.style.display = "block";
+  } else {
+    luBlock.style.display = "none";
   }
+
+  showScreen("duelResult");
+  // Ревил
+  revealResultScreen("screen-duel-result", {stepDelay: 200});
+  // Counter-up для очков
+  setTimeout(() => {
+    animateNumber(document.getElementById("duel-you-score"), 0, myScore || 0, 1100);
+    animateNumber(document.getElementById("duel-opp-score"), 0, oppScore || 0, 1100);
+  }, 500);
+
   refreshProfile();
-  // Проверяем новые ачивки после дуэли
+  // Ачивки — дёрнем /api/achievements и вставим прямо в экран
   setTimeout(async () => {
     const res = await apiPost("/api/achievements", {init_data: INIT_DATA});
     if (res && res.newly_earned && res.newly_earned.length) {
-      enqueueAchievements(res.newly_earned);
+      fillResultAchievements("duel-achievements", res.newly_earned);
+      // Плавно проявляем блок
+      const el = document.getElementById("duel-achievements");
+      el.classList.remove("show");
+      setTimeout(() => el.classList.add("show"), 50);
     }
-  }, 2500);
+  }, 1800);
 }
 
 async function duelCheckResult() {
@@ -1777,6 +1810,109 @@ function hapticLight() { tg?.HapticFeedback?.impactOccurred?.("light"); }
 function hapticMedium() { tg?.HapticFeedback?.impactOccurred?.("medium"); }
 function hapticSuccess() { tg?.HapticFeedback?.notificationOccurred?.("success"); }
 function hapticError() { tg?.HapticFeedback?.notificationOccurred?.("error"); }
+
+// ==== Утилиты анимации экрана результата ====
+function easeOutQuad(t) { return t * (2 - t); }
+
+function animateNumber(el, from, to, duration = 900) {
+  if (!el) return;
+  const start = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - start) / duration);
+    el.textContent = Math.round(from + (to - from) * easeOutQuad(p));
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = to;
+  };
+  requestAnimationFrame(step);
+}
+
+/**
+ * Плавно раскрывает все .reveal внутри контейнера с задержкой.
+ * Игнорирует те, что скрыты через style.display = 'none'.
+ */
+function revealResultScreen(screenId, options = {}) {
+  const root = document.getElementById(screenId);
+  if (!root) return;
+  const stepDelay = options.stepDelay || 180;
+  // Сбрасываем предыдущее состояние
+  root.querySelectorAll(".reveal").forEach((el) => el.classList.remove("show"));
+  // Собираем видимые элементы
+  const items = Array.from(root.querySelectorAll(".reveal")).filter((el) => {
+    return getComputedStyle(el).display !== "none";
+  });
+  items.forEach((el, i) => {
+    setTimeout(() => {
+      el.classList.add("show");
+      if (i === 0) hapticLight();
+      if (el.classList.contains("result-levelup")) hapticSuccess();
+    }, i * stepDelay);
+  });
+}
+
+/**
+ * Заполнить блок «Ачивки внутри результата» плашками.
+ */
+function fillResultAchievements(containerId, achievements) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  if (!achievements || !achievements.length) return;
+  achievements.forEach((a) => {
+    const tag = document.createElement("div");
+    tag.className = "result-ach-tag";
+    tag.innerHTML = `${a.icon} ${escapeHtml(a.title)}`;
+    wrap.appendChild(tag);
+  });
+}
+
+/**
+ * Универсальный ревил экрана результата для тренировочных игр.
+ * options: { screenId, correctEl, correctFrom, correctTo,
+ *            wrongEl, wrongFrom, wrongTo,
+ *            ratingEl, xpEl, res,
+ *            levelupBlockId, levelupNumId,
+ *            achContainerId, prevLevel }
+ */
+function showTrainingResult(opts) {
+  showScreen(opts.screenName);
+  // Начальные значения
+  if (opts.correctEl) opts.correctEl.textContent = "0";
+  if (opts.wrongEl)   opts.wrongEl.textContent   = "0";
+  if (opts.ratingEl)  opts.ratingEl.textContent  = "0";
+  if (opts.xpEl)      opts.xpEl.textContent      = "0";
+
+  // Level-up блок
+  const luBlock = document.getElementById(opts.levelupBlockId);
+  const res = opts.res || {};
+  const isLevelUp = res.leveled_up && res.level_info;
+  if (luBlock) {
+    if (isLevelUp) {
+      document.getElementById(opts.levelupNumId).textContent = res.level_info.level;
+      luBlock.style.display = "block";
+    } else {
+      luBlock.style.display = "none";
+    }
+  }
+  // Ачивки
+  fillResultAchievements(opts.achContainerId, res.newly_earned_achievements);
+
+  // Ревил
+  revealResultScreen(opts.screenId, {stepDelay: 180});
+
+  // Counter-up после того как соответствующая плашка появилась
+  setTimeout(() => {
+    if (opts.correctEl && opts.correctTo != null)
+      animateNumber(opts.correctEl, 0, opts.correctTo, 900);
+    if (opts.wrongEl && opts.wrongTo != null)
+      animateNumber(opts.wrongEl, 0, opts.wrongTo, 900);
+  }, 400);
+  setTimeout(() => {
+    if (opts.ratingEl && res.delta_awarded != null)
+      animateNumber(opts.ratingEl, 0, res.delta_awarded, 700);
+    if (opts.xpEl && res.xp_awarded != null)
+      animateNumber(opts.xpEl, 0, res.xp_awarded, 800);
+  }, 900);
+}
 
 // ==== Старт ====
 loadRecordsFromCloud();

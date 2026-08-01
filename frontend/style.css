@@ -481,6 +481,129 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   color: var(--brand-lime);
 }
 
+/* ========== Ревил-анимации для экранов результата ========== */
+@keyframes bounceIn {
+  0%   { transform: scale(0.2) translateY(30px); opacity: 0; }
+  60%  { transform: scale(1.15) translateY(-8px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes slideUpFade {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes popIn {
+  0%   { transform: scale(0.5) rotate(-6deg); opacity: 0; }
+  70%  { transform: scale(1.08) rotate(2deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.reveal { opacity: 0; }
+.reveal.show { animation: slideUpFade 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.reveal.reveal-bounce.show { animation: bounceIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.reveal.reveal-pop.show { animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* Плашки наград */
+.reward-strip {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.reward-chip {
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.reward-chip.rating {
+  background: linear-gradient(135deg, var(--brand-purple), var(--brand-purple-deep));
+  color: white;
+}
+.reward-chip.xp {
+  background: linear-gradient(135deg, var(--brand-lime), var(--brand-lime-dark));
+  color: var(--text-on-light);
+}
+.reward-chip.pos::before { content: "+"; }
+
+/* Level-up блок в экране результата */
+.result-levelup {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #FFD700, #FF8C42, var(--brand-purple));
+  border-radius: var(--radius);
+  margin: 12px 0;
+  text-align: center;
+  color: #fff;
+  border: 2px solid #FFD700;
+  box-shadow: 0 6px 24px rgba(255, 140, 66, 0.35);
+  animation: pulsePop 0.8s ease-in-out;
+}
+@keyframes pulsePop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.result-levelup-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  opacity: 0.9;
+}
+.result-levelup-num {
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  margin: 4px 0;
+}
+.result-levelup-sub {
+  font-size: 13px;
+  opacity: 0.92;
+}
+
+/* New Record с искрами */
+.result-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #4a2500;
+  font-weight: 900;
+  font-size: 15px;
+  margin: 10px auto;
+  animation: sparkle 1s ease-in-out infinite alternate;
+}
+.result-record::before, .result-record::after {
+  content: "✨";
+  animation: sparkle 1.2s ease-in-out infinite alternate;
+}
+
+/* Ачивки под результатом */
+.result-achievements {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.result-ach-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #FFD700, #FF8C42);
+  color: #4a2500;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.3);
+}
+
 /* ========== Тост начисления очков ========== */
 .rating-toast {
   position: fixed;
