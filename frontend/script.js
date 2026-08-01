@@ -13,6 +13,11 @@ const SCREENS = {
   party: "screen-party",
   profile: "screen-profile",
   leaderboard: "screen-leaderboard",
+  duelSetup: "screen-duel-setup",
+  duelAccept: "screen-duel-accept",
+  duelPlay: "screen-duel-play",
+  duelWaiting: "screen-duel-waiting",
+  duelResult: "screen-duel-result",
   crocoSetup: "screen-croco-setup",
   game: "screen-game",           // игра Крокодил
   result: "screen-result",       // итоги Крокодила
@@ -55,14 +60,17 @@ window.showScreen = showScreen;  // для onclick в HTML
 // ==== Проверка подписки ====
 async function checkSubscription() {
   const userId = tg?.initDataUnsafe?.user?.id;
-  if (!userId) { showScreen("menu"); return; }
-
-  try {
-    const r = await fetch(`/api/check_subscription?user_id=${userId}`);
-    const data = await r.json();
-    showScreen(data.subscribed ? "menu" : "needSub");
-  } catch (e) {
-    showScreen("menu");
+  let subscribed = true;
+  if (userId) {
+    try {
+      const r = await fetch(`/api/check_subscription?user_id=${userId}`);
+      const data = await r.json();
+      subscribed = !!data.subscribed;
+    } catch (e) { subscribed = true; }
+  }
+  showScreen(subscribed ? "menu" : "needSub");
+  if (subscribed && typeof window._maybeOpenIncomingDuel === "function") {
+    await window._maybeOpenIncomingDuel();
   }
 }
 
@@ -94,6 +102,7 @@ document.body.addEventListener("click", (e) => {
   if (game === "fivesec") showScreen("fiveSetup");
   if (game === "spy") showScreen("spySetup");
   if (game === "whoami") showScreen("whoamiSetup");
+  if (game === "duel") showScreen("duelSetup");
 });
 
 // Кнопка "В меню" на любом экране
@@ -1194,6 +1203,273 @@ function showRatingToast(res) {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+
+// ==============================
+// ========== ДУЭЛЬ =============
+// ==============================
+const duel = {
+  difficulty: "mixed",
+  duelId: null,
+  role: null,          // 'creator' | 'opponent'
+  questions: [],
+  qIndex: 0,
+  answers: [],
+  score: 0,
+  timer: null,
+  timeLeft: 15,
+  timeStart: 0,
+  locked: false,
+  timeLimitMs: 15000,
+};
+
+setupPills("duel-difficulty", (v) => (duel.difficulty = v));
+
+async function duelStartCreate() {
+  hapticMedium();
+  const res = await apiPost("/api/duel/create", {
+    init_data: INIT_DATA, difficulty: duel.difficulty,
+  });
+  if (!res || !res.duel_id) {
+    alert("Не удалось создать дуэль. Попробуй ещё раз.");
+    return;
+  }
+  duel.duelId = res.duel_id;
+  duel.role = "creator";
+  duel.questions = res.questions;
+  duel.timeLimitMs = res.time_limit_ms || 15000;
+  duel.qIndex = 0;
+  duel.answers = [];
+  duel.score = 0;
+  document.getElementById("duel-score").textContent = 0;
+  showScreen("duelPlay");
+  duelRenderQ();
+}
+
+function duelRenderQ() {
+  const q = duel.questions[duel.qIndex];
+  document.getElementById("duel-q-index").textContent = duel.qIndex + 1;
+  document.getElementById("duel-question").textContent = q.q;
+  const wrap = document.getElementById("duel-answers");
+  wrap.innerHTML = "";
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "answer-btn";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => duelAnswer(i));
+    wrap.appendChild(btn);
+  });
+  duel.locked = false;
+  duel.timeLeft = Math.floor(duel.timeLimitMs / 1000);
+  duel.timeStart = Date.now();
+  duelUpdateTimer();
+  duel.timer = setInterval(() => {
+    duel.timeLeft--;
+    duelUpdateTimer();
+    if (duel.timeLeft <= 0) {
+      duelAnswer(-1);  // таймаут
+    }
+  }, 1000);
+}
+
+function duelUpdateTimer() {
+  const el = document.getElementById("duel-timer");
+  el.textContent = duel.timeLeft;
+  el.classList.remove("warn", "danger");
+  if (duel.timeLeft <= 3) el.classList.add("danger");
+  else if (duel.timeLeft <= 7) el.classList.add("warn");
+}
+
+function duelAnswer(chosen) {
+  if (duel.locked) return;
+  duel.locked = true;
+  clearInterval(duel.timer);
+  const elapsed = Math.min(duel.timeLimitMs, Date.now() - duel.timeStart);
+  duel.answers.push({
+    index: duel.qIndex,
+    chosen: chosen,
+    elapsed_ms: elapsed,
+  });
+
+  // Локально прикинем очки для UX
+  // (сервер посчитает точно). Не знаем правильный ответ, поэтому просто идём дальше.
+  hapticLight();
+
+  duel.qIndex++;
+  if (duel.qIndex >= duel.questions.length) {
+    duelSubmit();
+  } else {
+    setTimeout(duelRenderQ, 250);
+  }
+}
+
+async function duelSubmit() {
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, {
+    init_data: INIT_DATA, answers: duel.answers,
+  });
+  if (!res) {
+    alert("Не смог отправить результат. Попробуй ещё раз.");
+    return;
+  }
+  // Обновим локальный рейтинг (может быть изменён если дуэль завершилась)
+  refreshProfile();
+
+  if (res.status === "complete") {
+    duelShowResult(res);
+  } else {
+    // ожидание соперника — это делает только создатель
+    duelShowWaiting(res);
+  }
+}
+
+function duelShowWaiting(info) {
+  const myScore = duel.role === "creator" ? info.creator_score : info.opponent_score;
+  document.getElementById("duel-wait-score").textContent = myScore;
+  showScreen("duelWaiting");
+  hapticSuccess();
+}
+
+function duelShowResult(info) {
+  const isCreator = info.you_are === "creator";
+  const myScore = isCreator ? info.creator_score : info.opponent_score;
+  const oppScore = isCreator ? info.opponent_score : info.creator_score;
+  const myDelta = isCreator ? info.creator_delta : info.opponent_delta;
+  const oppObj = isCreator ? info.opponent : info.creator;
+  const myObj = isCreator ? info.creator : info.opponent;
+
+  document.getElementById("duel-you-name").textContent = myObj?.name || "Ты";
+  document.getElementById("duel-opp-name").textContent = oppObj?.name || "Соперник";
+  document.getElementById("duel-you-score").textContent = myScore || 0;
+  document.getElementById("duel-opp-score").textContent = oppScore || 0;
+
+  let emoji = "🤝", title = "Ничья";
+  if (info.is_draw) {
+    emoji = "🤝"; title = "Ничья";
+  } else if (info.winner_id === myObj?.id) {
+    emoji = "🎉"; title = "Победа!";
+    hapticSuccess();
+  } else {
+    emoji = "😞"; title = "Поражение";
+    hapticError();
+  }
+  document.getElementById("duel-result-emoji").textContent = emoji;
+  document.getElementById("duel-result-title").textContent = title;
+  const deltaEl = document.getElementById("duel-elo-delta");
+  deltaEl.textContent = (myDelta > 0 ? "+" : "") + myDelta;
+  deltaEl.style.color = myDelta > 0 ? "var(--ok)" : (myDelta < 0 ? "var(--danger)" : "");
+
+  showScreen("duelResult");
+}
+
+async function duelCheckResult() {
+  if (!duel.duelId) return;
+  const res = await apiPost(`/api/duel/${duel.duelId}`, {init_data: INIT_DATA});
+  if (res && res.status === "complete") {
+    duelShowResult(res);
+  } else {
+    alert("Соперник ещё не сыграл. Загляни позже.");
+  }
+}
+
+function duelGetShareLink() {
+  const botUser = document.querySelector('a[href^="https://t.me/"]')?.getAttribute("href");
+  // Пробуем достать username бота из initDataUnsafe / переменных окружения нет, поэтому используем текущий домен
+  // Лучший вариант: показать сообщение с текстом ссылки к боту
+  // Формат: https://t.me/<bot_username>?start=duel_XXX
+  const botLink = `https://t.me/${DUEL_BOT_USERNAME}?start=duel_${duel.duelId}`;
+  return botLink;
+}
+
+// Username бота подгружаем с /api/config
+let DUEL_BOT_USERNAME = "your_bot";
+fetch("/api/config").then(r => r.json()).then(cfg => {
+  if (cfg && cfg.bot_username) DUEL_BOT_USERNAME = cfg.bot_username;
+}).catch(() => {});
+
+function duelShare() {
+  const link = duelGetShareLink();
+  const text = `⚔ Я вызываю тебя на Блиц-дуэль в ProfikArena! Прими вызов: ${link}`;
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("⚔ Я вызываю тебя на Блиц-дуэль в ProfikArena!")}`);
+  } else {
+    // fallback: копируем ссылку
+    duelCopy();
+  }
+}
+
+async function duelCopy() {
+  const link = duelGetShareLink();
+  try {
+    await navigator.clipboard.writeText(link);
+    showRatingToast({delta_awarded: 1, new_rating: 0}); // хак-тост
+    const el = document.createElement("div");
+    el.className = "rating-toast ok show";
+    el.innerHTML = "<b>Ссылка скопирована!</b>";
+    document.body.appendChild(el);
+    setTimeout(() => { el.classList.remove("show"); setTimeout(()=>el.remove(), 300); }, 2000);
+  } catch (e) {
+    prompt("Скопируй ссылку вручную:", link);
+  }
+}
+
+async function duelOpenIncoming(duelId) {
+  duel.duelId = duelId;
+  duel.role = "opponent";
+  const info = await apiPost(`/api/duel/${duelId}`, {init_data: INIT_DATA});
+  if (!info) {
+    alert("Не смог загрузить дуэль.");
+    showScreen("menu");
+    return;
+  }
+  if (info.status === "complete") {
+    duelShowResult(info);
+    return;
+  }
+  // Показываем экран приёма
+  document.getElementById("duel-accept-from").textContent = info.creator.name;
+  const league = info.creator.league;
+  document.getElementById("duel-accept-league").textContent =
+    `${league.emoji} ${league.name} · ${info.creator.rating}`;
+  if (info.creator_score) {
+    document.getElementById("duel-accept-opp-score").textContent = info.creator_score;
+    document.getElementById("duel-accept-opp-score-wrap").style.display = "block";
+  }
+  showScreen("duelAccept");
+}
+
+async function duelAcceptChallenge() {
+  hapticMedium();
+  const res = await apiPost(`/api/duel/${duel.duelId}/join`, {init_data: INIT_DATA});
+  if (!res || !res.questions) {
+    alert("Не смог присоединиться. Возможно, дуэль уже занята.");
+    showScreen("menu");
+    return;
+  }
+  duel.questions = res.questions;
+  duel.timeLimitMs = res.time_limit_ms || 15000;
+  duel.qIndex = 0;
+  duel.answers = [];
+  duel.score = 0;
+  document.getElementById("duel-score").textContent = 0;
+  showScreen("duelPlay");
+  duelRenderQ();
+}
+
+document.getElementById("btn-duel-start").addEventListener("click", duelStartCreate);
+document.getElementById("btn-duel-accept").addEventListener("click", duelAcceptChallenge);
+document.getElementById("btn-duel-check").addEventListener("click", duelCheckResult);
+document.getElementById("btn-duel-share").addEventListener("click", duelShare);
+document.getElementById("btn-duel-copy").addEventListener("click", duelCopy);
+document.getElementById("btn-duel-rematch").addEventListener("click", () => {
+  duel.duelId = null;
+  showScreen("duelSetup");
+});
+
+// Экспортируем для checkSubscription — она вызывает после успеха
+window._maybeOpenIncomingDuel = async function() {
+  const params = new URLSearchParams(window.location.search);
+  const incoming = params.get("duel");
+  if (incoming) await duelOpenIncoming(incoming);
+};
 
 // ==== Проверка подписки: кнопка ====
 document.getElementById("btn-recheck").addEventListener("click", checkSubscription);

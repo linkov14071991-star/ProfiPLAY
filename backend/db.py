@@ -51,8 +51,46 @@ def init_db():
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_users_rating ON users (rating DESC)"
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS duels (
+            id                    TEXT PRIMARY KEY,
+            creator_id            INTEGER NOT NULL,
+            opponent_id           INTEGER,
+            difficulty            TEXT NOT NULL,
+            questions_json        TEXT NOT NULL,
+            creator_score         INTEGER,
+            opponent_score        INTEGER,
+            creator_finished_at   TEXT,
+            opponent_finished_at  TEXT,
+            status                TEXT NOT NULL DEFAULT 'created',
+            winner_id             INTEGER,
+            is_draw               INTEGER DEFAULT 0,
+            creator_delta         INTEGER,
+            opponent_delta        INTEGER,
+            created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_duels_creator ON duels (creator_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_duels_opponent ON duels (opponent_id)")
     conn.commit()
     conn.close()
+
+
+# ---------- ELO ----------
+K_FACTOR = 32
+
+
+def calculate_elo(rating_a: int, rating_b: int, score_a: float) -> tuple[int, int]:
+    """
+    Возвращает (delta_a, delta_b).
+    score_a: 1.0 (A победил), 0.0 (A проиграл), 0.5 (ничья)
+    """
+    expected_a = 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
+    delta_a = round(K_FACTOR * (score_a - expected_a))
+    delta_b = -delta_a
+    return delta_a, delta_b
 
 
 @contextmanager

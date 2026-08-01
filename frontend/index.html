@@ -87,13 +87,12 @@
 
   <h3 style="padding-left:4px; margin-top:24px;">⚔ Соревнования</h3>
   <div class="games-grid">
-    <div class="game-card locked">
-      <div class="icon" style="background:#B6A9D9;">⚡⚔</div>
+    <div class="game-card" data-game="duel">
+      <div class="icon">⚡⚔</div>
       <div class="info">
         <div class="title">Блиц-дуэль</div>
         <div class="desc">1×1 асинхронно. Вызови друга или соперника по рейтингу.</div>
       </div>
-      <div class="badge-soon">скоро</div>
     </div>
     <div class="game-card locked">
       <div class="icon" style="background:#B6A9D9;">🥇</div>
@@ -477,6 +476,133 @@
     <p style="text-align:center; opacity:0.8; margin:0 0 8px;">Штрафов: <b id="alias-r-fail">0</b></p>
     <p style="text-align:center; font-size:20px; margin:8px 0 0;">Итог: <b id="alias-r-total">0</b> очков</p>
     <button id="btn-alias-again" class="btn btn-primary btn-big">Ещё раунд</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
+<!-- ==== Блиц-дуэль: настройка ==== -->
+<section id="screen-duel-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
+  <div class="card">
+    <h1>⚔ Блиц-дуэль</h1>
+    <p class="subtitle">1×1 асинхронно</p>
+    <p><b>10 вопросов</b>, по <b>15 секунд</b> на каждый. Очки: 100 за правильный + до 100 бонуса за скорость. Играешь сейчас — соперник примет вызов, когда сможет.</p>
+
+    <label class="field">Сложность вопросов</label>
+    <div class="pills" id="duel-difficulty">
+      <button class="pill" data-value="medium">Средняя</button>
+      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill active" data-value="mixed">Микс (сред+сложн)</button>
+    </div>
+
+    <p style="font-size:13px; opacity:0.7; margin-top:16px;">💡 После твоей партии получишь ссылку — отправишь другу в Telegram. Он сыграет когда захочет, оба увидите результат.</p>
+
+    <button id="btn-duel-start" class="btn btn-primary btn-big">Начать дуэль</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+  </div>
+</section>
+
+<!-- ==== Блиц-дуэль: приём вызова ==== -->
+<section id="screen-duel-accept" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
+  <div class="card">
+    <div style="text-align:center;">
+      <img src="/profik.svg" alt="Profik" class="profik profik-lg">
+    </div>
+    <h1 style="text-align:center;">⚔ Вызов на дуэль!</h1>
+    <p style="text-align:center; font-size:18px;">Тебя вызвал:</p>
+    <div style="text-align:center; font-size:24px; font-weight:800; color:var(--brand-purple); margin:8px 0;" id="duel-accept-from">—</div>
+    <div style="text-align:center; margin-bottom:16px;">
+      <span id="duel-accept-league" style="font-size:14px; color:var(--text-on-light); opacity:0.7;">🎓 Юниор · 1000</span>
+    </div>
+    <div id="duel-accept-opp-score-wrap" style="display:none;">
+      <div class="record-badge">Соперник набрал: <b id="duel-accept-opp-score">0</b> очков</div>
+    </div>
+    <p style="text-align:center;">10 вопросов, 15 секунд на каждый. Готов?</p>
+    <button id="btn-duel-accept" class="btn btn-primary btn-big">⚔ Принять вызов!</button>
+    <button class="btn btn-link btn-back" data-back="menu">← Отклонить</button>
+  </div>
+</section>
+
+<!-- ==== Блиц-дуэль: игра ==== -->
+<section id="screen-duel-play" class="screen">
+  <div class="sprint-topbar">
+    <div class="timer" id="duel-timer">15</div>
+    <div style="text-align:center;">
+      <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Вопрос</div>
+      <div style="font-size:22px; font-weight:800;"><span id="duel-q-index">1</span>/10</div>
+    </div>
+    <div class="score-big" style="background:var(--brand-purple); color:white;">
+      <span id="duel-score">0</span>
+    </div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-text" id="duel-question">—</div>
+  </div>
+
+  <div class="answers" id="duel-answers"></div>
+</section>
+
+<!-- ==== Блиц-дуэль: ожидание соперника ==== -->
+<section id="screen-duel-waiting" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
+  <div class="card">
+    <div style="text-align:center;">
+      <img src="/profik.svg" alt="Profik" class="profik profik-lg">
+    </div>
+    <h1 style="text-align:center;">✅ Ты сдал!</h1>
+    <div class="result-stats" style="grid-template-columns: 1fr;">
+      <div class="stat stat-ok">
+        <div class="stat-num" id="duel-wait-score">0</div>
+        <div class="stat-label">твой счёт</div>
+      </div>
+    </div>
+    <p style="text-align:center;"><b>Отправь ссылку сопернику</b> — как сыграет, узнаете кто победил.</p>
+
+    <button id="btn-duel-share" class="btn btn-primary btn-big">📤 Отправить в Telegram</button>
+    <button id="btn-duel-copy" class="btn btn-secondary">📋 Скопировать ссылку</button>
+    <button id="btn-duel-check" class="btn btn-secondary">🔄 Проверить результат</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+  </div>
+</section>
+
+<!-- ==== Блиц-дуэль: результат ==== -->
+<section id="screen-duel-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Profik" class="profik">
+    <span class="brand-badge">про<span class="brand-phi">Ф</span>иматика<span class="brand-brackets">&lt;/&gt;</span></span>
+  </div>
+  <div class="card">
+    <div id="duel-result-emoji" style="text-align:center; font-size:80px; line-height:1;">🎉</div>
+    <h1 id="duel-result-title" style="text-align:center;">Победа!</h1>
+
+    <div class="duel-vs">
+      <div class="duel-vs-player">
+        <div class="duel-vs-name" id="duel-you-name">Ты</div>
+        <div class="duel-vs-score" id="duel-you-score">0</div>
+      </div>
+      <div class="duel-vs-mid">VS</div>
+      <div class="duel-vs-player">
+        <div class="duel-vs-name" id="duel-opp-name">Соперник</div>
+        <div class="duel-vs-score" id="duel-opp-score">0</div>
+      </div>
+    </div>
+
+    <div class="record-badge" id="duel-elo-badge">
+      Рейтинг: <b id="duel-elo-delta">+16</b>
+    </div>
+
+    <button id="btn-duel-rematch" class="btn btn-primary btn-big">⚔ Новая дуэль</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>

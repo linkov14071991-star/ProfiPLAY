@@ -14,6 +14,8 @@ import hmac
 import json
 import os
 import random
+import secrets
+import string
 from pathlib import Path
 from urllib.parse import parse_qsl
 
@@ -26,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from db import (
     DAILY_TRAINING_CAP,
     TRAINING_SOURCES,
+    calculate_elo,
     get_db,
     get_league,
     get_training_earned_today,
@@ -34,6 +37,7 @@ from db import (
 
 # ---------- Настройки ----------
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+BOT_USERNAME = os.environ.get("BOT_USERNAME", "")  # без @, например 'profikarena_bot'
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@profimatika_inf")
 
 BASE_DIR = Path(__file__).parent
@@ -253,6 +257,15 @@ async def get_marathon(difficulty: str = Query("mixed"), limit: int = Query(200)
     return {"questions": pool[:limit]}
 
 
+@app.get("/api/config")
+async def get_config():
+    """Небольшой конфиг для фронтенда (публичные данные)."""
+    return {
+        "bot_username": BOT_USERNAME,
+        "channel_username": CHANNEL_USERNAME.lstrip("@"),
+    }
+
+
 # ==============================
 # ==== ФУНДАМЕНТ РЕЙТИНГА =====
 # ==============================
@@ -374,6 +387,290 @@ async def get_my_place(init_data: str = Body(..., embed=True)):
         ).fetchone()["place"]
         total = db.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
     return {"place": place, "total": total, "rating": row["rating"], "league": get_league(row["rating"])}
+
+
+# ==============================
+# ========= БЛИЦ-ДУЭЛЬ ========
+# ==============================
+
+DUEL_QUESTIONS_COUNT = 10
+DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
+
+
+def _gen_duel_id() -> str:
+    """Короткий URL-безопасный ID (8 символов)."""
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+def _pool_for_difficulty(difficulty: str) -> list:
+    if difficulty == "mixed":
+        return QUESTIONS["informatika"]["medium"] + QUESTIONS["informatika"]["hard"]
+    if difficulty in ("easy", "medium", "hard"):
+        return QUESTIONS["informatika"][difficulty]
+    raise HTTPException(status_code=400, detail="Bad difficulty")
+
+
+def _score_answers(questions: list, answers: list) -> int:
+    """Считаем очки: 100 базы + до 100 бонуса за скорость на каждый правильный."""
+    total = 0
+    for a in answers:
+        i = a.get("index")
+        if i is None or i < 0 or i >= len(questions):
+            continue
+        q = questions[i]
+        chosen = a.get("chosen", -1)
+        elapsed = a.get("elapsed_ms", DUEL_TIME_LIMIT_MS)
+        elapsed = max(0, min(DUEL_TIME_LIMIT_MS, elapsed))
+        if elapsed >= DUEL_TIME_LIMIT_MS:
+            continue  # таймаут
+        if chosen == q["correct"]:
+            base = 100
+            speed_bonus = round(100 * (DUEL_TIME_LIMIT_MS - elapsed) / DUEL_TIME_LIMIT_MS)
+            total += base + speed_bonus
+    return total
+
+
+def _display_name(row) -> str:
+    if not row:
+        return "Игрок"
+    return row["first_name"] or row["username"] or "Игрок"
+
+
+def _try_finalize_duel(db, duel_id: str):
+    """Если оба игрока сдали — считаем ELO, фиксируем результат."""
+    d = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+    if not d or d["status"] == "complete":
+        return
+    if not (d["creator_finished_at"] and d["opponent_finished_at"]):
+        return
+
+    cs = d["creator_score"] or 0
+    os_ = d["opponent_score"] or 0
+    creator = db.execute("SELECT * FROM users WHERE telegram_id = ?", (d["creator_id"],)).fetchone()
+    opponent = db.execute("SELECT * FROM users WHERE telegram_id = ?", (d["opponent_id"],)).fetchone()
+
+    if cs > os_:
+        score_a, winner, is_draw = 1.0, creator["telegram_id"], 0
+    elif cs < os_:
+        score_a, winner, is_draw = 0.0, opponent["telegram_id"], 0
+    else:
+        score_a, winner, is_draw = 0.5, None, 1
+
+    d_a, d_b = calculate_elo(creator["rating"], opponent["rating"], score_a)
+
+    # Обновляем рейтинги (не даём уйти в минус)
+    for uid, delta in ((creator["telegram_id"], d_a), (opponent["telegram_id"], d_b)):
+        db.execute(
+            "UPDATE users SET rating = MAX(0, rating + ?) WHERE telegram_id = ?",
+            (delta, uid),
+        )
+        new_rating = db.execute(
+            "SELECT rating FROM users WHERE telegram_id = ?", (uid,)
+        ).fetchone()["rating"]
+        db.execute(
+            """
+            INSERT INTO rating_log (user_id, delta, source, balance_after)
+            VALUES (?, ?, 'duel', ?)
+            """,
+            (uid, delta, new_rating),
+        )
+
+    db.execute(
+        """
+        UPDATE duels
+        SET status = 'complete', winner_id = ?, is_draw = ?,
+            creator_delta = ?, opponent_delta = ?
+        WHERE id = ?
+        """,
+        (winner, is_draw, d_a, d_b, duel_id),
+    )
+
+
+def _duel_public_view(db, duel, viewer_id: int) -> dict:
+    """Формируем ответ для клиента (без ответов до финала)."""
+    creator = db.execute(
+        "SELECT * FROM users WHERE telegram_id = ?", (duel["creator_id"],)
+    ).fetchone()
+    opponent = None
+    if duel["opponent_id"]:
+        opponent = db.execute(
+            "SELECT * FROM users WHERE telegram_id = ?", (duel["opponent_id"],)
+        ).fetchone()
+
+    res = {
+        "id": duel["id"],
+        "status": duel["status"],
+        "difficulty": duel["difficulty"],
+        "creator": {
+            "id": creator["telegram_id"],
+            "name": _display_name(creator),
+            "rating": creator["rating"],
+            "league": get_league(creator["rating"]),
+        },
+        "opponent": None,
+        "you_are": None,
+        "creator_score": duel["creator_score"],
+        "opponent_score": duel["opponent_score"],
+        "creator_delta": duel["creator_delta"],
+        "opponent_delta": duel["opponent_delta"],
+        "is_draw": bool(duel["is_draw"]),
+        "winner_id": duel["winner_id"],
+    }
+    if opponent:
+        res["opponent"] = {
+            "id": opponent["telegram_id"],
+            "name": _display_name(opponent),
+            "rating": opponent["rating"],
+            "league": get_league(opponent["rating"]),
+        }
+    if viewer_id == duel["creator_id"]:
+        res["you_are"] = "creator"
+    elif opponent and viewer_id == opponent["telegram_id"]:
+        res["you_are"] = "opponent"
+    return res
+
+
+@app.post("/api/duel/create")
+async def duel_create(
+    init_data: str = Body(...),
+    difficulty: str = Body("mixed"),
+):
+    """Создать новую дуэль. Возвращает id и 10 вопросов (без правильных ответов)."""
+    tg_user = get_verified_user(init_data)
+    pool = _pool_for_difficulty(difficulty)
+    if len(pool) < DUEL_QUESTIONS_COUNT:
+        raise HTTPException(status_code=500, detail="Not enough questions")
+    selected = random.sample(pool, DUEL_QUESTIONS_COUNT)
+
+    with get_db() as db:
+        creator = upsert_user(db, tg_user)
+        duel_id = _gen_duel_id()
+        db.execute(
+            """
+            INSERT INTO duels (id, creator_id, difficulty, questions_json)
+            VALUES (?, ?, ?, ?)
+            """,
+            (duel_id, creator["telegram_id"], difficulty, json.dumps(selected)),
+        )
+
+    # Отдаём вопросы БЕЗ correct
+    public_questions = [{"q": q["q"], "options": q["options"]} for q in selected]
+    return {
+        "duel_id": duel_id,
+        "questions": public_questions,
+        "time_limit_ms": DUEL_TIME_LIMIT_MS,
+    }
+
+
+@app.post("/api/duel/{duel_id}/join")
+async def duel_join(
+    duel_id: str,
+    init_data: str = Body(..., embed=True),
+):
+    """Принять вызов. Возвращает вопросы (без правильных)."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+        if not duel:
+            raise HTTPException(status_code=404, detail="Duel not found")
+        if duel["status"] == "complete":
+            raise HTTPException(status_code=400, detail="Duel already complete")
+        if duel["creator_id"] == me["telegram_id"]:
+            raise HTTPException(status_code=400, detail="Cannot join your own duel")
+        if duel["opponent_id"] and duel["opponent_id"] != me["telegram_id"]:
+            raise HTTPException(status_code=400, detail="Duel already taken")
+        if not duel["opponent_id"]:
+            db.execute(
+                "UPDATE duels SET opponent_id = ? WHERE id = ?",
+                (me["telegram_id"], duel_id),
+            )
+            duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+
+    questions = json.loads(duel["questions_json"])
+    public_questions = [{"q": q["q"], "options": q["options"]} for q in questions]
+    creator = db.execute(
+        "SELECT * FROM users WHERE telegram_id = ?", (duel["creator_id"],)
+    ).fetchone() if False else None
+    with get_db() as db2:
+        creator = db2.execute(
+            "SELECT * FROM users WHERE telegram_id = ?", (duel["creator_id"],)
+        ).fetchone()
+    return {
+        "duel_id": duel_id,
+        "questions": public_questions,
+        "time_limit_ms": DUEL_TIME_LIMIT_MS,
+        "creator_name": _display_name(creator),
+        "creator_score": duel["creator_score"],
+    }
+
+
+@app.post("/api/duel/{duel_id}/submit")
+async def duel_submit(
+    duel_id: str,
+    init_data: str = Body(...),
+    answers: list = Body(...),
+):
+    """Сдать ответы на 10 вопросов. Считаем очки, если оба сдали — финализируем."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        my_id = me["telegram_id"]
+        duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+        if not duel:
+            raise HTTPException(status_code=404, detail="Duel not found")
+        if duel["status"] == "complete":
+            raise HTTPException(status_code=400, detail="Duel already complete")
+
+        questions = json.loads(duel["questions_json"])
+        my_score = _score_answers(questions, answers)
+
+        if my_id == duel["creator_id"]:
+            if duel["creator_finished_at"]:
+                raise HTTPException(status_code=400, detail="Already submitted")
+            db.execute(
+                """
+                UPDATE duels
+                SET creator_score = ?, creator_finished_at = datetime('now'),
+                    status = 'waiting'
+                WHERE id = ?
+                """,
+                (my_score, duel_id),
+            )
+        else:
+            # Оппонент. Если ещё не занял слот — занимает
+            if duel["opponent_id"] and duel["opponent_id"] != my_id:
+                raise HTTPException(status_code=400, detail="Duel already taken")
+            if duel["opponent_id"] == my_id and duel["opponent_finished_at"]:
+                raise HTTPException(status_code=400, detail="Already submitted")
+            db.execute(
+                """
+                UPDATE duels
+                SET opponent_id = ?, opponent_score = ?, opponent_finished_at = datetime('now')
+                WHERE id = ?
+                """,
+                (my_id, my_score, duel_id),
+            )
+
+        _try_finalize_duel(db, duel_id)
+        duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+        return _duel_public_view(db, duel, my_id)
+
+
+@app.post("/api/duel/{duel_id}")
+async def duel_info(
+    duel_id: str,
+    init_data: str = Body(..., embed=True),
+):
+    """Получить состояние дуэли."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+        if not duel:
+            raise HTTPException(status_code=404, detail="Duel not found")
+        return _duel_public_view(db, duel, me["telegram_id"])
 
 
 # ---------- Раздача статики фронтенда ----------

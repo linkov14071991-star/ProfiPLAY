@@ -1,13 +1,15 @@
 """
 ProfikArena - Telegram-бот
-Роль: единственная задача бота — открыть мини-приложение по команде /start.
+Роль:
+1. По команде /start — открывает мини-приложение.
+2. По /start duel_XXX — показывает кнопку 'Принять вызов' на конкретную дуэль.
 """
 
 import asyncio
 import os
 
-from aiogram import Bot, Dispatcher, F
-from aiogram.filters import CommandStart
+from aiogram import Bot, Dispatcher
+from aiogram.filters import CommandObject, CommandStart
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -26,16 +28,10 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 
-@dp.message(CommandStart())
-async def start(message: Message):
-    kb = InlineKeyboardMarkup(
+def _kb_open_app(url: str, label: str = "🎮 Играть в ProfikArena") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🎮 Играть в ProfikArena",
-                    web_app=WebAppInfo(url=WEBAPP_URL),
-                )
-            ],
+            [InlineKeyboardButton(text=label, web_app=WebAppInfo(url=url))],
             [
                 InlineKeyboardButton(
                     text="📢 Подписаться на канал",
@@ -44,6 +40,29 @@ async def start(message: Message):
             ],
         ]
     )
+
+
+@dp.message(CommandStart())
+async def start(message: Message, command: CommandObject):
+    payload = command.args or ""
+
+    # Deep-link на конкретную дуэль
+    if payload.startswith("duel_"):
+        duel_id = payload[5:]
+        url = f"{WEBAPP_URL}?duel={duel_id}"
+        kb = _kb_open_app(url, "⚔ Принять вызов!")
+        await message.answer(
+            f"⚔ <b>Тебя вызвали на Блиц-дуэль!</b>\n\n"
+            f"Прими вызов и попробуй набрать больше очков, чем соперник. "
+            f"Победа поднимает твой рейтинг, поражение — снижает.\n\n"
+            f"⚠️ Для участия нужна подписка на канал {CHANNEL_USERNAME}.",
+            reply_markup=kb,
+            parse_mode="HTML",
+        )
+        return
+
+    # Обычный /start
+    kb = _kb_open_app(WEBAPP_URL)
     await message.answer(
         f"Привет, {message.from_user.first_name}! 👋\n\n"
         f"Это <b>ProfikArena</b> — арена по информатике: тренируйся, сражайся, побеждай.\n\n"

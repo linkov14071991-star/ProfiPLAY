@@ -406,6 +406,46 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .stat-ok .stat-num { color: var(--brand-purple); }
 .stat-skip .stat-num { color: var(--skip); }
 
+/* ========== Блиц-дуэль: результат VS ========== */
+.duel-vs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  padding: 20px 12px;
+  background: linear-gradient(135deg, rgba(102, 54, 233, 0.08), rgba(180, 242, 77, 0.08));
+  border-radius: var(--radius);
+}
+.duel-vs-player {
+  text-align: center;
+  min-width: 0;
+}
+.duel-vs-name {
+  font-size: 14px;
+  color: var(--text-on-light);
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6px;
+}
+.duel-vs-score {
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--brand-purple);
+  line-height: 1;
+}
+.duel-vs-mid {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--brand-lime);
+  padding: 6px 10px;
+  background: var(--brand-purple);
+  border-radius: 999px;
+  color: var(--brand-lime);
+}
+
 /* ========== Тост начисления очков ========== */
 .rating-toast {
   position: fixed;
