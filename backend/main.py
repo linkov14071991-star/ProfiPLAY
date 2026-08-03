@@ -49,6 +49,13 @@ XP_PER_RATING = {
     "marathon": 1.5,  # марафон: за правильный +2 рейтинг → +3 XP
     "party": 3.0,     # тусовка: +5 рейтинг → +15 XP
 }
+
+# Множитель по сложности вопросов
+DIFFICULTY_MULT = {"easy": 1.0, "medium": 1.5, "hard": 2.0}
+# Множитель по количеству жизней в Марафоне (меньше жизней = больше очков за риск)
+LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
+# Базовая ставка рейтинга за один правильный ответ
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 5}
 # Duel XP
 XP_DUEL_WIN = 50
 XP_DUEL_DRAW = 30
@@ -528,10 +535,13 @@ async def get_marathon(difficulty: str = Query("easy"), limit: int = Query(200))
 
 @app.get("/api/config")
 async def get_config():
-    """Небольшой конфиг для фронтенда (публичные данные)."""
+    """Небольшой конфиг для фронтенда (публичные данные + множители)."""
     return {
         "bot_username": BOT_USERNAME,
         "channel_username": CHANNEL_USERNAME.lstrip("@"),
+        "difficulty_mult": DIFFICULTY_MULT,
+        "lives_mult": LIVES_MULT,
+        "base_per_correct": BASE_RATING_PER_CORRECT,
     }
 
 
@@ -609,15 +619,31 @@ async def get_or_create_profile(init_data: str = Body(..., embed=True)):
 async def add_training_points(
     init_data: str = Body(...),
     source: str = Body(...),
-    points: int = Body(...),
+    points: int = Body(0),           # legacy: если correct не передан
+    correct: int = Body(None),       # число правильных ответов (или партий для party)
+    difficulty: str = Body("easy"),
+    lives: int = Body(None),         # только для марафона
 ):
     """
-    Начисляем очки от тренировки с учётом дневного капа + XP (без капа).
-    XP всегда начисляется, даже если рейтинг ушёл в кап.
+    Начисляем очки от тренировки с учётом множителей и дневного капа.
+    Формулы:
+      rating = correct × base × difficulty_mult × lives_mult (marathon)
+      xp = round(rating × xp_per_rating[source])
+    XP всегда без капа. Рейтинг с капом 100/день.
     """
     if source not in TRAINING_SOURCES:
         raise HTTPException(status_code=400, detail="Bad source")
-    if points <= 0 or points > 200:
+    # Fallback для старых клиентов: если только points, а correct не передан
+    if correct is None:
+        # Легаси-режим: считаем что клиент прислал уже готовые points
+        base_points = points
+    else:
+        base = BASE_RATING_PER_CORRECT.get(source, 1)
+        diff_mult = DIFFICULTY_MULT.get(difficulty, 1.0)
+        lives_mult = LIVES_MULT.get(lives, 1.0) if source == "marathon" and lives else 1.0
+        base_points = round(correct * base * diff_mult * lives_mult)
+    points = base_points
+    if points <= 0 or points > 1000:
         raise HTTPException(status_code=400, detail="Bad points")
 
     tg_user = get_verified_user(init_data)

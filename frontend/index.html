@@ -35,9 +35,10 @@
 
 <!-- ==== Экран: главное меню (дашборд) ==== -->
 <section id="screen-menu" class="screen">
-  <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
-    <span class="brand-badge">профиматика</span>
+  <!-- Крупный герой: Profik + название -->
+  <div class="hero-brand">
+    <img src="/profik.svg" alt="Профик" class="hero-cat">
+    <h1 class="hero-title">Profik <span class="hero-title-accent">Arena</span></h1>
   </div>
 
   <!-- Мотивирующая строка (цель дня/уровня) -->
@@ -102,9 +103,10 @@
     </span>
   </button>
 
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0 8px;">
-    <button class="btn btn-secondary" onclick="showScreen('profile')" style="margin-top:0;">👤 Профиль</button>
-    <button class="btn btn-secondary" onclick="openLeaderboard()" style="margin-top:0;">🏆 Лидерборд</button>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:16px 0 8px;">
+    <button class="btn btn-secondary" onclick="showScreen('profile')" style="margin-top:0; font-size:13px; padding:12px 6px;">👤 Профиль</button>
+    <button class="btn btn-secondary" onclick="openLeaderboard()" style="margin-top:0; font-size:13px; padding:12px 6px;">🏆 Топ</button>
+    <button class="btn btn-secondary" onclick="showScreen('rules')" style="margin-top:0; font-size:13px; padding:12px 6px;">📖 Правила</button>
   </div>
 
   <h3 style="padding-left:4px;" id="modes-anchor">🎯 Тренировки соло</h3>
@@ -230,9 +232,9 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="croco-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
     <label class="field">Длительность раунда</label>
@@ -309,9 +311,9 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="sprint-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
     <label class="field">Длительность</label>
@@ -323,6 +325,10 @@
 
     <div id="sprint-record-hint" style="display:none;">
       <div class="record-badge">🏆 Ваш рекорд: <span id="sprint-record">0</span></div>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">Награда: <b id="sprint-mult">×1</b> к очкам</div>
     </div>
 
     <button id="btn-sprint-start" class="btn btn-primary btn-big">Начать</button>
@@ -419,20 +425,24 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="marathon-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
-    <label class="field">Количество жизней</label>
+    <label class="field">Жизни (риск = награда)</label>
     <div class="pills" id="marathon-lives">
-      <button class="pill" data-value="3">3 ❤️</button>
-      <button class="pill active" data-value="5">5 ❤️</button>
-      <button class="pill" data-value="7">7 ❤️</button>
+      <button class="pill pill-diff" data-value="1"><span>1 ❤️</span><span class="pill-hint">×3 очки</span></button>
+      <button class="pill pill-diff" data-value="3"><span>3 ❤️</span><span class="pill-hint">×2 очки</span></button>
+      <button class="pill pill-diff active" data-value="5"><span>5 ❤️</span><span class="pill-hint">×1 очко</span></button>
     </div>
 
     <div id="marathon-record-hint" style="display:none;">
       <div class="record-badge">🏆 Ваш рекорд: <span id="marathon-record">0</span> вопросов</div>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">Награда: <b id="marathon-mult">×1</b> к очкам</div>
     </div>
 
     <button id="btn-marathon-start" class="btn btn-primary btn-big">Начать</button>
@@ -526,9 +536,9 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="alias-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
     <label class="field">Длительность раунда</label>
@@ -927,9 +937,9 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="whoami-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
     <label class="field">Длительность хода</label>
@@ -1008,9 +1018,9 @@
 
     <label class="field">Сложность категорий</label>
     <div class="pills" id="five-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
       <button class="pill" data-value="mixed">Микс</button>
     </div>
 
@@ -1083,9 +1093,9 @@
 
     <label class="field">Сложность (пул слов)</label>
     <div class="pills" id="spy-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
     <label class="field">Время обсуждения</label>
@@ -1187,6 +1197,102 @@
     <button id="ach-modal-btn" class="btn btn-lime btn-big">Круто! 🎉</button>
   </div>
 </div>
+
+<!-- ==== Экран: Правила ==== -->
+<section id="screen-rules" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>📖 Правила</h1>
+    <p class="subtitle">Как работает арена</p>
+
+    <details class="rules-block" open>
+      <summary>🏆 Рейтинг, XP и лиги</summary>
+      <p>Все режимы дают <b>рейтинг</b> и <b>XP</b>. Рейтинг влияет на лигу (Юниор → Мидл → Синьор → Стар → Легенда), XP — на уровень аккаунта. Каждая лига делится на 3 тиера (I / II / III).</p>
+      <p>Рейтинг может упасть после проигрыша в дуэли. XP растёт всегда, даже за поражение.</p>
+      <p><b>Дневной кап рейтинга:</b> 100 очков в день от тренировок. XP не капается.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>⚡ Спринт</summary>
+      <p>За заданное время (30/60/90 сек) отвечай на максимум вопросов. 4 варианта, автопереход.</p>
+      <p><b>Очки:</b> +1 рейтинг и +2 XP за правильный. Множитель по сложности: Простая ×1, Средняя ×1.5, Сложная ×2.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>🏆 Марафон</summary>
+      <p>Отвечай, пока не закончатся жизни. Каждая ошибка — минус жизнь. После ответа показывается правильный вариант.</p>
+      <p><b>Очки:</b> +2 рейтинг и +3 XP за правильный.</p>
+      <p><b>Риск = награда:</b>
+        <br>1 жизнь — ×3 очки
+        <br>3 жизни — ×2 очки
+        <br>5 жизней — ×1 очко</p>
+      <p>Плюс множитель сложности (×1 / ×1.5 / ×2). Итого при Сложной × 1 жизни — <b>×6</b> к очкам!</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>⚔ Блиц-дуэль</summary>
+      <p>1×1 асинхронно. Ты играешь 10 вопросов (15 сек на каждый), получаешь ссылку → отправляешь другу. Он играет те же вопросы. Автоматически сравниваются очки.</p>
+      <p><b>Очки за вопрос:</b> 100 базы + до 100 бонуса за скорость. Мгновенный ответ = 200, на последней секунде = 100, ошибка/таймаут = 0. Максимум за партию: 2000.</p>
+      <p><b>Рейтинг:</b> победа +8...+30 (ELO), поражение −4...−15 (вдвое меньше). Ничья ~0. XP: победа +50, ничья +30, поражение +20.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>🎭 Тусовка (командные игры)</summary>
+      <p>Игры на одном устройстве — Крокодил, Alias, 5 секунд, Шпион, Кто я?. Игроки передают телефон друг другу.</p>
+      <p><b>Очки:</b> +5 рейтинг и +15 XP за партию. Множитель сложности не влияет.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>🔥 Ежедневный стрик</summary>
+      <p>Заходи каждый день — растёт серия (стрик). За вход +10 XP.</p>
+      <p><b>Милстоуны (бонус XP):</b>
+        <br>3 дня: +50
+        <br>7 дней: +100
+        <br>14 дней: +200
+        <br>30 дней: +500
+        <br>60 дней: +1000
+        <br>100 дней: +2000
+        <br>365 дней: +5000</p>
+      <p>Пропустил день — стрик сбрасывается. Часовой пояс: <b>Москва (UTC+3)</b>.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>🎯 Задания дня</summary>
+      <p>Каждое утро в 00:00 МСК появляются 3 квеста. Прогресс отслеживается автоматически. Как только выполнил — нажми «+X XP», чтобы забрать награду.</p>
+      <p>Пропущенные квесты сгорают в полночь.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>🏅 Ачивки</summary>
+      <p>27 достижений в 8 категориях (первые шаги, спринт, марафон, дуэли, уровни, стрик, разное, лига). Открываются автоматически при выполнении условий, дают бонус XP.</p>
+      <p>Экран ачивок наверху показывает «Следующая цель» — самая близкая к получению.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>🏆 Кубок Профика (скоро)</summary>
+      <p>Недельный турнир на 128 игроков.</p>
+      <p><b>Понедельник–Пятница:</b> квалификация. Каждый день можно сыграть одну попытку. Плюс тренировочные партии дают дополнительные очки в кубок. Стрик 5 дней подряд — большой бонус.</p>
+      <p><b>Суббота–Воскресенье:</b> плей-офф. Сетка «сильный vs слабый» — 1-й посев против 128-го, 2-й против 127-го и т.д. Каждый раунд — асинхронный матч из 5 вопросов. Финал best-of-3.</p>
+      <p>Топ-3 недели — упоминание в канале <b>@profimatika_inf</b>.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>📈 Лига (скоро)</summary>
+      <p>Сезон длиной месяц. Каждый понедельник — публикация топ-5 по приросту рейтинга за неделю в канале.</p>
+      <p>Топ-1 в лиге Легенды получает почётный статус <b>«Ученик Линькова»</b> до конца следующего сезона.</p>
+    </details>
+
+    <details class="rules-block">
+      <summary>🐊 Правила поведения</summary>
+      <p>Игра для школьников — ведите себя дружелюбно. Обсуждение отвечающих во время дуэли — <b>fair play</b>. Если нашёл баг или несправедливость — напиши автору канала.</p>
+    </details>
+
+    <button class="btn btn-link btn-back" data-back="menu">← На арену</button>
+  </div>
+</section>
 
 <!-- ==== Модалка стрика (новый день) ==== -->
 <div id="streak-modal" class="levelup-overlay" style="display:none;">

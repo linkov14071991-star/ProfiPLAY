@@ -31,6 +31,72 @@
   --radius-sm: 10px;
 }
 
+/* ========== Правила: аккордеон ========== */
+.rules-block {
+  background: rgba(102, 54, 233, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 8px 0;
+  border: 1px solid rgba(102, 54, 233, 0.12);
+}
+.rules-block summary {
+  font-weight: 800;
+  color: var(--brand-purple);
+  cursor: pointer;
+  font-size: 15px;
+  list-style: none;
+  padding: 2px 0;
+  position: relative;
+  padding-right: 24px;
+}
+.rules-block summary::-webkit-details-marker { display: none; }
+.rules-block summary::after {
+  content: "▾";
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  transition: transform 0.2s;
+  color: var(--brand-purple);
+  font-size: 14px;
+}
+.rules-block[open] summary::after { transform: rotate(180deg); }
+.rules-block p {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--text-on-light);
+  line-height: 1.5;
+  opacity: 0.85;
+}
+.rules-block b { color: var(--brand-purple); }
+
+/* ========== Герой-блок главного экрана ========== */
+.hero-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 18px;
+}
+.hero-cat {
+  width: 180px;
+  height: 180px;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.35));
+  animation: heroFloat 3.6s ease-in-out infinite alternate;
+}
+@keyframes heroFloat {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-6px); }
+}
+.hero-title {
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 1px;
+  margin: 0;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.35);
+}
+.hero-title-accent { color: var(--brand-lime); }
+
 /* ========== Мотивирующая строка ========== */
 .motivate-line {
   display: flex;
@@ -896,6 +962,37 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   font-weight: 700;
   opacity: 0.75;
   margin-top: 3px;
+}
+
+/* Плашка множителя в setup-экране игры (перед стартом) */
+.mult-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, var(--c-rating), #FFA500);
+  color: #4a2500;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+  margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.35);
+}
+.mult-hint b { font-size: 16px; }
+
+/* Мини-плашка множителя в панели игры */
+.mult-badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 3px 10px;
+  background: var(--c-rating);
+  color: #4a2500;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 6px rgba(255, 215, 0, 0.5);
 }
 
 /* Личный рекорд в карточке режима */

@@ -14,6 +14,7 @@ const SCREENS = {
   profile: "screen-profile",
   leaderboard: "screen-leaderboard",
   achievements: "screen-achievements",
+  rules: "screen-rules",
   duelSetup: "screen-duel-setup",
   duelAccept: "screen-duel-accept",
   duelPlay: "screen-duel-play",
@@ -218,8 +219,15 @@ const sprint = {
   locked: false,
 };
 
-setupPills("sprint-difficulty", (v) => { sprint.difficulty = v; renderSprintRecord(); });
+setupPills("sprint-difficulty", (v) => { sprint.difficulty = v; renderSprintRecord(); updateSprintMult(); });
 setupPills("sprint-duration", (v) => { sprint.duration = v; renderSprintRecord(); }, (v) => parseInt(v, 10));
+
+function updateSprintMult() {
+  const map = {easy: "×1", medium: "×1.5", hard: "×2"};
+  const el = document.getElementById("sprint-mult");
+  if (el) el.textContent = map[sprint.difficulty] || "×1";
+}
+updateSprintMult();
 
 // --- Рекорды (сохраняем в памяти на время сессии + Telegram CloudStorage если доступно) ---
 const records = {};
@@ -374,7 +382,7 @@ async function sprintFinish() {
 
   // Начисляем очки на сервере
   const res = sprint.correct > 0
-    ? await awardTraining("sprint", sprint.correct)
+    ? await awardTraining("sprint", sprint.correct, {correct: sprint.correct, difficulty: sprint.difficulty})
     : {delta_awarded: 0, xp_awarded: 0};
 
   showProfikResult("sprint", {correct: sprint.correct});
@@ -508,7 +516,7 @@ document.getElementById("btn-alias-fail").addEventListener("click", () => {
 // ==============================
 const marathon = {
   difficulty: "easy",
-  lives: 5,
+  lives: 5,   // 1 / 3 / 5 (см. HTML)
   questions: [],
   qIndex: 0,
   livesLeft: 5,
@@ -518,8 +526,17 @@ const marathon = {
   locked: false,
 };
 
-setupPills("marathon-difficulty", (v) => (marathon.difficulty = v));
-setupPills("marathon-lives", (v) => (marathon.lives = v), (v) => parseInt(v, 10));
+setupPills("marathon-difficulty", (v) => { marathon.difficulty = v; updateMarathonMult(); });
+setupPills("marathon-lives", (v) => { marathon.lives = v; updateMarathonMult(); }, (v) => parseInt(v, 10));
+
+function updateMarathonMult() {
+  const dm = {easy: 1, medium: 1.5, hard: 2}[marathon.difficulty] || 1;
+  const lm = {1: 3, 3: 2, 5: 1}[marathon.lives] || 1;
+  const total = dm * lm;
+  const el = document.getElementById("marathon-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(total) ? total : total.toFixed(1));
+}
+updateMarathonMult();
 
 function marathonRecordKey() {
   return `marathon_${marathon.difficulty}_${marathon.lives}`;
@@ -662,7 +679,9 @@ async function marathonFinish(userQuit) {
     isNew && marathon.correct > 0 ? "block" : "none";
 
   const res = marathon.correct > 0
-    ? await awardTraining("marathon", marathon.correct * 2)
+    ? await awardTraining("marathon", marathon.correct * 2, {
+        correct: marathon.correct, difficulty: marathon.difficulty, lives: marathon.lives
+      })
     : {delta_awarded: 0, xp_awarded: 0};
 
   showProfikResult("marathon", {correct: marathon.correct});
@@ -1735,11 +1754,10 @@ async function renderLeaderboardTab(tab) {
  * points: сколько запрашиваем (сервер применит дневной кап к рейтингу; XP без капа)
  * Возвращает {delta_awarded, xp_awarded, new_rating, new_xp, level_info, leveled_up}
  */
-async function awardTraining(source, points) {
+async function awardTraining(source, points, meta = {}) {
   if (points <= 0) return null;
-  const res = await apiPost("/api/rating/training", {
-    init_data: INIT_DATA, source: source, points: points,
-  });
+  const body = {init_data: INIT_DATA, source: source, points: points, ...meta};
+  const res = await apiPost("/api/rating/training", body);
   if (res && res.new_rating) {
     if (currentProfile) {
       currentProfile.rating = res.new_rating;
