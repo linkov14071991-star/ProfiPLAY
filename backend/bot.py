@@ -65,7 +65,7 @@ async def start(message: Message, command: CommandObject):
     kb = _kb_open_app(WEBAPP_URL)
     await message.answer(
         f"Привет, {message.from_user.first_name}! 👋\n\n"
-        f"Это <b>Профик Арена</b> — арена по информатике: тренируйся, сражайся, побеждай.\n\n"
+        f"Это <b>Профик Арена</b> — играй, учись, побеждай.\n\n"
         f"⚠️ Для игры нужна подписка на канал {CHANNEL_USERNAME}.",
         reply_markup=kb,
         parse_mode="HTML",

@@ -1103,17 +1103,45 @@ async function apiPost(path, body) {
 }
 
 async function refreshProfile() {
+  const prevProfile = currentProfile;
   const p = await apiPost("/api/profile", {init_data: INIT_DATA});
   if (!p || !p.rating) return;
   currentProfile = p;
   // обновляем плашку на главной
   const strip = document.getElementById("my-strip");
   if (strip) {
-    document.getElementById("my-strip-league").textContent = `${p.league.emoji} ${p.league.name}`;
-    document.getElementById("my-strip-rating").textContent = p.rating;
+    document.getElementById("my-strip-league").textContent = `${p.league.emoji} ${p.league.display || p.league.name}`;
+    // Анимация рейтинга и XP при изменении
+    const rEl = document.getElementById("my-strip-rating");
+    const prevRating = prevProfile?.rating ?? p.rating;
+    if (prevRating !== p.rating) {
+      animateNumber(rEl, prevRating, p.rating, 800);
+      rEl.classList.add("value-pop");
+      setTimeout(() => rEl.classList.remove("value-pop"), 800);
+    } else {
+      rEl.textContent = p.rating;
+    }
     const lvl = p.level_info || {level: 1, progress_percent: 0};
     document.getElementById("my-strip-level-num").textContent = lvl.level;
-    document.getElementById("my-strip-xpfill").style.width = (lvl.progress_percent || 0) + "%";
+    const fillEl = document.getElementById("my-strip-xpfill");
+    const prevPct = parseFloat(fillEl.style.width) || 0;
+    const newPct = lvl.progress_percent || 0;
+    // Уровень поднялся — сначала долить до 100%, потом сбросить и залить до нового %
+    if (prevProfile && lvl.level > (prevProfile.level_info?.level || 1)) {
+      fillEl.style.transition = "width 400ms ease";
+      fillEl.style.width = "100%";
+      setTimeout(() => {
+        fillEl.style.transition = "none";
+        fillEl.style.width = "0%";
+        setTimeout(() => {
+          fillEl.style.transition = "width 600ms ease";
+          fillEl.style.width = newPct + "%";
+        }, 60);
+      }, 450);
+    } else {
+      fillEl.style.transition = "width 600ms ease";
+      fillEl.style.width = newPct + "%";
+    }
     // Стрик — показываем только если ≥1
     const streakEl = document.getElementById("my-strip-streak");
     if (p.current_streak && p.current_streak > 0) {
@@ -1142,6 +1170,12 @@ async function renderDashboard(profile) {
   document.getElementById("today-streak").textContent = streak;
   document.getElementById("today-xp").textContent = xpToday;
   document.getElementById("today-strip").style.display = "grid";
+
+  // Большая кнопка «Играть»
+  document.getElementById("btn-play").style.display = "flex";
+
+  // Рекорды и статистика на карточках режимов
+  renderCardStats(profile);
 
   // Свежие квесты
   let quests = [];
@@ -1182,7 +1216,13 @@ async function renderDashboard(profile) {
   helloMsg.textContent = msg;
   helloBox.style.display = "flex";
 
-  setupQuickPlay(quests);
+  // подсказка для сабтайтла большой кнопки Играть
+  const sub = document.getElementById("btn-play-sub");
+  if (sub) {
+    if (claimableCount > 0) sub.textContent = "Забери награды за задания и играй!";
+    else if (activeQuests.length > 0) sub.textContent = `Задание дня: ${activeQuests[0].title}`;
+    else sub.textContent = "Выбери режим ниже";
+  }
 }
 
 // ==============================
@@ -1315,38 +1355,60 @@ function greetingByHour() {
   return "Добрый вечер";
 }
 
-function setupQuickPlay(quests) {
-  const btn = document.getElementById("btn-quick-play");
-  const iconEl = document.getElementById("cta-icon");
-  const titleEl = document.getElementById("cta-title");
-  const subEl = document.getElementById("cta-sub");
-
-  const active = (quests || []).filter((q) => q.completed === 0);
-  const modeByQuest = {
-    "sprint_played":   {mode: "sprint",   icon: "⚡", title: "Играть Спринт",   sub: "Задание дня"},
-    "marathon_played": {mode: "marathon", icon: "🏆", title: "Играть Марафон",  sub: "Задание дня"},
-    "party_played":    {mode: "party",    icon: "🎉", title: "Открыть Тусовку", sub: "Задание дня"},
-    "duel_won":        {mode: "duel",     icon: "⚔",  title: "Начать Блиц-дуэль","sub": "Задание дня"},
-  };
-  let choice = null;
-  for (const q of active) {
-    if (modeByQuest[q.task_type]) { choice = modeByQuest[q.task_type]; break; }
-  }
-  if (!choice) {
-    choice = {mode: "sprint", icon: "⚡", title: "Быстрый Спринт", sub: "60 секунд · любая сложность"};
-  }
-  iconEl.textContent = choice.icon;
-  titleEl.textContent = choice.title;
-  subEl.textContent = choice.sub;
-  btn.style.display = "flex";
-  btn.onclick = () => {
-    hapticMedium();
-    if (choice.mode === "sprint")   { renderSprintRecord(); showScreen("sprintSetup"); }
-    if (choice.mode === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
-    if (choice.mode === "party")    { showScreen("party"); }
-    if (choice.mode === "duel")     { showScreen("duelSetup"); }
-  };
+/**
+ * Плавно проскроллить к секции режимов при клике «Играть».
+ */
+function scrollToModes() {
+  hapticMedium();
+  const anchor = document.getElementById("modes-anchor");
+  if (anchor) anchor.scrollIntoView({behavior: "smooth", block: "start"});
 }
+window.scrollToModes = scrollToModes;
+
+/**
+ * Показать личные рекорды/статистику на карточках режимов.
+ */
+function renderCardStats(profile) {
+  // Спринт: лучший рекорд по любой длительности из CloudStorage
+  let bestSprint = 0;
+  for (const d of ["easy", "medium", "hard"]) {
+    for (const t of [30, 60, 90]) {
+      const v = records[`sprint_${d}_${t}`] || 0;
+      if (v > bestSprint) bestSprint = v;
+    }
+  }
+  const spEl = document.getElementById("card-sprint-stat");
+  if (spEl) spEl.textContent = bestSprint > 0
+    ? `⚡ Рекорд: ${bestSprint}`
+    : `${profile.sprint_count || 0} партий сыграно`;
+
+  // Марафон: лучший рекорд из CloudStorage
+  let bestMarathon = 0;
+  for (const d of ["easy", "medium", "hard"]) {
+    for (const l of [3, 5, 7]) {
+      const v = records[`marathon_${d}_${l}`] || 0;
+      if (v > bestMarathon) bestMarathon = v;
+    }
+  }
+  const maEl = document.getElementById("card-marathon-stat");
+  if (maEl) maEl.textContent = bestMarathon > 0
+    ? `🏆 Лучший: ${bestMarathon} вопросов`
+    : `${profile.marathon_count || 0} партий сыграно`;
+
+  // Тусовка: число партий
+  const paEl = document.getElementById("card-party-stat");
+  const partyCount = profile.party_count || 0;
+  if (paEl) paEl.textContent = partyCount > 0 ? `🎉 ${partyCount} партий` : "";
+
+  // Дуэль: победы
+  const duEl = document.getElementById("card-duel-stat");
+  if (duEl) {
+    const won = profile.duel_won || 0;
+    const played = profile.duel_count || 0;
+    duEl.textContent = played > 0 ? `⚔ ${won} побед из ${played}` : "";
+  }
+}
+
 
 async function loadProfileScreen() {
   const p = await apiPost("/api/profile", {init_data: INIT_DATA});
@@ -1355,7 +1417,7 @@ async function loadProfileScreen() {
   const name = p.username ? "@" + p.username : (p.first_name || "Игрок");
   document.getElementById("profile-name").textContent = name;
   document.getElementById("profile-league-emoji").textContent = p.league.emoji;
-  document.getElementById("profile-league-name").textContent = p.league.name;
+  document.getElementById("profile-league-name").textContent = p.league.display || p.league.name;
   document.getElementById("profile-rating").textContent = p.rating;
   document.getElementById("profile-today-earned").textContent = p.training_earned_today;
   document.getElementById("profile-cap-remaining").textContent = p.training_remaining_today;
@@ -1541,7 +1603,7 @@ async function renderLeaderboardTab(tab) {
       <div class="lb-place ${placeClass}">${row.place}</div>
       <div class="lb-info">
         <div class="lb-name">${escapeHtml(displayName)}${isMe ? " · это ты" : ""}</div>
-        <div class="lb-league">${row.league.emoji} ${row.league.name}</div>
+        <div class="lb-league">${row.league.emoji} ${row.league.display || row.league.name}</div>
         ${gainHtml}
       </div>
       <div class="lb-rating">${row.rating}</div>
@@ -2146,7 +2208,7 @@ async function duelOpenIncoming(duelId) {
   document.getElementById("duel-accept-from").textContent = info.creator.name;
   const league = info.creator.league;
   document.getElementById("duel-accept-league").textContent =
-    `${league.emoji} ${league.name} · ${info.creator.rating}`;
+    `${league.emoji} ${league.display || league.name} · ${info.creator.rating}`;
   if (info.creator_score) {
     document.getElementById("duel-accept-opp-score").textContent = info.creator_score;
     document.getElementById("duel-accept-opp-score-wrap").style.display = "block";
@@ -2240,21 +2302,21 @@ async function openDuelHistory() {
   wrap.innerHTML = "";
   res.history.forEach((h) => {
     const row = document.createElement("div");
-    let outcome = "draw", badge = "=", cls = "draw";
-    if (h.won) { outcome = "win"; badge = "W"; cls = "win"; }
-    else if (!h.draw) { outcome = "loss"; badge = "L"; cls = "loss"; }
+    let outcome = "draw", cls = "draw";
+    let title = "🤝 Ничья";
+    if (h.won) { outcome = "win"; cls = "win"; title = "🏆 Победа"; }
+    else if (!h.draw) { outcome = "loss"; cls = "loss"; title = "❌ Поражение"; }
     row.className = "dh-row " + outcome;
     const deltaCls = h.my_delta > 0 ? "pos" : h.my_delta < 0 ? "neg" : "";
     const deltaTxt = (h.my_delta > 0 ? "+" : "") + h.my_delta;
     const dateShort = (h.created_at || "").split(" ")[0].split("-").reverse().slice(0, 2).join(".");
     row.innerHTML = `
-      <div class="dh-badge ${cls}">${badge}</div>
-      <div class="dh-info">
-        <div class="dh-opp">vs ${escapeHtml(h.opponent_name)}</div>
-        <div class="dh-date">${dateShort}</div>
+      <div class="dh-main">
+        <div class="dh-title ${cls}">${title}</div>
+        <div class="dh-opp">vs <b>${escapeHtml(h.opponent_name)}</b></div>
+        <div class="dh-meta">${h.my_score} : ${h.opp_score} · ${dateShort}</div>
       </div>
-      <div class="dh-score">${h.my_score}:${h.opp_score}</div>
-      <div class="dh-delta ${deltaCls}">${deltaTxt}</div>
+      <div class="dh-delta ${deltaCls}">${deltaTxt}<span class="dh-delta-lbl">рейтинг</span></div>
     `;
     wrap.appendChild(row);
   });

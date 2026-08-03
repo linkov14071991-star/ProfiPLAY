@@ -8,8 +8,8 @@
 
   --bg: var(--brand-purple-dark);
   --bg-elevated: #3A2A5C;
-  --card: #F5F1FC;
-  --card-alt: #ffffff;
+  --card: #F7F5FF;
+  --card-alt: #EFEAFB;
 
   --text-on-dark: #ffffff;
   --text-on-light: #2A1B4A;
@@ -385,55 +385,70 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 /* ========== История дуэлей ========== */
 .dh-row {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  gap: 10px;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 14px 16px;
   border-radius: var(--radius-sm);
   background: rgba(102, 54, 233, 0.05);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  border-left: 4px solid transparent;
 }
-.dh-row.win { background: linear-gradient(135deg, rgba(180, 242, 77, 0.2), rgba(180, 242, 77, 0.05)); }
-.dh-row.loss { background: linear-gradient(135deg, rgba(255, 77, 109, 0.15), rgba(255, 77, 109, 0.04)); }
-.dh-row.draw { background: rgba(158, 158, 158, 0.15); }
-.dh-badge {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 13px;
-  color: white;
+.dh-row.win {
+  background: linear-gradient(135deg, rgba(180, 242, 77, 0.22), rgba(180, 242, 77, 0.05));
+  border-left-color: var(--ok);
 }
-.dh-badge.win { background: var(--ok); color: var(--text-on-light); }
-.dh-badge.loss { background: var(--danger); }
-.dh-badge.draw { background: #9E9E9E; }
-.dh-info { min-width: 0; }
+.dh-row.loss {
+  background: linear-gradient(135deg, rgba(255, 77, 109, 0.15), rgba(255, 77, 109, 0.03));
+  border-left-color: var(--danger);
+}
+.dh-row.draw {
+  background: rgba(158, 158, 158, 0.15);
+  border-left-color: #9E9E9E;
+}
+.dh-main { min-width: 0; }
+.dh-title {
+  font-weight: 900;
+  font-size: 16px;
+  line-height: 1.15;
+  letter-spacing: 0.3px;
+}
+.dh-title.win  { color: var(--brand-purple); }
+.dh-title.loss { color: var(--danger); }
+.dh-title.draw { color: #555; }
 .dh-opp {
-  font-weight: 700;
+  font-size: 14px;
   color: var(--text-on-light);
+  margin-top: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 15px;
 }
-.dh-date { font-size: 11px; color: var(--text-on-light); opacity: 0.55; }
-.dh-score {
-  font-weight: 800;
+.dh-opp b { color: var(--brand-purple); }
+.dh-meta {
+  font-size: 11px;
   color: var(--text-on-light);
-  font-size: 15px;
-  white-space: nowrap;
+  opacity: 0.55;
+  margin-top: 2px;
 }
 .dh-delta {
-  font-weight: 800;
-  font-size: 15px;
-  min-width: 40px;
+  font-weight: 900;
+  font-size: 22px;
+  min-width: 60px;
   text-align: right;
+  line-height: 1;
 }
 .dh-delta.pos { color: var(--ok); }
 .dh-delta.neg { color: var(--danger); }
+.dh-delta-lbl {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0.55;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
 .dh-empty {
   text-align: center;
   padding: 40px 12px;
@@ -774,56 +789,71 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   margin-top: 2px;
 }
 
-/* ========== Большая CTA-кнопка «Быстрая игра» ========== */
-.btn.btn-cta {
-  background: linear-gradient(135deg, var(--brand-purple), var(--brand-purple-deep));
-  color: #fff;
-  padding: 18px 20px;
+/* ========== Большая кнопка «Играть» ========== */
+.btn.btn-play {
+  background: linear-gradient(135deg, var(--brand-lime), var(--brand-lime-dark));
+  color: var(--text-on-light);
+  padding: 22px 24px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   text-align: left;
   border-radius: var(--radius);
-  border: 2px solid rgba(180, 242, 77, 0.4);
-  box-shadow: 0 6px 24px rgba(102, 54, 233, 0.35);
-  margin-top: 0;
+  border: none;
+  box-shadow: 0 8px 28px rgba(180, 242, 77, 0.4);
+  margin: 0 0 16px;
+  animation: playPulse 2s ease-in-out infinite;
 }
-.btn.btn-cta:active { transform: scale(0.98); }
-.cta-icon {
-  font-size: 36px;
+@keyframes playPulse {
+  0%, 100% { box-shadow: 0 8px 28px rgba(180, 242, 77, 0.4); }
+  50% { box-shadow: 0 10px 36px rgba(180, 242, 77, 0.6); }
+}
+.btn.btn-play:active { transform: scale(0.97); animation: none; }
+.btn-play-icon {
+  font-size: 32px;
   line-height: 1;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--brand-lime);
-  border-radius: 12px;
-  color: var(--text-on-light);
+  background: var(--brand-purple-dark);
+  color: var(--brand-lime);
+  border-radius: 14px;
   flex-shrink: 0;
 }
-.cta-txt {
+.btn-play-txt {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-.cta-title {
-  font-size: 17px;
+.btn-play-title {
+  font-size: 26px;
   font-weight: 900;
-  line-height: 1.15;
+  line-height: 1;
+  letter-spacing: 0.5px;
 }
-.cta-sub {
+.btn-play-sub {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.75;
+  margin-top: 3px;
+}
+
+/* Личный рекорд в карточке режима */
+.card-stat {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 10px;
+  background: rgba(102, 54, 233, 0.12);
+  color: var(--brand-purple);
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
-  opacity: 0.8;
-  margin-top: 2px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
 }
-.cta-arrow {
-  font-size: 24px;
-  color: var(--brand-lime);
-  font-weight: 900;
-}
+.card-stat:empty { display: none; }
 
 /* ========== Персональная плашка на главной ========== */
 .my-strip {
@@ -891,6 +921,24 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   color: #fff;
   line-height: 1.1;
   margin-top: 2px;
+  transition: color 0.3s;
+}
+.value-pop {
+  animation: valuePop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes valuePop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.25); color: var(--brand-lime); }
+  100% { transform: scale(1); }
+}
+.my-strip-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-right: 6px;
+  vertical-align: 3px;
 }
 .my-strip-xpbar {
   margin-top: 6px;
@@ -1383,6 +1431,11 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   padding: 14px;
   border-radius: var(--radius-sm);
   text-align: center;
+}
+.profile-stat-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 4px;
 }
 .profile-stat-num {
   font-size: 24px;

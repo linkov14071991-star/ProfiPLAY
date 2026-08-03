@@ -254,7 +254,7 @@ def get_db():
         conn.close()
 
 
-# ---------- Лиги ----------
+# ---------- Лиги + подуровни ----------
 LEAGUES = [
     (1900, "Легенда", "👑"),
     (1600, "Стар", "⭐"),
@@ -262,24 +262,44 @@ LEAGUES = [
     (1000, "Мидл", "💻"),
     (0,    "Юниор", "🎓"),
 ]
+# Каждая лига делится на 3 подуровня (тиера). Размер тиера = диапазон лиги / 3.
+# Легенда — без подуровней.
+TIER_ROMAN = ["I", "II", "III"]
 
 
 def get_league(rating: int) -> dict:
     for threshold, name, emoji in LEAGUES:
         if rating >= threshold:
-            # найти следующий порог для прогресс-бара
-            next_threshold = None
-            for t, _, _ in LEAGUES:
-                if t > threshold:
-                    next_threshold = t
-                    break
+            # Следующий (ближайший) порог лиги для прогресс-бара
+            higher = [t for t, _, _ in LEAGUES if t > threshold]
+            next_threshold = min(higher) if higher else None
+
+            # Вычисляем подуровень (тиер I/II/III)
+            tier = None
+            tier_low = threshold
+            tier_high = next_threshold
+            if next_threshold is not None:
+                league_range = next_threshold - threshold
+                tier_size = league_range / 3
+                # tier_idx: 0, 1, 2
+                tier_idx = min(2, int((rating - threshold) / tier_size))
+                tier = TIER_ROMAN[tier_idx]
+                tier_low = threshold + int(tier_idx * tier_size)
+                tier_high = threshold + int((tier_idx + 1) * tier_size) if tier_idx < 2 else next_threshold
+
+            display = f"{name} {tier}" if tier else name
             return {
                 "name": name,
                 "emoji": emoji,
+                "tier": tier,
+                "display": display,
                 "threshold": threshold,
                 "next_threshold": next_threshold,
+                "tier_low": tier_low,
+                "tier_high": tier_high,
             }
-    return {"name": "Юниор", "emoji": "🎓", "threshold": 0, "next_threshold": 1000}
+    return {"name": "Юниор", "emoji": "🎓", "tier": "I", "display": "Юниор I",
+            "threshold": 0, "next_threshold": 1000, "tier_low": 0, "tier_high": 333}
 
 
 # ---------- Уровень аккаунта (по XP) ----------

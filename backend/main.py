@@ -565,6 +565,20 @@ async def get_or_create_profile(init_data: str = Body(..., embed=True)):
             "SELECT COUNT(*) AS c FROM rating_log WHERE user_id = ?",
             (user_id,),
         ).fetchone()["c"]
+        # Разбивка по режимам для карточек на главной
+        play_counts = db.execute(
+            """
+            SELECT source, COUNT(*) AS c FROM rating_log
+            WHERE user_id = ? AND source IN ('sprint','marathon','party','duel')
+            GROUP BY source
+            """,
+            (user_id,),
+        ).fetchall()
+        play_stats = {r["source"] + "_count": r["c"] for r in play_counts}
+        duel_won = db.execute(
+            "SELECT COUNT(*) AS c FROM duels WHERE winner_id = ? AND status = 'complete'",
+            (user_id,),
+        ).fetchone()["c"]
         xp_today = db.execute(
             """
             SELECT COALESCE(SUM(delta), 0) AS total
@@ -578,6 +592,11 @@ async def get_or_create_profile(init_data: str = Body(..., embed=True)):
     profile["training_cap"] = DAILY_TRAINING_CAP
     profile["training_remaining_today"] = max(0, DAILY_TRAINING_CAP - earned_today)
     profile["games_played"] = games_played
+    profile["sprint_count"] = play_stats.get("sprint_count", 0)
+    profile["marathon_count"] = play_stats.get("marathon_count", 0)
+    profile["party_count"] = play_stats.get("party_count", 0)
+    profile["duel_count"] = play_stats.get("duel_count", 0)
+    profile["duel_won"] = duel_won
     profile["xp_earned_today"] = xp_today or 0
     profile["current_streak"] = row["current_streak"] or 0
     profile["longest_streak"] = row["longest_streak"] or 0

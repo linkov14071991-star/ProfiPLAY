@@ -48,10 +48,10 @@
     </div>
     <div class="my-strip-left">
       <div class="my-strip-topline">
-        <span class="my-strip-league" id="my-strip-league">🎓 Юниор</span>
+        <span class="my-strip-league" id="my-strip-league">🎓 Юниор I</span>
         <span class="my-strip-streak" id="my-strip-streak" style="display:none;">🔥 <span id="my-strip-streak-num">0</span></span>
       </div>
-      <div class="my-strip-rating">🏆 <span id="my-strip-rating">1000</span></div>
+      <div class="my-strip-rating"><span class="my-strip-label">Рейтинг</span> <span id="my-strip-rating">1000</span></div>
       <div class="my-strip-xpbar">
         <div class="my-strip-xpfill" id="my-strip-xpfill" style="width:0%"></div>
       </div>
@@ -87,14 +87,13 @@
     </div>
   </div>
 
-  <!-- Быстрая игра — большой CTA -->
-  <button id="btn-quick-play" class="btn btn-cta btn-big" style="display:none;">
-    <span class="cta-icon" id="cta-icon">⚡</span>
-    <span class="cta-txt">
-      <span class="cta-title" id="cta-title">Быстрая игра</span>
-      <span class="cta-sub" id="cta-sub">Спринт · 60 сек</span>
+  <!-- Большая CTA «Играть» -->
+  <button id="btn-play" class="btn btn-play" onclick="scrollToModes()" style="display:none;">
+    <span class="btn-play-icon">▶</span>
+    <span class="btn-play-txt">
+      <span class="btn-play-title">Играть</span>
+      <span class="btn-play-sub" id="btn-play-sub">Выбери режим ниже</span>
     </span>
-    <span class="cta-arrow">→</span>
   </button>
 
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0 8px;">
@@ -102,13 +101,14 @@
     <button class="btn btn-secondary" onclick="openLeaderboard()" style="margin-top:0;">🏆 Лидерборд</button>
   </div>
 
-  <h3 style="padding-left:4px;">🎯 Тренировки соло</h3>
+  <h3 style="padding-left:4px;" id="modes-anchor">🎯 Тренировки соло</h3>
   <div class="games-grid">
     <div class="game-card" data-game="sprint">
       <div class="icon">⚡</div>
       <div class="info">
         <div class="title">Спринт</div>
         <div class="desc">Максимум правильных ответов за 60 секунд.</div>
+        <div class="card-stat" id="card-sprint-stat"></div>
       </div>
     </div>
     <div class="game-card" data-game="marathon">
@@ -116,6 +116,7 @@
       <div class="info">
         <div class="title">Марафон</div>
         <div class="desc">Пройди как можно дальше с 3 жизнями.</div>
+        <div class="card-stat" id="card-marathon-stat"></div>
       </div>
     </div>
   </div>
@@ -127,6 +128,7 @@
       <div class="info">
         <div class="title">Играть в компании</div>
         <div class="desc">Крокодил, Alias, 5 секунд, Шпион, Кто я? — все командные игры.</div>
+        <div class="card-stat" id="card-party-stat"></div>
       </div>
     </div>
   </div>
@@ -138,6 +140,7 @@
       <div class="info">
         <div class="title">Блиц-дуэль</div>
         <div class="desc">1×1 асинхронно. Вызови друга или соперника по рейтингу.</div>
+        <div class="card-stat" id="card-duel-stat"></div>
       </div>
     </div>
     <div class="game-card locked">
@@ -818,24 +821,28 @@
     <h3>Сегодня</h3>
     <div class="profile-stats">
       <div class="profile-stat">
+        <div class="profile-stat-icon">⚡</div>
         <div class="profile-stat-num" id="profile-today-earned">0</div>
-        <div class="profile-stat-label">очков за тренировки</div>
+        <div class="profile-stat-label">Очки сегодня</div>
       </div>
       <div class="profile-stat">
-        <div class="profile-stat-num"><span id="profile-cap-remaining">100</span>/100</div>
-        <div class="profile-stat-label">осталось до капа</div>
+        <div class="profile-stat-icon">🎯</div>
+        <div class="profile-stat-num"><span id="profile-cap-remaining">100</span></div>
+        <div class="profile-stat-label">До лимита</div>
       </div>
     </div>
 
     <h3>Всего</h3>
     <div class="profile-stats">
       <div class="profile-stat">
+        <div class="profile-stat-icon">🎮</div>
         <div class="profile-stat-num" id="profile-games-played">0</div>
-        <div class="profile-stat-label">сыграно партий</div>
+        <div class="profile-stat-label">Всего игр</div>
       </div>
       <div class="profile-stat">
+        <div class="profile-stat-icon">🏆</div>
         <div class="profile-stat-num">#<span id="profile-place">—</span></div>
-        <div class="profile-stat-label">место в общем топе</div>
+        <div class="profile-stat-label">В общем топе</div>
       </div>
     </div>
 
