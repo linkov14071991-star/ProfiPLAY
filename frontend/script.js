@@ -358,10 +358,19 @@ async function sprintStart() {
 async function sprintFinish() {
   clearInterval(sprint.timer);
   sprint.timer = null;
+  const oldRecord = getRecord();
   const isNewRecord = saveRecord(sprint.correct);
   document.getElementById("sprint-r-best").textContent = getRecord();
   document.getElementById("sprint-new-record").style.display =
     isNewRecord && sprint.correct > 0 ? "block" : "none";
+  // «До рекорда осталось X»
+  const toRec = document.getElementById("sprint-r-torec");
+  if (!isNewRecord && oldRecord > 0 && sprint.correct > 0) {
+    const diff = oldRecord - sprint.correct;
+    toRec.textContent = diff > 0 ? `· до рекорда ${diff}` : "";
+  } else {
+    toRec.textContent = "";
+  }
 
   // Начисляем очки на сервере
   const res = sprint.correct > 0
@@ -637,8 +646,16 @@ async function marathonStart() {
 }
 
 async function marathonFinish(userQuit) {
+  const oldMarathonRec = getMarathonRecord();
   const isNew = saveMarathonRecord(marathon.correct);
   document.getElementById("marathon-r-best").textContent = getMarathonRecord();
+  const toMRec = document.getElementById("marathon-r-torec");
+  if (!isNew && oldMarathonRec > 0 && marathon.correct > 0) {
+    const diff = oldMarathonRec - marathon.correct;
+    toMRec.textContent = diff > 0 ? `· до рекорда ${diff}` : "";
+  } else {
+    toMRec.textContent = "";
+  }
   document.getElementById("marathon-result-title").textContent =
     userQuit ? "🏳 Сдался" : "🏁 Марафон окончен";
   document.getElementById("marathon-new-record").style.display =
@@ -1174,6 +1191,9 @@ async function renderDashboard(profile) {
   // Большая кнопка «Играть»
   document.getElementById("btn-play").style.display = "flex";
 
+  // Мотивирующая строка (одна короткая цель)
+  renderMotivateLine(profile);
+
   // Рекорды и статистика на карточках режимов
   renderCardStats(profile);
 
@@ -1356,6 +1376,66 @@ function greetingByHour() {
 }
 
 /**
+ * Автотитул игрока по статистике.
+ * Возвращает строку типа «Любитель Спринтов», «Марафонец», «Дуэлянт».
+ */
+function computeUserTitle(p) {
+  const sp = p.sprint_count || 0;
+  const ma = p.marathon_count || 0;
+  const pa = p.party_count || 0;
+  const du = p.duel_count || 0;
+  const won = p.duel_won || 0;
+  const total = sp + ma + pa + du;
+
+  if (total === 0) return "Новичок";
+  if (won >= 25) return "🏆 Чемпион";
+  if (du >= 15 && won / Math.max(1, du) >= 0.6) return "⚔ Дуэлянт";
+  if (ma >= 20) return "🏆 Марафонец";
+  if (sp >= 30) return "⚡ Спринтер";
+  if (pa >= 10) return "🎉 Тусовщик";
+  if (du >= 5) return "🗡 Задира";
+  if (total >= 20) return "🎓 Ученик";
+  if (total >= 5) return "🌱 Начинающий";
+  return "🐣 Новичок";
+}
+
+/**
+ * Одна короткая мотивирующая строка на главной.
+ * Приоритет: невзятые награды → близко к уровню → до следующей лиги → задание дня.
+ */
+function renderMotivateLine(profile) {
+  const box = document.getElementById("motivate-line");
+  const iconEl = document.getElementById("motivate-icon");
+  const textEl = document.getElementById("motivate-text");
+  if (!box) return;
+
+  const toNext = profile.level_info?.to_next || 0;
+  const currentLeague = profile.league?.display || profile.league?.name || "";
+  const nextThreshold = profile.league?.next_threshold;
+  const rating = profile.rating || 0;
+  const toLeague = nextThreshold ? Math.max(0, nextThreshold - rating) : 0;
+
+  let icon = "🎯", text = "Выбери режим и начни день!";
+
+  if (toNext > 0 && toNext <= 80) {
+    icon = "⭐";
+    text = `До ${profile.level_info.level + 1}-го уровня осталось <b>${toNext} XP</b>`;
+  } else if (toLeague > 0 && toLeague <= 60) {
+    icon = "🏆";
+    text = `До следующей лиги осталось <b>${toLeague} рейтинга</b>`;
+  } else if (profile.training_remaining_today > 0) {
+    icon = "🔥";
+    text = `Сегодня можно заработать ещё <b>${profile.training_remaining_today} рейтинга</b>`;
+  } else {
+    icon = "💎";
+    text = `Отличная форма! <b>XP-кап</b> собран`;
+  }
+  iconEl.textContent = icon;
+  textEl.innerHTML = text;
+  box.style.display = "flex";
+}
+
+/**
  * Плавно проскроллить к секции режимов при клике «Играть».
  */
 function scrollToModes() {
@@ -1416,6 +1496,7 @@ async function loadProfileScreen() {
   currentProfile = p;
   const name = p.username ? "@" + p.username : (p.first_name || "Игрок");
   document.getElementById("profile-name").textContent = name;
+  document.getElementById("profile-title").textContent = computeUserTitle(p);
   document.getElementById("profile-league-emoji").textContent = p.league.emoji;
   document.getElementById("profile-league-name").textContent = p.league.display || p.league.name;
   document.getElementById("profile-rating").textContent = p.rating;
@@ -1535,6 +1616,39 @@ async function renderDailyQuests() {
 
 let currentLbTab = "top";
 
+function renderLbEmotion(tab, leaders, myId) {
+  const box = document.getElementById("lb-emotion");
+  if (!box) return;
+  if (!leaders.length) { box.style.display = "none"; return; }
+  const myIdx = leaders.findIndex((l) => l.telegram_id === myId || l.is_me);
+  const me = myIdx >= 0 ? leaders[myIdx] : null;
+
+  let text = null;
+  if (tab === "neighbors" && me) {
+    const above = myIdx > 0 ? leaders[myIdx - 1] : null;
+    if (above) {
+      const diff = above.rating - me.rating;
+      text = `До <b>${escapeHtml(above.first_name || "соперника")}</b> осталось <b>${diff} рейтинга</b>`;
+    }
+  } else if (tab === "top" && me && me.place > 10) {
+    const top10 = leaders.find((l) => l.place === 10);
+    if (top10) {
+      const diff = top10.rating - me.rating;
+      text = `До топ-10 осталось <b>${diff} рейтинга</b>`;
+    }
+  } else if (tab === "weekly" && leaders.length > 0) {
+    text = `🔥 На этой неделе играют <b>${leaders.length}</b> игроков`;
+  } else if (tab === "top" && me && me.place <= 3) {
+    text = `🏆 Ты в топ-3! Держи позицию!`;
+  }
+  if (text) {
+    box.innerHTML = text;
+    box.style.display = "flex";
+  } else {
+    box.style.display = "none";
+  }
+}
+
 async function openLeaderboard() {
   showScreen("leaderboard");
   currentLbTab = "top";
@@ -1581,6 +1695,9 @@ async function renderLeaderboardTab(tab) {
     leaders = (await r.json()).leaders || [];
     showWeekly = true;
   }
+
+  // Эмоциональная подсказка сверху
+  renderLbEmotion(tab, leaders, myId);
 
   wrap.innerHTML = "";
   if (!leaders.length) {
@@ -1759,6 +1876,22 @@ async function openAchievements() {
     if (a.earned !== b.earned) return b.earned - a.earned;
     return (b.progress / b.target) - (a.progress / a.target);
   });
+
+  // Следующая цель — самая близкая к получению из незаработанных
+  const nextGoal = res.items
+    .filter((it) => !it.earned && it.target > 0)
+    .sort((a, b) => (b.progress / b.target) - (a.progress / a.target))[0];
+  const nextBox = document.getElementById("ach-next-goal");
+  if (nextGoal) {
+    const remain = nextGoal.target - nextGoal.progress;
+    document.getElementById("ach-next-icon").textContent = nextGoal.icon;
+    document.getElementById("ach-next-title").textContent = nextGoal.title;
+    document.getElementById("ach-next-desc").textContent =
+      `Осталось: ${remain} · награда +${nextGoal.xp} XP`;
+    nextBox.style.display = "flex";
+  } else {
+    nextBox.style.display = "none";
+  }
 
   wrap.innerHTML = "";
   items.forEach((it) => {

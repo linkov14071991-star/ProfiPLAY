@@ -40,6 +40,12 @@
     <span class="brand-badge">профиматика</span>
   </div>
 
+  <!-- Мотивирующая строка (цель дня/уровня) -->
+  <div id="motivate-line" class="motivate-line" style="display:none;">
+    <span class="motivate-icon" id="motivate-icon">🎯</span>
+    <span class="motivate-text" id="motivate-text">До нового уровня 39 XP</span>
+  </div>
+
   <!-- Персональная плашка: уровень + лига + рейтинг -->
   <div id="my-strip" class="my-strip" onclick="showScreen('profile')" style="display:none;">
     <div class="my-strip-level" id="my-strip-level">
@@ -176,35 +182,35 @@
       <div class="icon">🐊</div>
       <div class="info">
         <div class="title">Крокодил</div>
-        <div class="desc">Объясняй термины жестами.</div>
+        <div class="desc">🎭 Покажи жестами</div>
       </div>
     </div>
     <div class="game-card" data-game="alias">
       <div class="icon">🗣</div>
       <div class="info">
         <div class="title">Alias</div>
-        <div class="desc">Объясняй словами. Запретные слова нельзя!</div>
+        <div class="desc">💬 Объясняй словами</div>
       </div>
     </div>
     <div class="game-card" data-game="fivesec">
       <div class="icon">⏱</div>
       <div class="info">
         <div class="title">5 секунд</div>
-        <div class="desc">Назови 3 ответа за 5 секунд.</div>
+        <div class="desc">⚡ Ответь быстрее всех</div>
       </div>
     </div>
     <div class="game-card" data-game="spy">
       <div class="icon">🕵</div>
       <div class="info">
         <div class="title">Шпион</div>
-        <div class="desc">Найди шпиона среди своих.</div>
+        <div class="desc">🕵 Найди предателя</div>
       </div>
     </div>
     <div class="game-card" data-game="whoami">
       <div class="icon">❓</div>
       <div class="info">
         <div class="title">Кто я?</div>
-        <div class="desc">Держи телефон ко лбу, задавай «да/нет».</div>
+        <div class="desc">🤔 Угадай себя</div>
       </div>
     </div>
   </div>
@@ -220,14 +226,13 @@
   </div>
   <div class="card">
     <h1>🐊 Крокодил</h1>
-    <p class="subtitle">Информатика</p>
-    <p>Ведущий видит слово и объясняет его <b>жестами</b>, остальные угадывают. Кнопки — если угадали или пропускаете.</p>
+    <p class="subtitle">Показывай жестами — друзья угадывают</p>
 
     <label class="field">Сложность</label>
     <div class="pills" id="croco-difficulty">
-      <button class="pill active" data-value="easy">Простая</button>
-      <button class="pill" data-value="medium">Средняя</button>
-      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
     </div>
 
     <label class="field">Длительность раунда</label>
@@ -295,8 +300,7 @@
   </div>
   <div class="card">
     <h1>⚡ Спринт</h1>
-    <p class="subtitle">Информатика · соло</p>
-    <p>Отвечайте как можно быстрее. За заданное время наберите максимум правильных ответов.</p>
+    <p class="subtitle">Как можно больше правильных за таймер</p>
 
     <div class="profik-chip">
       <img src="/profik.svg" alt="Профик" class="profik-chip-img">
@@ -305,9 +309,9 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="sprint-difficulty">
-      <button class="pill active" data-value="easy">Простая</button>
-      <button class="pill" data-value="medium">Средняя</button>
-      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
     </div>
 
     <label class="field">Длительность</label>
@@ -386,10 +390,13 @@
 
     <div id="sprint-achievements" class="result-achievements reveal"></div>
 
-    <p class="reveal" style="text-align:center; opacity:0.7; margin:12px 0 8px;">Личный рекорд: <b id="sprint-r-best">0</b></p>
+    <p class="reveal" style="text-align:center; opacity:0.7; margin:12px 0 8px;">
+      Личный рекорд: <b id="sprint-r-best">0</b>
+      <span id="sprint-r-torec" style="color:var(--brand-lime); font-weight:800; margin-left:8px;"></span>
+    </p>
 
     <div class="reveal">
-      <button id="btn-sprint-again" class="btn btn-primary btn-big">Ещё раз</button>
+      <button id="btn-sprint-again" class="btn btn-primary btn-big">🚀 Попробовать ещё</button>
       <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
     </div>
   </div>
@@ -403,8 +410,7 @@
   </div>
   <div class="card">
     <h1>🏆 Марафон</h1>
-    <p class="subtitle">Информатика · соло</p>
-    <p>Отвечайте на вопросы, пока не закончатся жизни. Каждая ошибка — минус одна жизнь. После ответа видно правильный вариант.</p>
+    <p class="subtitle">Отвечай, пока есть жизни. Ошибка = −1 ❤️</p>
 
     <div class="profik-chip">
       <img src="/profik.svg" alt="Профик" class="profik-chip-img">
@@ -413,9 +419,9 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="marathon-difficulty">
-      <button class="pill active" data-value="easy">Простая</button>
-      <button class="pill" data-value="medium">Средняя</button>
-      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
     </div>
 
     <label class="field">Количество жизней</label>
@@ -497,9 +503,12 @@
 
     <div id="marathon-achievements" class="result-achievements reveal"></div>
 
-    <p class="reveal" style="text-align:center; opacity:0.7; margin:12px 0 8px;">Личный рекорд: <b id="marathon-r-best">0</b></p>
+    <p class="reveal" style="text-align:center; opacity:0.7; margin:12px 0 8px;">
+      Личный рекорд: <b id="marathon-r-best">0</b>
+      <span id="marathon-r-torec" style="color:var(--brand-lime); font-weight:800; margin-left:8px;"></span>
+    </p>
     <div class="reveal">
-      <button id="btn-marathon-again" class="btn btn-primary btn-big">Ещё раз</button>
+      <button id="btn-marathon-again" class="btn btn-primary btn-big">🚀 Попробовать ещё</button>
       <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
     </div>
   </div>
@@ -513,14 +522,13 @@
   </div>
   <div class="card">
     <h1>🗣 Alias</h1>
-    <p class="subtitle">Информатика · командная</p>
-    <p>Ведущий видит слово и <b>объясняет его словами</b>, не называя сам термин и <b>запретные слова</b>. Остальные угадывают.</p>
+    <p class="subtitle">Объясняй словами · без запретных</p>
 
     <label class="field">Сложность</label>
     <div class="pills" id="alias-difficulty">
-      <button class="pill active" data-value="easy">Простая</button>
-      <button class="pill" data-value="medium">Средняя</button>
-      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
     </div>
 
     <label class="field">Длительность раунда</label>
@@ -594,8 +602,7 @@
   </div>
   <div class="card">
     <h1>⚔ Блиц-дуэль</h1>
-    <p class="subtitle">1×1 асинхронно</p>
-    <p><b>10 вопросов</b>, по <b>15 секунд</b> на каждый. Очки: 100 за правильный + до 100 бонуса за скорость. Играешь сейчас — соперник примет вызов, когда сможет.</p>
+    <p class="subtitle">10 вопросов × 15 сек · очки за скорость</p>
 
     <div class="profik-chip">
       <img src="/profik.svg" alt="Профик" class="profik-chip-img">
@@ -604,9 +611,9 @@
 
     <label class="field">Сложность вопросов</label>
     <div class="pills" id="duel-difficulty">
-      <button class="pill" data-value="easy">Простая</button>
-      <button class="pill active" data-value="medium">Средняя</button>
-      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill pill-diff" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
+      <button class="pill pill-diff active" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
     </div>
 
     <p style="font-size:13px; opacity:0.7; margin-top:16px;">💡 После твоей партии получишь ссылку — отправишь другу в Telegram. Он сыграет когда захочет, оба увидите результат.</p>
@@ -766,7 +773,8 @@
   </div>
 
   <div class="card">
-    <h1>👤 <span id="profile-name">Игрок</span></h1>
+    <h1 style="margin-bottom:0;">👤 <span id="profile-name">Игрок</span></h1>
+    <div class="profile-title" id="profile-title">Новичок</div>
 
     <div class="profile-hero">
       <div class="profile-level-badge">
@@ -862,6 +870,16 @@
     <h1>🏆 Ачивки</h1>
     <p class="subtitle">Получено: <b id="ach-earned-count">0</b> из <b id="ach-total-count">27</b></p>
     <div class="ach-progress-bar"><div id="ach-progress-fill" class="ach-progress-fill" style="width:0%"></div></div>
+
+    <div class="ach-next-goal" id="ach-next-goal" style="display:none;">
+      <div class="ach-next-icon" id="ach-next-icon">🏆</div>
+      <div class="ach-next-info">
+        <div class="ach-next-label">Следующая цель</div>
+        <div class="ach-next-title" id="ach-next-title">Победитель</div>
+        <div class="ach-next-desc" id="ach-next-desc">Осталось выиграть 2 дуэли</div>
+      </div>
+    </div>
+
     <div id="ach-grid" class="ach-grid"></div>
     <button class="btn btn-link btn-back" data-back="profile">← Назад</button>
   </div>
@@ -883,6 +901,7 @@
     </div>
 
     <p class="subtitle" id="leaderboard-subtitle" style="margin-top:8px;">Топ игроков по рейтингу</p>
+    <div class="lb-emotion" id="lb-emotion" style="display:none;"></div>
     <div id="leaderboard-list"></div>
     <button class="btn btn-link btn-back" data-back="menu">← На арену</button>
   </div>
@@ -896,8 +915,7 @@
   </div>
   <div class="card">
     <h1>❓ Кто я?</h1>
-    <p class="subtitle">Информатика · для компании</p>
-    <p>Игрок держит телефон экраном <b>к остальным</b> (сам не смотрит). Задаёт вопросы «да/нет» — друзья отвечают вслух. Игрок пытается угадать, что за термин.</p>
+    <p class="subtitle">Экран ко лбу · задавай «да/нет»</p>
 
     <label class="field">Игроков</label>
     <div class="pills" id="whoami-players">
@@ -909,9 +927,9 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="whoami-difficulty">
-      <button class="pill active" data-value="easy">Простая</button>
-      <button class="pill" data-value="medium">Средняя</button>
-      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
     </div>
 
     <label class="field">Длительность хода</label>
@@ -978,8 +996,7 @@
   </div>
   <div class="card">
     <h1>⏱ 5 секунд</h1>
-    <p class="subtitle">Информатика · для компании</p>
-    <p>Игроки по очереди берут телефон. Задача — за 5 секунд назвать <b>3 ответа</b> на категорию. Успел — очко.</p>
+    <p class="subtitle">Назови 3 ответа за 5 секунд · по очереди</p>
 
     <label class="field">Игроков</label>
     <div class="pills" id="five-players">
@@ -991,9 +1008,9 @@
 
     <label class="field">Сложность категорий</label>
     <div class="pills" id="five-difficulty">
-      <button class="pill active" data-value="easy">Простая</button>
-      <button class="pill" data-value="medium">Средняя</button>
-      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
       <button class="pill" data-value="mixed">Микс</button>
     </div>
 
@@ -1054,8 +1071,7 @@
   </div>
   <div class="card">
     <h1>🕵 Шпион</h1>
-    <p class="subtitle">Информатика · для компании</p>
-    <p>Каждому игроку показывается слово — кроме одного, он <b>Шпион</b>. Обсуждаете и голосуете за подозреваемого. Шпион пытается угадать слово.</p>
+    <p class="subtitle">Найди шпиона среди своих</p>
 
     <label class="field">Игроков</label>
     <div class="pills" id="spy-players">
@@ -1067,9 +1083,9 @@
 
     <label class="field">Сложность (пул слов)</label>
     <div class="pills" id="spy-difficulty">
-      <button class="pill active" data-value="easy">Простая</button>
-      <button class="pill" data-value="medium">Средняя</button>
-      <button class="pill" data-value="hard">Сложная</button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
     </div>
 
     <label class="field">Время обсуждения</label>

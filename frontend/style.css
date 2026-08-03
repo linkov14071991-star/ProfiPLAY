@@ -19,9 +19,39 @@
   --skip: #FF8C42;
   --danger: #FF4D6D;
 
+  /* Семантические акценты (цвет как смысл) */
+  --c-rating: #FFD700;   /* Рейтинг — золото */
+  --c-xp:     #5EC0F5;   /* XP — голубой */
+  --c-ach:    #FF8C42;   /* Ачивки — оранжевый */
+  --c-streak: #FF6B35;   /* Серия — огонь */
+  --c-win:    #4ADE80;   /* Победа — зелёный */
+  --c-loss:   #FF4D6D;   /* Поражение — красный */
+
   --radius: 16px;
   --radius-sm: 10px;
 }
+
+/* ========== Мотивирующая строка ========== */
+.motivate-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, rgba(255, 140, 66, 0.18), rgba(180, 242, 77, 0.1));
+  border-left: 3px solid var(--brand-lime);
+  border-radius: 10px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  animation: motSlideIn 0.5s ease;
+}
+@keyframes motSlideIn {
+  from { transform: translateX(-8px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.motivate-icon { font-size: 18px; line-height: 1; }
+.motivate-text b { color: var(--brand-lime); }
 
 * { box-sizing: border-box; }
 
@@ -124,7 +154,16 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   position: relative;
   overflow: hidden;
 }
-.game-card:active { transform: scale(0.98); }
+.game-card {
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+  animation: cardFadeIn 0.4s ease both;
+}
+.game-card:active { transform: scale(0.97); }
+.game-card:hover { box-shadow: 0 4px 16px rgba(102, 54, 233, 0.15); }
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .game-card.locked { opacity: 0.5; cursor: not-allowed; }
 .game-card .icon {
   font-size: 36px;
@@ -171,11 +210,27 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.2s, color 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+.pill:active { transform: scale(0.95); }
+.pill.active { transform: scale(1.03); }
 .pill.active {
   background: var(--brand-purple);
   color: white;
+}
+/* Пиллы с двумя строками (сложность + звёзды) */
+.pill-diff {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+}
+.pill-diff .pill-hint {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.75;
+  letter-spacing: 1px;
 }
 /* Пиллы внутри тёмных экранов */
 .card-dark .pill, .screen-dark .pill {
@@ -203,7 +258,9 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   transition: opacity 0.15s, transform 0.1s;
   font-family: inherit;
 }
-.btn:active { opacity: 0.85; transform: scale(0.98); }
+.btn { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s, box-shadow 0.2s; }
+.btn:active { opacity: 0.9; transform: scale(0.96); }
+.btn:hover { transform: translateY(-1px); }
 .btn-big { padding: 18px; font-size: 17px; }
 .btn-primary { background: var(--brand-purple); color: white; }
 .btn-lime { background: var(--brand-lime); color: var(--text-on-light); }
@@ -562,8 +619,8 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   color: white;
 }
 .reward-chip.xp {
-  background: linear-gradient(135deg, var(--brand-lime), var(--brand-lime-dark));
-  color: var(--text-on-light);
+  background: linear-gradient(135deg, var(--c-xp), #38B0F0);
+  color: #fff;
 }
 .reward-chip.pos::before { content: "+"; }
 
@@ -949,14 +1006,29 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 }
 .my-strip-xpfill {
   height: 100%;
-  background: var(--brand-lime);
+  background: linear-gradient(90deg, var(--c-xp), #38B0F0);
   border-radius: 999px;
   transition: width 0.5s ease;
+  box-shadow: 0 0 8px rgba(94, 192, 245, 0.5);
 }
 .my-strip-arrow {
   font-size: 22px;
   color: var(--brand-lime);
   font-weight: 700;
+}
+
+/* ========== Титул игрока под ником ========== */
+.profile-title {
+  display: inline-block;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, var(--brand-purple), var(--brand-purple-deep));
+  color: var(--brand-lime);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin: 4px 0 8px;
 }
 
 /* ========== Уровень в профиле ========== */
@@ -1049,8 +1121,55 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   border-color: var(--brand-lime);
 }
 .ach-tile.locked {
-  filter: grayscale(0.9);
-  opacity: 0.6;
+  opacity: 0.55;
+  background: rgba(255, 140, 66, 0.08);
+  border: 2px dashed rgba(255, 140, 66, 0.3);
+}
+.ach-tile.locked .ach-tile-icon {
+  filter: grayscale(0.5) blur(0.5px);
+  opacity: 0.7;
+}
+.ach-tile.locked .ach-tile-title {
+  color: var(--c-ach);
+  opacity: 0.75;
+}
+
+/* Следующая цель — карточка сверху */
+.ach-next-goal {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(255, 140, 66, 0.2), rgba(255, 215, 0, 0.1));
+  border: 2px solid var(--c-ach);
+  border-radius: var(--radius);
+  margin: 16px 0;
+}
+.ach-next-icon {
+  font-size: 40px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(255, 140, 66, 0.4));
+}
+.ach-next-info { flex: 1; min-width: 0; }
+.ach-next-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--c-ach);
+  text-transform: uppercase;
+}
+.ach-next-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-on-light);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+.ach-next-desc {
+  font-size: 12px;
+  color: var(--text-on-light);
+  opacity: 0.7;
+  margin-top: 3px;
 }
 .ach-tile-icon {
   font-size: 34px;
@@ -1448,6 +1567,22 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   opacity: 0.7;
   margin-top: 4px;
 }
+
+/* ========== Мотивирующая строка лидерборда ========== */
+.lb-emotion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(180, 242, 77, 0.18), rgba(102, 54, 233, 0.06));
+  border-left: 3px solid var(--brand-lime);
+  border-radius: 10px;
+  margin: 10px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-on-light);
+}
+.lb-emotion b { color: var(--brand-purple); }
 
 /* ========== Табы лидерборда ========== */
 .lb-tabs {
