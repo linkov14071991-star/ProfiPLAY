@@ -257,6 +257,19 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+.game-card .badge-new {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #ffd700;
+  color: #12151c;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 
 /* ========== Pills (выбор) ========== */
 .pills {

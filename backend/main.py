@@ -1312,6 +1312,54 @@ async def duel_info(
         return _duel_public_view(db, duel, me["telegram_id"])
 
 
+# ---------- Python-режим (MVP) ----------
+@app.post("/api/python/telemetry_batch")
+async def python_telemetry_batch(payload: dict = Body(...)):
+    """
+    Приём батчей телеметрии Python-режима.
+    Пока просто пишем в файл — позже перенесём в SQLite таблицу python_telemetry.
+    """
+    events = payload.get("events", [])
+    if not events:
+        return {"ok": True, "received": 0}
+    try:
+        DATA_DIR = Path(__file__).parent / "data"
+        DATA_DIR.mkdir(exist_ok=True)
+        log_path = DATA_DIR / "python_telemetry.jsonl"
+        with open(log_path, "a", encoding="utf-8") as f:
+            for ev in events:
+                f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+    except Exception as e:
+        # не роняем сессию из-за телеметрии
+        print(f"[python_telemetry] {e}")
+    return {"ok": True, "received": len(events)}
+
+
+@app.post("/api/python/session_end")
+async def python_session_end(payload: dict = Body(...)):
+    """
+    Финализация сессии Python-режима: начисление XP.
+    Требует init_data для авторизации.
+    """
+    init_data = payload.get("init_data", "")
+    xp_earned = int(payload.get("xpEarned", 0))
+    if xp_earned < 0 or xp_earned > 500:
+        xp_earned = 0
+    if not init_data:
+        return {"ok": True, "xp_added": 0, "reason": "no_auth"}
+    tg_user = verify_telegram_init_data(init_data, BOT_TOKEN)
+    if not tg_user:
+        return {"ok": True, "xp_added": 0, "reason": "bad_auth"}
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        db.execute(
+            "UPDATE users SET xp = COALESCE(xp,0) + ? WHERE telegram_id = ?",
+            (xp_earned, me["telegram_id"]),
+        )
+        db.commit()
+    return {"ok": True, "xp_added": xp_earned}
+
+
 # ---------- Раздача статики фронтенда ----------
 # Всё, что не /api/*, отдаём как статику
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

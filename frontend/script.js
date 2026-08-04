@@ -108,6 +108,7 @@ document.body.addEventListener("click", (e) => {
   if (game === "spy") showScreen("spySetup");
   if (game === "whoami") showScreen("whoamiSetup");
   if (game === "duel") showScreen("duelSetup");
+  if (game === "python") window.location.href = "python/index.html";
 });
 
 // Кнопка "В меню" на любом экране

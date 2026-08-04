@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Python · Профик Арена</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <button id="btn-back" class="icon-btn" aria-label="назад">←</button>
+      <div class="topbar-title" id="topbar-title">Python</div>
+      <button id="btn-menu" class="icon-btn" aria-label="меню">≡</button>
+    </header>
+
+    <!-- ── Экран игры (пролог, уровни, sandbox) ── -->
+    <div id="screen-game" class="screen">
+      <div id="goal-banner" class="goal-banner hidden"></div>
+
+      <main id="stage">
+        <canvas id="canvas" width="360" height="480"></canvas>
+        <div id="console-overlay" class="console-overlay hidden"></div>
+        <div id="profik-bubble" class="profik-bubble hidden"></div>
+      </main>
+
+      <section id="editor" class="editor"></section>
+
+      <section id="controls" class="controls">
+        <button id="btn-run" class="btn-run">▶ показать</button>
+        <div id="replay-controls" class="replay-controls hidden"></div>
+      </section>
+    </div>
+
+    <!-- ── Экран карты миров ── -->
+    <div id="screen-map" class="screen hidden">
+      <div class="map-header">
+        <div class="map-subtitle">Свиток миров</div>
+        <div class="map-title">Профик и Живой Python</div>
+      </div>
+      <div id="map-scroll" class="map-scroll"></div>
+    </div>
+
+    <!-- ── Экран церемонии (Осколок) ── -->
+    <div id="screen-ceremony" class="screen hidden">
+      <div class="ceremony-content">
+        <div id="ceremony-shard" class="ceremony-shard"></div>
+        <div id="ceremony-title" class="ceremony-title"></div>
+        <div id="ceremony-lore" class="ceremony-lore"></div>
+        <button id="ceremony-next" class="btn-next">дальше →</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
