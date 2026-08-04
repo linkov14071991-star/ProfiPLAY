@@ -1,300 +1,250 @@
-// main.js — bootstrap Python-режима + screen router.
+// main.js — Python-курс. Роутер и состояние.
 
-import { parse } from './lang/parser.js';
-import { execute } from './exec/engine.js';
-import { Renderer } from './render/renderer.js';
 import { sound } from './audio/sound_engine.js';
-import { ProfikDialog } from './ui/profik_dialog.js';
-import { Console } from './ui/console.js';
-import { Editor } from './ui/editor.js';
 import { cloud } from './state/cloud_storage.js';
 import { telemetry } from './telemetry/client.js';
-import { PROLOGUE_SCENES } from './levels/prologue.js';
-import { DUNES_LEVELS } from './levels/dunes.js';
-import { WORLDS } from './worlds.js';
-import { MapScreen } from './screens/map.js';
-import { LevelScreen } from './screens/level.js';
+import { Onboarding } from './onboarding.js';
+import { TreeScreen } from './tree.js';
+import { LessonPlayer } from './lesson.js';
+import { CURRICULUM, findLesson } from './curriculum/index.js';
+import { buildDaily, todayKey } from './daily.js';
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
 tg?.expand();
 
+// ── DOM ──
+const screens = {
+  onboard: document.getElementById('s-onboard'),
+  tree: document.getElementById('s-tree'),
+  lesson: document.getElementById('s-lesson'),
+  result: document.getElementById('s-result'),
+};
 const els = {
-  screens: {
-    game: document.getElementById('screen-game'),
-    map: document.getElementById('screen-map'),
-    ceremony: document.getElementById('screen-ceremony'),
-  },
-  canvas: document.getElementById('canvas'),
-  console: document.getElementById('console-overlay'),
-  bubble: document.getElementById('profik-bubble'),
-  editor: document.getElementById('editor'),
-  btnRun: document.getElementById('btn-run'),
-  btnBack: document.getElementById('btn-back'),
-  btnMenu: document.getElementById('btn-menu'),
-  topbarTitle: document.getElementById('topbar-title'),
-  controls: document.getElementById('controls'),
-  goalBanner: document.getElementById('goal-banner'),
-  ceremonyShard: document.getElementById('ceremony-shard'),
-  ceremonyTitle: document.getElementById('ceremony-title'),
-  ceremonyLore: document.getElementById('ceremony-lore'),
-  ceremonyNext: document.getElementById('ceremony-next'),
+  onboardWrap: document.getElementById('onboard-wrap'),
+  treeScroll: document.getElementById('tree-scroll'),
+  treeBack: document.getElementById('tree-back'),
+  statStreak: document.getElementById('stat-streak'),
+  statXp: document.getElementById('stat-xp'),
+  dailyCard: document.getElementById('daily-card'),
+  // lesson
+  lessonBody: document.getElementById('lesson-body'),
+  lessonFooter: document.getElementById('lesson-footer'),
+  checkBtn: document.getElementById('check-btn'),
+  progressFill: document.getElementById('progress-fill'),
+  hearts: document.getElementById('hearts'),
+  lessonQuit: document.getElementById('lesson-quit'),
+  feedback: document.getElementById('feedback'),
+  feedbackHead: document.getElementById('feedback-head'),
+  feedbackExplain: document.getElementById('feedback-explain'),
+  continueBtn: document.getElementById('continue-btn'),
+  // result
+  resultWrap: document.getElementById('result-wrap'),
 };
 
-// корректный размер canvas
-requestAnimationFrame(() => {
-  const rect = els.canvas.getBoundingClientRect();
-  els.canvas.style.height = (rect.width * 4 / 3) + 'px';
-});
+// ── state ──
+let state = {
+  profile: null,          // { goal, experience, startUnitIndex }
+  done: new Set(),        // пройденные lessonId
+  crowns: {},             // lessonId -> accuracy
+  xp: 0,
+  streak: 0,
+  lastActiveDay: null,
+  dailyDoneDay: null,
+};
 
-const renderer = new Renderer(els.canvas);
-const dialog = new ProfikDialog(els.bubble);
-const console_ = new Console(els.console);
-const editor = new Editor(els.editor);
-
-renderer.callbacks.onBubbleShow = (text, x, y) => dialog.show(text, { x, y, autohideMs: 1400 });
-renderer.callbacks.onBubbleHide = () => dialog.hide();
-renderer.callbacks.onConsoleWrite = (text) => console_.write(text);
+// ── init sound on gesture ──
+document.addEventListener('pointerdown', async () => {
+  await sound.init(); await sound.resume();
+}, { once: true });
 
 telemetry.init(tg?.initDataUnsafe?.user?.id ?? 0);
 
-// звук — при первом тапе
-document.addEventListener('pointerdown', async () => {
-  await sound.init();
-  await sound.resume();
-}, { once: true });
-
-// ── Screens ─────────────────────────────────
-const mapScreen = new MapScreen(els.screens.map, (worldId) => enterWorld(worldId));
-const levelScreen = new LevelScreen({ renderer, editor, dialog, console_, els, tg });
-
-let currentScreen = 'prologue';   // 'prologue' | 'map' | 'level' | 'ceremony'
-let prologueIndex = 0;
-let currentWorldId = null;
-let currentLevelIndex = 0;
-
-function showScreen(name) {
-  // prologue и level шэрят #screen-game
-  els.screens.game.classList.toggle('hidden', name !== 'prologue' && name !== 'level');
-  els.screens.map.classList.toggle('hidden', name !== 'map');
-  els.screens.ceremony.classList.toggle('hidden', name !== 'ceremony');
-  // при показе canvas — пересчитать размер
-  if (name === 'prologue' || name === 'level') {
-    requestAnimationFrame(() => {
-      const rect = els.canvas.getBoundingClientRect();
-      if (rect.width > 0) {
-        els.canvas.style.height = (rect.width * 4 / 3) + 'px';
-        renderer.setupDpr();
-      }
-    });
-  }
+// ── screens helper ──
+function show(name) {
+  for (const k of Object.keys(screens)) screens[k].classList.toggle('hidden', k !== name);
 }
 
-// ── Prologue ────────────────────────────────
-function loadProloguePreset() {
-  const scene = PROLOGUE_SCENES[prologueIndex];
-  if (!scene) return goToMap();
-
-  currentScreen = 'prologue';
-  showScreen('prologue');
-  els.topbarTitle.textContent = `Пролог · ${scene.title}`;
-  els.goalBanner.innerHTML =
-    `<div class="task-label">Задача</div>${scene.goal}`;
-  els.goalBanner.classList.remove('hidden');
-  renderer.setScene(scene.scene ?? 'stage');
-  renderer.world.tiles = [];
-  renderer.resetProfik(0.5, 0.72);
-  editor.setReadOnlyCode(scene.presetCode);
-
-  els.btnRun.textContent = '▶ показать';
-  els.btnRun.disabled = false;
-  els.btnRun.classList.remove('running');
-  els.btnRun.classList.add('pulsing');
-  const oldNext = els.controls.querySelector('.btn-next');
-  if (oldNext) oldNext.remove();
-
-  telemetry.emit('level_start', { levelId: `prologue.${scene.id}`, startTs: Date.now() });
-}
-
-let prologueState = { running: false, hasSuccess: false, runs: 0, startTs: 0 };
-
-async function runPrologueScene() {
-  if (prologueState.running) return;
-  const scene = PROLOGUE_SCENES[prologueIndex];
-  prologueState.running = true;
-  prologueState.runs++;
-  els.btnRun.classList.remove('pulsing');
-  els.btnRun.classList.add('running');
-  els.btnRun.textContent = '⏸ идёт…';
-
-  tg?.HapticFeedback?.impactOccurred?.('medium');
-  sound.play('button_tap');
-  console_.clear();
-
-  let events = [];
-  try {
-    const ast = parse(scene.presetCode);
-    events = execute(ast).events;
-  } catch (e) {
-    events = [{ kind: 'ProgramStart' }, { kind: 'RuntimeError', message: e.message }, { kind: 'ProgramEnd', success: false }];
-  }
-
-  for (const ev of events) {
-    if (ev.kind === 'PrintCalled') sound.play('print_bubble');
-    if (ev.kind === 'RuntimeError') sound.play('error');
-    await renderer.play(ev, 1);
-  }
-
-  prologueState.running = false;
-  els.btnRun.classList.remove('running');
-
-  const last = events[events.length - 1];
-  const success = last && last.kind === 'ProgramEnd' && last.success !== false;
-  if (success && !prologueState.hasSuccess) {
-    prologueState.hasSuccess = true;
-    sound.play('correct');
-    tg?.HapticFeedback?.notificationOccurred?.('success');
-    if (scene.profikOutro) {
-      dialog.show(scene.profikOutro, { autohideMs: 2500 });
-      await new Promise(r => setTimeout(r, 2500));
-    }
-    saveProloguePassed(scene.id);
-    telemetry.emit('level_complete', {
-      levelId: `prologue.${scene.id}`,
-      runCount: prologueState.runs,
-    });
-    showPrologueNext();
-  } else if (!success) {
-    tg?.HapticFeedback?.notificationOccurred?.('error');
-    els.btnRun.textContent = '▶ попробовать ещё';
-    els.btnRun.classList.add('pulsing');
-  } else {
-    els.btnRun.textContent = '▶ показать ещё раз';
-    els.btnRun.disabled = false;
+// ── persistence ──
+async function loadState() {
+  const saved = await cloud.getJson('pycourse.state', null);
+  if (saved) {
+    state.profile = saved.profile || null;
+    state.done = new Set(saved.done || []);
+    state.crowns = saved.crowns || {};
+    state.xp = saved.xp || 0;
+    state.streak = saved.streak || 0;
+    state.lastActiveDay = saved.lastActiveDay || null;
+    state.dailyDoneDay = saved.dailyDoneDay || null;
   }
 }
-
-function showPrologueNext() {
-  els.btnRun.textContent = '▶ показать ещё раз';
-  const btn = document.createElement('button');
-  btn.className = 'btn-next';
-  btn.textContent = prologueIndex === PROLOGUE_SCENES.length - 1 ? 'В Дюны →' : 'Дальше →';
-  btn.addEventListener('click', () => {
-    sound.play('button_tap');
-    tg?.HapticFeedback?.impactOccurred?.('light');
-    prologueIndex++;
-    prologueState = { running: false, hasSuccess: false, runs: 0, startTs: 0 };
-    if (prologueIndex >= PROLOGUE_SCENES.length) {
-      cloud.setJson('python.prologueCompleted', 1);
-      goToMap();
-    } else {
-      loadProloguePreset();
-    }
+async function saveState() {
+  await cloud.setJson('pycourse.state', {
+    profile: state.profile,
+    done: [...state.done],
+    crowns: state.crowns,
+    xp: state.xp,
+    streak: state.streak,
+    lastActiveDay: state.lastActiveDay,
+    dailyDoneDay: state.dailyDoneDay,
   });
-  els.controls.appendChild(btn);
 }
 
-async function saveProloguePassed(id) {
-  const p = await cloud.getJson('python.prologueProgress', { completed: [] });
-  if (!p.completed.includes(id)) p.completed.push(id);
-  await cloud.setJson('python.prologueProgress', p);
+// ── streak ──
+function touchStreak() {
+  const today = todayKey();
+  if (state.lastActiveDay === today) return;
+  const yesterday = shiftDay(today, -1);
+  if (state.lastActiveDay === yesterday) state.streak += 1;
+  else state.streak = 1;
+  state.lastActiveDay = today;
+}
+function shiftDay(key, delta) {
+  const d = new Date(key + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
 }
 
-// ── Map ─────────────────────────────────────
-async function goToMap() {
-  currentScreen = 'map';
-  els.topbarTitle.textContent = 'Карта миров';
-  els.goalBanner.classList.add('hidden');
-  showScreen('map');
-  await mapScreen.show();
+// ── Onboarding ──
+const onboarding = new Onboarding(els.onboardWrap, tg);
+
+function startOnboarding() {
+  show('onboard');
+  onboarding.start(async (profile) => {
+    state.profile = profile;
+    // Пометим все уроки в юнитах ДО стартового как пройденные (по рекомендации теста)
+    if (profile.startUnitIndex > 0) {
+      for (let i = 0; i < profile.startUnitIndex; i++) {
+        for (const l of CURRICULUM[i].lessons) state.done.add(l.id);
+      }
+    }
+    await saveState();
+    goToTree();
+  });
 }
 
-// ── World / Level ───────────────────────────
-function enterWorld(worldId) {
-  currentWorldId = worldId;
-  loadCurrentLevel(worldId);
+// ── Tree ──
+const tree = new TreeScreen(els.treeScroll, openLesson, openDaily);
+
+function goToTree() {
+  show('tree');
+  els.statStreak.textContent = `🔥 ${state.streak}`;
+  els.statXp.textContent = `⭐ ${state.xp}`;
+  renderDailyCard();
+  tree.render({ done: state.done, crowns: state.crowns });
 }
 
-function getLevelsForWorld(worldId) {
-  if (worldId === 'dunes') return DUNES_LEVELS;
-  return [];
+function renderDailyCard() {
+  const daily = buildDaily(state.done);
+  if (!daily) { els.dailyCard.classList.add('hidden'); return; }
+  const doneToday = state.dailyDoneDay === todayKey();
+  els.dailyCard.classList.remove('hidden');
+  els.dailyCard.innerHTML = `
+    <div class="daily-icon">${doneToday ? '✅' : '🔥'}</div>
+    <div style="flex:1;">
+      <div class="daily-title">${doneToday ? 'Повторение пройдено!' : 'Ежедневное повторение'}</div>
+      <div class="daily-sub">${doneToday ? 'Возвращайся завтра за серией' : `${daily.questions.length} вопросов · +${daily.xp} XP`}</div>
+    </div>
+  `;
+  els.dailyCard.onclick = doneToday ? null : () => { sound.play('button_tap'); openDaily(); };
 }
 
-async function loadCurrentLevel(worldId, forceIndex) {
-  const levels = getLevelsForWorld(worldId);
-  if (levels.length === 0) return goToMap();
-  const progress = await cloud.getJson('python.worldsProgress', {});
-  const done = progress[worldId]?.completed ?? 0;
-  currentLevelIndex = forceIndex != null
-    ? Math.min(forceIndex, levels.length - 1)
-    : Math.min(done, levels.length - 1);
-  const level = levels[currentLevelIndex];
-  currentScreen = 'level';
-  showScreen('level');
-  levelScreen.load(level, { onFinish: onLevelFinish });
+// ── Lesson ──
+const player = new LessonPlayer(els, tg);
+
+els.checkBtn.addEventListener('click', () => player.check());
+els.continueBtn.addEventListener('click', () => player.continue());
+els.lessonQuit.addEventListener('click', () => {
+  if (confirm('Выйти из урока? Прогресс урока не сохранится.')) player.quit();
+});
+
+let activeDailyLesson = null;
+
+function openLesson(lessonId) {
+  const lesson = findLesson(lessonId);
+  if (!lesson) return;
+  activeDailyLesson = null;
+  show('lesson');
+  player.start(lesson, { onComplete: onLessonComplete, onQuit: goToTree });
 }
 
-async function onLevelFinish({ levelId, perfect, xp }) {
-  const progress = await cloud.getJson('python.worldsProgress', {});
-  const wp = progress[currentWorldId] || { completed: 0, perfect: 0 };
-  const levels = getLevelsForWorld(currentWorldId);
-  if (currentLevelIndex + 1 > wp.completed) wp.completed = currentLevelIndex + 1;
-  if (perfect) wp.perfect = (wp.perfect || 0) + 1;
-  progress[currentWorldId] = wp;
-  await cloud.setJson('python.worldsProgress', progress);
+function openDaily() {
+  const daily = buildDaily(state.done);
+  if (!daily) return;
+  activeDailyLesson = daily;
+  show('lesson');
+  player.start(daily, { onComplete: onLessonComplete, onQuit: goToTree });
+}
 
-  // Начисляем XP (пока — только клиентское напоминание; backend позже)
-  telemetry.emit('level_xp_awarded', { levelId, xp });
-
-  levelScreen.unmount();
-
-  const nextIndex = currentLevelIndex + 1;
-  if (nextIndex >= levels.length) {
-    // мир пройден — Этап 5 добавит церемонию раскрытия Осколка
-    goToMap();
-  } else {
-    currentLevelIndex = nextIndex;
-    loadCurrentLevel(currentWorldId, nextIndex);
+async function onLessonComplete(result) {
+  if (result.success) {
+    touchStreak();
+    state.xp += result.xp;
+    if (activeDailyLesson) {
+      state.dailyDoneDay = todayKey();
+    } else {
+      state.done.add(result.lessonId);
+      state.crowns[result.lessonId] = Math.max(state.crowns[result.lessonId] || 0, result.accuracy);
+    }
+    await saveState();
+    syncBackend(result);
   }
+  showResult(result);
 }
 
-// ── Кнопки ──────────────────────────────────
-els.btnRun.addEventListener('click', () => {
-  if (currentScreen === 'prologue') runPrologueScene();
-  else if (currentScreen === 'level') levelScreen.run();
+// ── Result ──
+function showResult(result) {
+  show('result');
+  const cat = result.success ? '🎉' : '😿';
+  const title = result.success ? 'Урок пройден!' : 'Почти получилось';
+  if (result.success) { sound.play('correct'); tg?.HapticFeedback?.notificationOccurred?.('success'); }
+
+  els.resultWrap.innerHTML = `
+    <div class="result-cat">${cat}</div>
+    <div class="result-title">${title}</div>
+    <div class="result-stats">
+      <div class="result-stat"><div class="rs-val">+${result.xp}</div><div class="rs-lbl">XP</div></div>
+      <div class="result-stat"><div class="rs-val">${result.accuracy}%</div><div class="rs-lbl">точность</div></div>
+      <div class="result-stat"><div class="rs-val">🔥 ${state.streak}</div><div class="rs-lbl">серия</div></div>
+    </div>
+    <button class="result-cta" id="result-continue">${result.success ? 'Продолжить' : 'Попробовать снова'}</button>
+  `;
+  els.resultWrap.querySelector('#result-continue').onclick = () => {
+    sound.play('button_tap');
+    if (result.success) goToTree();
+    else {
+      // повтор того же урока
+      if (activeDailyLesson) openDaily();
+      else openLesson(result.lessonId);
+    }
+  };
+}
+
+// ── backend sync (best-effort) ──
+async function syncBackend(result) {
+  try {
+    await fetch('/api/python/session_end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        init_data: tg?.initData || '',
+        lessonId: result.lessonId,
+        xpEarned: result.xp,
+        accuracy: result.accuracy,
+      }),
+    });
+  } catch (e) { /* offline — не страшно */ }
+}
+
+// ── back button ──
+els.treeBack.addEventListener('click', () => {
+  telemetry.flush();
+  window.location.href = '../index.html';
 });
 
-els.btnBack.addEventListener('click', () => {
-  sound.play('button_tap');
-  if (currentScreen === 'level') {
-    levelScreen.unmount();
-    goToMap();
-  } else if (currentScreen === 'map') {
-    telemetry.flush();
-    window.location.href = '../index.html';
-  } else if (currentScreen === 'prologue') {
-    telemetry.flush();
-    window.location.href = '../index.html';
-  } else {
-    window.location.href = '../index.html';
-  }
-});
-
-els.btnMenu.addEventListener('click', () => {
-  tg?.showAlert?.('Меню появится позже.');
-});
-
-els.ceremonyNext.addEventListener('click', () => {
-  goToMap();
-});
-
-// ── Старт ───────────────────────────────────
+// ── boot ──
 (async () => {
-  const prologueDone = await cloud.get('python.prologueCompleted');
-  if (prologueDone) {
-    goToMap();
-  } else {
-    prologueIndex = 0;
-    loadProloguePreset();
-  }
+  await loadState();
+  if (state.profile) goToTree();
+  else startOnboarding();
 })();
