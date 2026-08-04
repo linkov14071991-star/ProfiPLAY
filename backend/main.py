@@ -54,8 +54,10 @@ XP_PER_RATING = {
 DIFFICULTY_MULT = {"easy": 1.0, "medium": 1.5, "hard": 2.0}
 # Множитель по количеству жизней в Марафоне (меньше жизней = больше очков за риск)
 LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
-# Базовая ставка рейтинга за один правильный ответ
-BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 5}
+# Базовая ставка рейтинга за один правильный ответ.
+# Тусовка (party) = 0 очков, потому что играется на своей честности —
+# слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0}
 # Duel XP
 XP_DUEL_WIN = 50
 XP_DUEL_DRAW = 30
@@ -633,9 +635,11 @@ async def add_training_points(
     """
     if source not in TRAINING_SOURCES:
         raise HTTPException(status_code=400, detail="Bad source")
-    # Fallback для старых клиентов: если только points, а correct не передан
-    if correct is None:
-        # Легаси-режим: считаем что клиент прислал уже готовые points
+    # Тусовка не даёт рейтинга — защита от накрутки (компанейские игры без верификации)
+    if source == "party":
+        base_points = 0
+    elif correct is None:
+        # Легаси-режим: клиент прислал готовые points (для старых версий фронта)
         base_points = points
     else:
         base = BASE_RATING_PER_CORRECT.get(source, 1)
@@ -643,7 +647,7 @@ async def add_training_points(
         lives_mult = LIVES_MULT.get(lives, 1.0) if source == "marathon" and lives else 1.0
         base_points = round(correct * base * diff_mult * lives_mult)
     points = base_points
-    if points <= 0 or points > 1000:
+    if points < 0 or points > 1000:
         raise HTTPException(status_code=400, detail="Bad points")
 
     tg_user = get_verified_user(init_data)
