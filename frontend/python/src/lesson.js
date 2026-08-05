@@ -28,6 +28,9 @@ export class LessonPlayer {
     this.startTs = Date.now();
     this.current = null;
     this.selection = null;
+    this.answerTimeMs = 0;   // суммарное время на ответы
+    this.answerCount = 0;    // сколько ответов дано (для скорости)
+    this.qShownAt = 0;
 
     telemetry.emit('lesson_start', { lessonId: lesson.id });
     this.renderHearts();
@@ -59,6 +62,7 @@ export class LessonPlayer {
   renderQuestion(q) {
     const body = this.els.lessonBody;
     body.scrollTop = 0;
+    this.qShownAt = Date.now();
     if (q.type === 'mcq') return this.renderMcq(q);
     if (q.type === 'bug') return this.renderMcq(q, true);
     if (q.type === 'output') return this.renderOutput(q);
@@ -157,6 +161,13 @@ export class LessonPlayer {
     const q = this.current.q;
     let correct = false;
     let correctAnswerText = '';
+
+    // засекаем время на этот ответ (для индекса скорости)
+    if (this.qShownAt) {
+      this.answerTimeMs += Date.now() - this.qShownAt;
+      this.answerCount += 1;
+      this.qShownAt = 0;
+    }
 
     if (q.type === 'mcq' || q.type === 'bug') {
       correct = this.selection === q.answer;
@@ -271,6 +282,8 @@ export class LessonPlayer {
       accuracy,
       correctCount: this.correctFirstTry,
       totalCount: this.total,
+      answerTimeMs: this.answerTimeMs,
+      answerCount: this.answerCount,
       xp: success ? (this.lesson.xp ?? 10) : 0,
       heartsLeft: this.hearts,
     });

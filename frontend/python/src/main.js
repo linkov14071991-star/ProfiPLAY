@@ -13,6 +13,7 @@ import { THEORY } from './curriculum/theory.js';
 import { buildDaily, todayKey } from './daily.js';
 import { buildWeekly, weekKey, currentWeeklyPlan } from './weekly.js';
 import { profikMessage, buildReview } from './profik.js';
+import { readiness, readinessLabel, readinessColor } from './readiness.js';
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
@@ -37,6 +38,7 @@ const els = {
   treeBack: document.getElementById('tree-back'),
   statStreak: document.getElementById('stat-streak'),
   statXp: document.getElementById('stat-xp'),
+  readinessCard: document.getElementById('readiness-card'),
   profikBanner: document.getElementById('profik-banner'),
   dailyCard: document.getElementById('daily-card'),
   weeklyCard: document.getElementById('weekly-card'),
@@ -72,6 +74,9 @@ let state = {
   crowns: {},             // lessonId -> accuracy
   theorySeen: new Set(),  // unitId с прочитанной теорией
   topicStats: {},         // unitId -> { correct, total } для памяти Профика
+  reviewStats: { correct: 0, total: 0 },  // повторения (стабильность)
+  speedStats: { count: 0, totalMs: 0 },   // скорость ответов
+  bossStats: { correct: 0, total: 0 },    // задачи-боссы ЕГЭ
   xp: 0,
   streak: 0,
   lastActiveDay: null,
@@ -100,6 +105,9 @@ async function loadState() {
     state.crowns = saved.crowns || {};
     state.theorySeen = new Set(saved.theorySeen || []);
     state.topicStats = saved.topicStats || {};
+    state.reviewStats = saved.reviewStats || { correct: 0, total: 0 };
+    state.speedStats = saved.speedStats || { count: 0, totalMs: 0 };
+    state.bossStats = saved.bossStats || { correct: 0, total: 0 };
     state.xp = saved.xp || 0;
     state.streak = saved.streak || 0;
     state.lastActiveDay = saved.lastActiveDay || null;
@@ -114,6 +122,9 @@ async function saveState() {
     crowns: state.crowns,
     theorySeen: [...state.theorySeen],
     topicStats: state.topicStats,
+    reviewStats: state.reviewStats,
+    speedStats: state.speedStats,
+    bossStats: state.bossStats,
     xp: state.xp,
     streak: state.streak,
     lastActiveDay: state.lastActiveDay,
@@ -162,11 +173,48 @@ function goToTree() {
   show('tree');
   els.statStreak.textContent = `🔥 ${state.streak}`;
   els.statXp.textContent = `⭐ ${state.xp}`;
+  renderReadinessCard();
   renderProfikBanner();
   renderWeeklyCard();
   renderDailyCard();
   renderVideosCard();
   tree.render({ done: state.done, crowns: state.crowns });
+}
+
+function renderReadinessCard() {
+  const r = readiness(state);
+  if (!r.hasData) { els.readinessCard.classList.add('hidden'); return; }
+  els.readinessCard.classList.remove('hidden');
+  const color = readinessColor(r.total);
+  const rows = r.components.map(c => {
+    const w = c.has ? c.value : 0;
+    const valTxt = c.has ? `${c.value}%` : '—';
+    return `<div class="rd-row">
+      <div class="rd-label">${c.label} · ${c.weight}%</div>
+      <div class="rd-bar"><div class="rd-fill" style="width:${w}%;background:${color}"></div></div>
+      <div class="rd-val${c.has ? '' : ' empty'}">${valTxt}</div>
+    </div>`;
+  }).join('');
+  els.readinessCard.innerHTML = `
+    <div class="readiness-top">
+      <div class="readiness-ring" style="background:conic-gradient(${color} ${r.total * 3.6}deg, #2a3040 0)">
+        <div style="width:44px;height:44px;border-radius:50%;background:#1a1f2b;display:flex;align-items:center;justify-content:center;color:${color}">${r.total}</div>
+      </div>
+      <div class="readiness-info">
+        <div class="readiness-title">Готовность к экзамену</div>
+        <div class="readiness-sub">${escapeHtml(readinessLabel(r.total))}</div>
+      </div>
+      <div class="readiness-arrow" id="rd-arrow">▾</div>
+    </div>
+    <div class="readiness-detail" id="rd-detail">${rows}</div>
+  `;
+  els.readinessCard.onclick = () => {
+    const d = els.readinessCard.querySelector('#rd-detail');
+    const a = els.readinessCard.querySelector('#rd-arrow');
+    d.classList.toggle('open');
+    a.textContent = d.classList.contains('open') ? '▴' : '▾';
+    sound.play('button_tap');
+  };
 }
 
 function renderProfikBanner() {
@@ -362,18 +410,31 @@ async function onLessonComplete(result) {
   if (result.success) {
     touchStreak();
     state.xp += result.xp;
-    if (activeMode === 'daily') {
-      state.dailyDoneDay = todayKey();
-    } else if (activeMode === 'weekly') {
-      state.weeklyDoneKey = weekKey();
-    } else if (activeMode === 'review') {
-      updateTopicStats(activeReviewUnit, result.correctCount, result.totalCount);
+    // скорость (для индекса готовности)
+    if (result.answerCount) {
+      state.speedStats.count += result.answerCount;
+      state.speedStats.totalMs += result.answerTimeMs || 0;
+    }
+    if (activeMode === 'daily' || activeMode === 'weekly' || activeMode === 'review') {
+      // повторения = стабильность
+      state.reviewStats.correct += result.correctCount || 0;
+      state.reviewStats.total += result.totalCount || 0;
+      if (activeMode === 'daily') state.dailyDoneDay = todayKey();
+      else if (activeMode === 'weekly') state.weeklyDoneKey = weekKey();
+      else if (activeMode === 'review') updateTopicStats(activeReviewUnit, result.correctCount, result.totalCount);
     } else {
       state.done.add(result.lessonId);
       state.crowns[result.lessonId] = Math.max(state.crowns[result.lessonId] || 0, result.accuracy);
-      // статистика по теме урока
       const lesson = findLesson(result.lessonId);
-      if (lesson) updateTopicStats(lesson.unitId, result.correctCount, result.totalCount);
+      if (lesson) {
+        updateTopicStats(lesson.unitId, result.correctCount, result.totalCount);
+        // задачи-боссы ЕГЭ отдельно
+        const unit = findUnit(lesson.unitId);
+        if (unit && unit.isBoss) {
+          state.bossStats.correct += result.correctCount || 0;
+          state.bossStats.total += result.totalCount || 0;
+        }
+      }
     }
     await saveState();
     syncBackend(result);
