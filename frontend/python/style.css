@@ -99,6 +99,29 @@ html, body {
 .daily-card .daily-title { font-weight: 700; font-size: 16px; }
 .daily-card .daily-sub { font-size: 13px; opacity: 0.9; margin-top: 2px; }
 
+.plan-card {
+  margin: 8px 0 14px; padding: 16px; border-radius: 16px;
+  background: linear-gradient(135deg, #14532d, #166534); border: 1px solid rgba(88,204,2,0.3);
+}
+.plan-card.hidden { display: none; }
+.plan-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.plan-title { font-size: 17px; font-weight: 800; color: #fff; }
+.plan-count { font-size: 13px; color: rgba(255,255,255,0.7); margin-left: auto; }
+.plan-item {
+  display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 12px;
+  background: rgba(0,0,0,0.2); margin-bottom: 8px; cursor: pointer; transition: transform 80ms;
+}
+.plan-item:last-child { margin-bottom: 0; }
+.plan-item:active { transform: scale(0.99); }
+.plan-item.done { opacity: 0.55; }
+.plan-item .pi-icon { font-size: 22px; flex-shrink: 0; }
+.plan-item .pi-body { flex: 1; min-width: 0; }
+.plan-item .pi-text { font-size: 14px; font-weight: 700; color: #fff; }
+.plan-item .pi-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 1px; }
+.plan-item .pi-check { font-size: 18px; flex-shrink: 0; color: #58cc02; }
+.plan-item.done .pi-text { text-decoration: line-through; }
+.plan-done-all { text-align: center; color: #fff; font-size: 14px; padding: 6px; }
+
 .readiness-card {
   margin: 8px 0 14px; padding: 16px; border-radius: 16px;
   background: linear-gradient(135deg, #1a1f2b, #232a38);

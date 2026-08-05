@@ -14,6 +14,7 @@ import { buildDaily, todayKey } from './daily.js';
 import { buildWeekly, weekKey, currentWeeklyPlan } from './weekly.js';
 import { profikMessage, buildReview } from './profik.js';
 import { readiness, readinessLabel, readinessColor } from './readiness.js';
+import { buildPlan, buildBugFix } from './plan.js';
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
@@ -38,6 +39,7 @@ const els = {
   treeBack: document.getElementById('tree-back'),
   statStreak: document.getElementById('stat-streak'),
   statXp: document.getElementById('stat-xp'),
+  planCard: document.getElementById('plan-card'),
   readinessCard: document.getElementById('readiness-card'),
   profikBanner: document.getElementById('profik-banner'),
   dailyCard: document.getElementById('daily-card'),
@@ -77,6 +79,7 @@ let state = {
   reviewStats: { correct: 0, total: 0 },  // повторения (стабильность)
   speedStats: { count: 0, totalMs: 0 },   // скорость ответов
   bossStats: { correct: 0, total: 0 },    // задачи-боссы ЕГЭ
+  planDone: { day: null, ids: [] },       // выполненные пункты плана за день
   xp: 0,
   streak: 0,
   lastActiveDay: null,
@@ -108,6 +111,7 @@ async function loadState() {
     state.reviewStats = saved.reviewStats || { correct: 0, total: 0 };
     state.speedStats = saved.speedStats || { count: 0, totalMs: 0 };
     state.bossStats = saved.bossStats || { correct: 0, total: 0 };
+    state.planDone = saved.planDone || { day: null, ids: [] };
     state.xp = saved.xp || 0;
     state.streak = saved.streak || 0;
     state.lastActiveDay = saved.lastActiveDay || null;
@@ -125,6 +129,7 @@ async function saveState() {
     reviewStats: state.reviewStats,
     speedStats: state.speedStats,
     bossStats: state.bossStats,
+    planDone: state.planDone,
     xp: state.xp,
     streak: state.streak,
     lastActiveDay: state.lastActiveDay,
@@ -173,12 +178,72 @@ function goToTree() {
   show('tree');
   els.statStreak.textContent = `🔥 ${state.streak}`;
   els.statXp.textContent = `⭐ ${state.xp}`;
+  renderPlanCard();
   renderReadinessCard();
   renderProfikBanner();
   renderWeeklyCard();
   renderDailyCard();
   renderVideosCard();
   tree.render({ done: state.done, crowns: state.crowns });
+}
+
+function planDoneToday() {
+  if (state.planDone.day !== todayKey()) state.planDone = { day: todayKey(), ids: [] };
+  return state.planDone.ids;
+}
+
+function renderPlanCard() {
+  const items = buildPlan(state);
+  if (items.length === 0) { els.planCard.classList.add('hidden'); return; }
+  const doneIds = planDoneToday();
+  els.planCard.classList.remove('hidden');
+  const doneCount = items.filter(i => doneIds.includes(i.id)).length;
+  const allDone = doneCount === items.length;
+
+  let html = `<div class="plan-header">
+    <div class="plan-title">🎯 План на сегодня</div>
+    <div class="plan-count">${doneCount} / ${items.length}</div>
+  </div>`;
+  if (allDone) {
+    html += `<div class="plan-done-all">Всё выполнено! Отличный день 🎉</div>`;
+  }
+  for (const it of items) {
+    const done = doneIds.includes(it.id);
+    html += `<div class="plan-item${done ? ' done' : ''}" data-id="${it.id}">
+      <div class="pi-icon">${it.icon}</div>
+      <div class="pi-body">
+        <div class="pi-text">${escapeHtml(it.text)}</div>
+        <div class="pi-sub">${escapeHtml(it.sub)}</div>
+      </div>
+      <div class="pi-check">${done ? '✓' : '›'}</div>
+    </div>`;
+  }
+  els.planCard.innerHTML = html;
+
+  els.planCard.querySelectorAll('.plan-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const it = items.find(x => x.id === el.dataset.id);
+      if (!it) return;
+      markPlanDone(it.id);
+      sound.play('button_tap');
+      dispatchPlanAction(it.action);
+    });
+  });
+}
+
+function markPlanDone(id) {
+  const ids = planDoneToday();
+  if (!ids.includes(id)) { ids.push(id); saveState(); }
+}
+
+function dispatchPlanAction(action) {
+  switch (action.type) {
+    case 'review': openReview(action.unitId); break;
+    case 'daily': openDaily(); break;
+    case 'bugfix': openBugFix(); break;
+    case 'boss': requestLesson(findUnit(action.unitId).lessons[0].id); break;
+    case 'video': openTheory(action.unitId); break;
+  }
 }
 
 function renderReadinessCard() {
@@ -397,6 +462,14 @@ function openReview(unitId) {
   player.start(review, { onComplete: onLessonComplete, onQuit: goToTree });
 }
 
+function openBugFix() {
+  const lesson = buildBugFix(state);
+  if (!lesson) return;
+  activeMode = 'bugfix';
+  show('lesson');
+  player.start(lesson, { onComplete: onLessonComplete, onQuit: goToTree });
+}
+
 // Обновить статистику по теме (память Профика)
 function updateTopicStats(unitId, correct, total) {
   if (!unitId || !total) return;
@@ -415,7 +488,7 @@ async function onLessonComplete(result) {
       state.speedStats.count += result.answerCount;
       state.speedStats.totalMs += result.answerTimeMs || 0;
     }
-    if (activeMode === 'daily' || activeMode === 'weekly' || activeMode === 'review') {
+    if (activeMode === 'daily' || activeMode === 'weekly' || activeMode === 'review' || activeMode === 'bugfix') {
       // повторения = стабильность
       state.reviewStats.correct += result.correctCount || 0;
       state.reviewStats.total += result.totalCount || 0;
@@ -466,6 +539,7 @@ function showResult(result) {
       // повтор того же
       if (activeMode === 'daily') openDaily();
       else if (activeMode === 'weekly') openWeekly();
+      else if (activeMode === 'bugfix') openBugFix();
       else if (activeMode === 'review') openReview(activeReviewUnit);
       else openLesson(result.lessonId);
     }
