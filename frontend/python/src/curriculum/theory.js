@@ -21,7 +21,9 @@ export const THEORY = {
       { h: 'Комментарии', t: 'Всё после # Python не выполняет — это заметка для человека.',
         code: 'print("ок")  # это комментарий' },
     ],
-    videoIndex: 1,
+    videos: [
+      { id: 'E8XjM4JvtrI', title: 'Установка и первая программа' },
+    ],
   },
 
   oge_vars: {
@@ -35,7 +37,9 @@ export const THEORY = {
         code: 'a = 7        # число\nb = "7"      # строка' },
       { h: 'Имена переменных', t: 'Имя из букв, цифр и _, но не может начинаться с цифры. 2x — ошибка, x2 — можно.' },
     ],
-    videoIndex: 2,
+    videos: [
+      { id: 'EwlgAUwV3BE', title: 'Вывод, типы данных и переменные' },
+    ],
   },
 
   oge_input: {
@@ -49,7 +53,7 @@ export const THEORY = {
         code: 'x = int(input())  # ввели 5\nprint(x + x)', out: '10' },
       { h: 'Дробные числа', t: 'float() — для чисел с точкой (например 3.5).' },
     ],
-    videoIndex: 3,
+    videos: [],  // в марафоне Py.Go нет отдельного ролика про input
   },
 
   oge_math: {
@@ -66,7 +70,11 @@ export const THEORY = {
       { h: 'Обычное деление /', t: 'Один слэш всегда даёт дробь: 7 / 2 = 3.5.',
         code: 'print(7 / 2)', out: '3.5' },
     ],
-    videoIndex: 4,
+    videos: [
+      { id: 'Vn6nS4xBJlg', title: 'Арифметика чисел' },
+      { id: 'sEFm3hKv5Gc', title: 'Вещественные числа и тип float' },
+      { id: 'LTX9YjRabPE', title: 'Арифметика строк' },
+    ],
   },
 
   oge_if: {
@@ -81,7 +89,10 @@ export const THEORY = {
         code: 'if x > 0:\n    print("плюс")\nelif x < 0:\n    print("минус")\nelse:\n    print("ноль")' },
       { h: 'Отступы важны', t: 'Тело if пишется с отступом (4 пробела). Без отступа Python не поймёт, что относится к условию.' },
     ],
-    videoIndex: 5,
+    videos: [
+      { id: 'jsRZrw8HIGQ', title: 'Условный оператор, операции сравнения' },
+      { id: '04hmvtSbfSg', title: 'Составные условия, логический тип' },
+    ],
   },
 
   oge_while: {
@@ -93,7 +104,9 @@ export const THEORY = {
       { h: 'Накопление суммы', t: 'Частый приём: заводим s = 0 и прибавляем в цикле.',
         code: 's = 0\ni = 1\nwhile i <= 4:\n    s = s + i\n    i = i + 1\nprint(s)', out: '10' },
     ],
-    videoIndex: 7,
+    videos: [
+      { id: 'XGgCn95Qi90', title: 'Цикл WHILE' },
+    ],
   },
 
   oge_for: {
@@ -109,7 +122,10 @@ export const THEORY = {
       { h: 'Подсчёт по условию', t: 'Классика ОГЭ — считать, сколько чисел подходят под условие.',
         code: 'k = 0\nfor i in range(1, 31):\n    if i % 7 == 0:\n        k = k + 1\nprint(k)', out: '4' },
     ],
-    videoIndex: 6,
+    videos: [
+      { id: '2wt6UGUFRGQ', title: 'Переменная цикла FOR' },
+      { id: 'iMCjAytQWmk', title: 'Варианты цикла FOR' },
+    ],
   },
 
   oge_str: {
@@ -126,7 +142,12 @@ export const THEORY = {
       { h: 'Повтор строки', t: 'Строка * число повторяет её.',
         code: 'print("ба" * 3)', out: 'бабаба' },
     ],
-    videoIndex: 8,
+    videos: [
+      { id: 'DLHAesA64Ow', title: 'Индексы строк' },
+      { id: 'wCPKfkLrYRg', title: 'Срезы строк' },
+      { id: 'A4pqJe8byTg', title: 'Сравнение строк' },
+      { id: '-tS7GAZbx44', title: 'Методы строк' },
+    ],
   },
 
   // ── ЕГЭ ──
@@ -146,7 +167,15 @@ export const THEORY = {
       { h: 'Срезы', t: 'a[1:3] — часть списка с индекса 1 по 2 (3 не входит).',
         code: 'a = [0, 1, 2, 3, 4]\nprint(a[1:3])', out: '[1, 2]' },
     ],
-    videoIndex: 9,
+    videos: [
+      { id: 'dci0W14OfPk', title: 'Массивы и основные операции' },
+      { id: 'tcm9jWdp-6o', title: 'Добавление элементов в массив' },
+      { id: '8FYwxmYq2jk', title: 'Индексы элементов, изменение, срезы' },
+      { id: '9MX_eeIy1mI', title: 'Два типа циклов по массиву' },
+      { id: '97dOQ9pDSyY', title: 'Методы index, count, pop, remove, insert' },
+      { id: 'pEqNSdOKRm4', title: 'Встроенные: in, not in, max, min' },
+      { id: 'GISy6STCYdQ', title: 'Изменяемые типы. Изменение массивов' },
+    ],
   },
 
   ege_nested: {
@@ -157,7 +186,9 @@ export const THEORY = {
       { h: 'Число повторений перемножается', t: 'Внешний 3 раза × внутренний 2 = 6 итераций тела.',
         code: 'k = 0\nfor i in range(3):\n    for j in range(2):\n        k = k + 1\nprint(k)', out: '6' },
     ],
-    videoIndex: 10,
+    videos: [
+      { id: '9MX_eeIy1mI', title: 'Два типа циклов по массиву' },
+    ],
   },
 
   ege_func: {
@@ -171,7 +202,9 @@ export const THEORY = {
         code: 'def chet(n):\n    return n % 2 == 0\nprint(chet(10))', out: 'True' },
       { h: 'return завершает функцию', t: 'После return функция сразу отдаёт значение и заканчивается.' },
     ],
-    videoIndex: 11,
+    videos: [
+      { id: 'sH9_nKZCLdY', title: 'Значение функции. Оператор return' },
+    ],
   },
 
   ege_str2: {
@@ -188,7 +221,10 @@ export const THEORY = {
       { h: 'Разбиение', t: 'split() разбивает строку в список по разделителю.',
         code: 'print("1,2,3".split(","))', out: "['1', '2', '3']" },
     ],
-    videoIndex: 12,
+    videos: [
+      { id: 'wCPKfkLrYRg', title: 'Срезы строк' },
+      { id: '-tS7GAZbx44', title: 'Методы строк' },
+    ],
   },
 
   ege_dict: {
@@ -201,7 +237,7 @@ export const THEORY = {
       { h: 'Множество', t: 'set хранит только уникальные значения. Дубликаты исчезают.',
         code: 's = {1, 2, 2, 3, 3, 3}\nprint(len(s))', out: '3' },
     ],
-    videoIndex: 13,
+    videos: [],  // в марафоне Py.Go нет отдельного ролика про словари
   },
 
   ege_lib: {
@@ -216,7 +252,9 @@ export const THEORY = {
       { h: 'Случайные числа', t: 'random.randint(a, b) — случайное целое от a до b включительно.',
         code: 'import random\nx = random.randint(1, 6)  # 1..6' },
     ],
-    videoIndex: 14,
+    videos: [
+      { id: 'jLWEAQIOcmQ', title: 'Стандартная библиотека Python. Модули' },
+    ],
   },
 
   ege_algo: {
@@ -231,9 +269,9 @@ export const THEORY = {
       { h: 'Количество делителей', t: 'Перебираем делители от 1 до n, считаем те, что делят нацело.',
         code: 'n = 12\nk = 0\nfor d in range(1, n + 1):\n    if n % d == 0:\n        k = k + 1\nprint(k)', out: '6' },
     ],
-    videoIndex: 15,
+    videos: [],  // отдельного ролика по задачам ЕГЭ в марафоне нет
   },
 };
 
-// ID плейлиста марафона Py.Go
+// ID плейлиста марафона Py.Go (для кнопки «весь марафон»)
 export const PLAYLIST_ID = 'PLW_RLSKbMD2WTqdex-dCYfRM7JtUooaTe';

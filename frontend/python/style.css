@@ -263,6 +263,16 @@ html, body {
   margin: 8px 0; color: var(--text);
 }
 .theory-footer { padding: 12px 20px 24px; border-top: 1px solid rgba(255,255,255,0.06); }
+.video-list { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 24px; }
+.video-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: var(--surface); border: 1px solid rgba(255,255,255,0.08); color: var(--text);
+  padding: 11px 13px; font-family: inherit; font-size: 14px; font-weight: 500;
+  border-radius: 10px; cursor: pointer;
+}
+.video-item:active { transform: scale(0.99); }
+.video-item.active { border-color: var(--primary); background: var(--surface-2); }
+.video-item .vi-play { color: var(--primary); font-size: 12px; flex-shrink: 0; }
 
 /* кнопка теории в дереве */
 .unit-theory-btn {
