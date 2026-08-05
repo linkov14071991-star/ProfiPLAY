@@ -6,18 +6,25 @@ import { telemetry } from './telemetry/client.js';
 import { Onboarding } from './onboarding.js';
 import { TreeScreen } from './tree.js';
 import { LessonPlayer } from './lesson.js';
-import { CURRICULUM, findLesson } from './curriculum/index.js';
+import { TheoryScreen } from './theory_screen.js';
+import { CURRICULUM, findLesson, findUnit } from './curriculum/index.js';
+import { THEORY } from './curriculum/theory.js';
 import { buildDaily, todayKey } from './daily.js';
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
 tg?.expand();
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+}
+
 // ── DOM ──
 const screens = {
   onboard: document.getElementById('s-onboard'),
   tree: document.getElementById('s-tree'),
   lesson: document.getElementById('s-lesson'),
+  theory: document.getElementById('s-theory'),
   result: document.getElementById('s-result'),
 };
 const els = {
@@ -38,6 +45,11 @@ const els = {
   feedbackHead: document.getElementById('feedback-head'),
   feedbackExplain: document.getElementById('feedback-explain'),
   continueBtn: document.getElementById('continue-btn'),
+  // theory
+  theoryScroll: document.getElementById('theory-scroll'),
+  theoryHtitle: document.getElementById('theory-htitle'),
+  theoryBack: document.getElementById('theory-back'),
+  theoryStart: document.getElementById('theory-start'),
   // result
   resultWrap: document.getElementById('result-wrap'),
 };
@@ -47,6 +59,7 @@ let state = {
   profile: null,          // { goal, experience, startUnitIndex }
   done: new Set(),        // пройденные lessonId
   crowns: {},             // lessonId -> accuracy
+  theorySeen: new Set(),  // unitId с прочитанной теорией
   xp: 0,
   streak: 0,
   lastActiveDay: null,
@@ -72,6 +85,7 @@ async function loadState() {
     state.profile = saved.profile || null;
     state.done = new Set(saved.done || []);
     state.crowns = saved.crowns || {};
+    state.theorySeen = new Set(saved.theorySeen || []);
     state.xp = saved.xp || 0;
     state.streak = saved.streak || 0;
     state.lastActiveDay = saved.lastActiveDay || null;
@@ -83,6 +97,7 @@ async function saveState() {
     profile: state.profile,
     done: [...state.done],
     crowns: state.crowns,
+    theorySeen: [...state.theorySeen],
     xp: state.xp,
     streak: state.streak,
     lastActiveDay: state.lastActiveDay,
@@ -124,7 +139,7 @@ function startOnboarding() {
 }
 
 // ── Tree ──
-const tree = new TreeScreen(els.treeScroll, openLesson, openDaily);
+const tree = new TreeScreen(els.treeScroll, requestLesson, openDaily, openTheory);
 
 function goToTree() {
   show('tree');
@@ -159,6 +174,67 @@ els.lessonQuit.addEventListener('click', () => {
 });
 
 let activeDailyLesson = null;
+
+// ── Theory ──
+const theoryScreen = new TheoryScreen({
+  scroll: els.theoryScroll, htitle: els.theoryHtitle, back: els.theoryBack, start: els.theoryStart,
+});
+theoryScreen.bind();
+
+let theoryReturnLessonId = null;  // куда идти после «Перейти к заданиям»
+
+function openTheory(unitId, startLessonId = null) {
+  const unit = findUnit(unitId);
+  if (!unit) return;
+  theoryReturnLessonId = startLessonId;
+  show('theory');
+  theoryScreen.show(unit, {
+    onStart: async () => {
+      state.theorySeen.add(unitId);
+      await saveState();
+      if (theoryReturnLessonId) openLesson(theoryReturnLessonId);
+      else goToTree();
+    },
+    onBack: async () => {
+      state.theorySeen.add(unitId);
+      await saveState();
+      goToTree();
+    },
+  });
+}
+
+// Перед открытием урока — если это первый урок юнита и теорию не читали, предложить
+function requestLesson(lessonId) {
+  const lesson = findLesson(lessonId);
+  if (!lesson) return;
+  const unit = findUnit(lesson.unitId);
+  const isFirstLessonOfUnit = unit && unit.lessons[0].id === lessonId;
+  const hasTheory = !!THEORY[lesson.unitId];
+  const notSeen = !state.theorySeen.has(lesson.unitId);
+
+  if (isFirstLessonOfUnit && hasTheory && notSeen) {
+    showTheoryOffer(lesson.unitId, lessonId);
+  } else {
+    openLesson(lessonId);
+  }
+}
+
+function showTheoryOffer(unitId, lessonId) {
+  const unit = findUnit(unitId);
+  const offer = document.createElement('div');
+  offer.className = 'theory-offer';
+  offer.innerHTML = `
+    <h3>📖 Сначала теория?</h3>
+    <p>Перед заданиями по теме «${escapeHtml(unit.title)}» можно освежить материал${THEORY[unitId].videoIndex ? ' и посмотреть видео' : ''}. Это не обязательно.</p>
+    <div class="offer-btns">
+      <button class="offer-primary" id="offer-yes">Изучить теорию</button>
+      <button class="offer-secondary" id="offer-no">Сразу к заданиям</button>
+    </div>
+  `;
+  document.getElementById('app').appendChild(offer);
+  offer.querySelector('#offer-yes').onclick = () => { sound.play('button_tap'); offer.remove(); openTheory(unitId, lessonId); };
+  offer.querySelector('#offer-no').onclick = () => { sound.play('button_tap'); offer.remove(); openLesson(lessonId); };
+}
 
 function openLesson(lessonId) {
   const lesson = findLesson(lessonId);

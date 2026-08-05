@@ -1,13 +1,15 @@
 // tree.js — экран дерева тем (skill tree).
 
 import { CURRICULUM } from './curriculum/index.js';
+import { THEORY } from './curriculum/theory.js';
 import { sound } from './audio/sound_engine.js';
 
 export class TreeScreen {
-  constructor(scrollEl, onOpenLesson, onOpenDaily) {
+  constructor(scrollEl, onOpenLesson, onOpenDaily, onOpenTheory) {
     this.scroll = scrollEl;
     this.onOpenLesson = onOpenLesson;
     this.onOpenDaily = onOpenDaily;
+    this.onOpenTheory = onOpenTheory;
   }
 
   // progress: { done: Set<lessonId>, crowns: {lessonId: accuracy} }
@@ -37,6 +39,18 @@ export class TreeScreen {
 
       const lessonsWrap = document.createElement('div');
       lessonsWrap.className = 'unit-lessons';
+
+      // Кнопка теории (если есть)
+      if (THEORY[unit.id]) {
+        const tbtn = document.createElement('button');
+        tbtn.className = 'unit-theory-btn';
+        tbtn.innerHTML = `<span class="ut-icon">📖</span> Теория${THEORY[unit.id].videoIndex ? ' + видео' : ''}<span class="ut-arrow">›</span>`;
+        tbtn.addEventListener('click', () => {
+          sound.play('button_tap');
+          this.onOpenTheory(unit.id);
+        });
+        lessonsWrap.appendChild(tbtn);
+      }
 
       unit.lessons.forEach((lesson, li) => {
         const isDone = doneSet.has(lesson.id);
