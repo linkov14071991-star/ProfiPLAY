@@ -2,12 +2,13 @@
 
 import { OGE_UNITS } from './oge.js';
 import { EGE_UNITS } from './ege.js';
+import { EGE_LIB_UNITS } from './ege_libs.js';
 import { EXTRA_LESSONS } from './practice.js';
 import { EXTRA_LESSONS_2 } from './practice2.js';
 import { BUG_LESSONS } from './bugs.js';
 
 // Собираем юниты и дополняем практическими уроками и уроками «найди ошибку»
-export const CURRICULUM = [...OGE_UNITS, ...EGE_UNITS].map(unit => {
+export const CURRICULUM = [...OGE_UNITS, ...EGE_UNITS, ...EGE_LIB_UNITS].map(unit => {
   const extra = EXTRA_LESSONS[unit.id] || [];
   const extra2 = EXTRA_LESSONS_2[unit.id] || [];
   const bugs = BUG_LESSONS[unit.id] || [];

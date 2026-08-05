@@ -259,6 +259,79 @@ export const THEORY = {
     ],
   },
 
+  ege_math_full: {
+    intro: 'math — самая частая библиотека на ЕГЭ. Нужна в задачах 7, 11, 14, 16. Подключай через from math import ...',
+    blocks: [
+      { h: 'Округление', t: 'ceil — вверх, floor — вниз, round — к ближайшему.',
+        code: 'from math import ceil, floor\nprint(ceil(3.2))\nprint(floor(3.8))', out: '4\n3' },
+      { h: 'Корень и степень', t: 'sqrt(x) — квадратный корень. То же — x ** 0.5. pow(a, b) = a в степени b.',
+        code: 'from math import sqrt\nprint(sqrt(16))', out: '4.0' },
+      { h: 'НОД', t: 'gcd — наибольший общий делитель. В Python 3.9+ можно несколько чисел.',
+        code: 'from math import gcd\nprint(gcd(12, 18))', out: '6' },
+      { h: 'Логарифмы (задача 11)', t: 'log2(x) — по основанию 2. Количество бит на символ = ceil(log2(N)).',
+        code: 'from math import ceil, log2\nprint(ceil(log2(1000)))', out: '10' },
+      { h: 'Факториал', t: 'factorial(n) = n! = 1·2·...·n.',
+        code: 'from math import factorial\nprint(factorial(5))', out: '120' },
+    ],
+    videos: [{ id: 'jLWEAQIOcmQ', title: 'Стандартная библиотека Python. Модули' }],
+  },
+
+  ege_itertools: {
+    intro: 'itertools перебирает комбинации за тебя. Главный инструмент задачи 8 (product) и задачи 15 (combinations).',
+    blocks: [
+      { h: 'product — слова с повторами', t: 'Все слова длины n из данных символов, буквы могут повторяться. Это задача 8.',
+        code: "from itertools import product\nfor p in product('АБ', repeat=2):\n    print(''.join(p))", out: 'АА\nАБ\nБА\nББ' },
+      { h: 'permutations — перестановки', t: 'Без повторов, порядок важен.',
+        code: "from itertools import permutations\nprint(len(list(permutations('АБВ', 2))))", out: '6' },
+      { h: 'combinations — сочетания', t: 'Порядок НЕважен, без повторов. Полезно в задаче 15 на отрезки.',
+        code: 'from itertools import combinations\nfor c in combinations([1, 2, 3], 2):\n    print(c)', out: '(1, 2)\n(1, 3)\n(2, 3)' },
+      { h: 'Подвох', t: 'product и permutations дают кортежи, а не строки. Склеивай через "".join(p).' },
+    ],
+    videos: [],
+  },
+
+  ege_recursion: {
+    intro: 'Задача 16 — про рекурсию. Когда она глубокая и тормозит, спасает кэш @lru_cache или замена на массив.',
+    blocks: [
+      { h: 'Рекурсия', t: 'Функция вызывает саму себя. Обязателен базовый случай (условие остановки).',
+        code: 'def F(n):\n    if n <= 2:\n        return n\n    return F(n - 1) + F(n - 2)\nprint(F(6))', out: '13' },
+      { h: 'Кэш @lru_cache', t: 'Ставится строго над def без пустой строки. Запоминает результаты — рекурсия перестаёт тормозить.',
+        code: 'from functools import lru_cache\n@lru_cache(10000)\ndef G(n):\n    if n <= 20:\n        return n + 2\n    return G(n - 3) + 1' },
+      { h: 'Надёжнее — массив', t: 'Заполняем F[n] циклом от начала. Самый безопасный способ для больших n.',
+        code: 'F = [0] * 100\nfor n in range(100):\n    if n < 10:\n        F[n] = n + 2\n    else:\n        F[n] = F[n - 3] + 1' },
+      { h: 'НЕ поднимай лимит рекурсии', t: 'setrecursionlimit нестабилен — программа может упасть на проверке. Используй lru_cache или массив.' },
+    ],
+    videos: [],
+  },
+
+  ege_re: {
+    intro: 'Регулярные выражения (re) ищут шаблоны в строке. Главный инструмент задачи 24.',
+    blocks: [
+      { h: 'findall — все совпадения', t: 'Возвращает список всех кусков, подходящих под шаблон.',
+        code: "from re import findall\nprint(findall(r'[0-9]+', 'A12B345C6'))", out: "['12', '345', '6']" },
+      { h: 'Символьные классы', t: '[ABC] — один из символов, [A-Z] — диапазон, [^A] — кроме A, . — любой символ.' },
+      { h: 'Квантификаторы', t: '* — 0 и больше, + — 1 и больше, ? — 0 или 1, {n} — ровно n, {n,m} — от n до m.' },
+      { h: 'Жадность и лень (важно!)', t: 'По умолчанию квантификаторы жадные (берут максимум). Добавь ? — станут ленивыми (минимум).',
+        code: "from re import findall\nprint(findall(r'<.+>', '<a><b>'))\nprint(findall(r'<.+?>', '<a><b>'))", out: "['<a><b>']\n['<a>', '<b>']" },
+      { h: 'Префикс r', t: 'Пиши r"шаблон" (raw-строка), чтобы \\ понимался как символ регулярки.' },
+    ],
+    videos: [],
+  },
+
+  ege_fnmatch: {
+    intro: 'fnmatch проверяет, подходит ли число под «маску с дырками». Главный инструмент задачи 25.',
+    blocks: [
+      { h: 'Маска с ?', t: '? — ровно один любой символ.',
+        code: 'from fnmatch import fnmatch\nprint(fnmatch("54213", "54?1?"))', out: 'True' },
+      { h: 'Маска с *', t: '* — любое количество символов (в том числе ноль).',
+        code: 'from fnmatch import fnmatch\nprint(fnmatch("12700", "1*0"))', out: 'True' },
+      { h: 'Только строки!', t: 'fnmatch работает со строками. Число превращай через str(n).' },
+      { h: 'Шаблон задачи 25', t: 'Перебираем нужные числа (например, кратные 7) и проверяем маску str(n).',
+        code: 'from fnmatch import fnmatch\nfor n in range(100, 1000, 7):\n    if fnmatch(str(n), "1?2"):\n        print(n)' },
+    ],
+    videos: [],
+  },
+
   ege_algo: {
     intro: 'Типовые приёмы ЕГЭ: работа с цифрами числа, поиск максимума, подсчёт по условию.',
     blocks: [
