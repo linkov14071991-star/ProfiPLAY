@@ -269,6 +269,20 @@ html, body {
 .asm-line.in-target { border-color: var(--primary); background: var(--surface-2); }
 .asm-placeholder { color: var(--muted); font-size: 13px; text-align: center; padding: 12px; font-family: 'Onest'; }
 
+/* режим токенов — кусочки строки в ряд */
+.assemble-target.tokens, .assemble-bank.tokens {
+  flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: flex-start;
+}
+.assemble-target.tokens { min-height: 54px; }
+.asm-tok {
+  display: inline-block; background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.14);
+  font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #d4d4d4;
+  padding: 10px 14px; border-radius: 10px; cursor: pointer; white-space: pre; transition: transform 80ms;
+}
+.asm-tok:active { transform: scale(0.96); }
+.asm-tok.in-target { border-color: var(--primary); background: var(--surface-2); }
+
 /* footer */
 .lesson-footer { padding: 16px 20px 24px; }
 .check-btn {

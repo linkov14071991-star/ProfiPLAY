@@ -1,25 +1,44 @@
-// cloud_storage.js — обёртка над Telegram CloudStorage
-// + fallback на localStorage, если запускаем вне Telegram
+// cloud_storage.js — надёжное хранение прогресса.
+// Пишем И в Telegram CloudStorage, И в localStorage. Читаем из того, где есть данные.
+// Так профиль не теряется, даже если CloudStorage упрётся в лимит 4096 байт или недоступен.
 
 const tg = window.Telegram?.WebApp;
 const hasCloud = !!(tg && tg.CloudStorage);
 
+function lsGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, val); } catch { /* переполнение — не критично */ }
+}
+
+function cloudGet(key) {
+  if (!hasCloud) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    try {
+      tg.CloudStorage.getItem(key, (err, val) => resolve(err ? null : (val || null)));
+    } catch { resolve(null); }
+  });
+}
+function cloudSet(key, val) {
+  if (!hasCloud) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    try {
+      tg.CloudStorage.setItem(key, val, (err, ok) => resolve(!err && ok !== false));
+    } catch { resolve(false); }
+  });
+}
+
 export const cloud = {
   async get(key) {
-    if (hasCloud) {
-      return new Promise((resolve) => {
-        tg.CloudStorage.getItem(key, (err, val) => resolve(err ? null : val));
-      });
-    }
-    return localStorage.getItem(key);
+    // сначала облако (синхронизация между устройствами), затем локальный кэш
+    const c = await cloudGet(key);
+    if (c) return c;
+    return lsGet(key);
   },
   async set(key, val) {
-    if (hasCloud) {
-      return new Promise((resolve) => {
-        tg.CloudStorage.setItem(key, val, () => resolve());
-      });
-    }
-    localStorage.setItem(key, val);
+    lsSet(key, val);              // локально — всегда (надёжно, большой лимит)
+    await cloudSet(key, val);     // и в облако — по возможности
   },
   async getJson(key, defaultValue = null) {
     const raw = await this.get(key);
@@ -28,5 +47,13 @@ export const cloud = {
   },
   async setJson(key, obj) {
     return this.set(key, JSON.stringify(obj));
+  },
+  // Выбрать более свежую версию из облака и локального кэша (по полю _savedAt).
+  async getJsonBest(key, defaultValue = null) {
+    const [c, l] = await Promise.all([cloudGet(key), Promise.resolve(lsGet(key))]);
+    const parse = (raw) => { if (!raw) return null; try { return JSON.parse(raw); } catch { return null; } };
+    const co = parse(c), lo = parse(l);
+    if (co && lo) return ((lo._savedAt || 0) >= (co._savedAt || 0)) ? lo : co;
+    return co || lo || defaultValue;
   },
 };

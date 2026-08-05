@@ -52,7 +52,12 @@ export class TheoryScreen {
     }
 
     this.els.scroll.innerHTML = html;
+    // надёжный сброс прокрутки наверх (и контейнера, и страницы)
     this.els.scroll.scrollTop = 0;
+    requestAnimationFrame(() => {
+      this.els.scroll.scrollTop = 0;
+      window.scrollTo(0, 0);
+    });
 
     // тап по превью — открыть видео во внешнем YouTube
     this.els.scroll.querySelectorAll('.video-thumb').forEach(btn => {

@@ -111,7 +111,7 @@ function show(name) {
 
 // ── persistence ──
 async function loadState() {
-  const saved = await cloud.getJson('pycourse.state', null);
+  const saved = await cloud.getJsonBest('pycourse.state', null);
   if (saved) {
     state.profile = saved.profile || null;
     state.done = new Set(saved.done || []);
@@ -132,6 +132,7 @@ async function loadState() {
 }
 async function saveState() {
   await cloud.setJson('pycourse.state', {
+    _savedAt: Date.now(),
     profile: state.profile,
     done: [...state.done],
     crowns: state.crowns,

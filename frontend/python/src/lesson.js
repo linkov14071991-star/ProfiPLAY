@@ -106,51 +106,62 @@ export class LessonPlayer {
   }
 
   // ── ASSEMBLE ──
+  // Два режима: строки (q.lines) или токены одной строки (q.tokens).
   renderAssemble(q) {
-    // Перемешиваем строки для банка
-    const shuffled = q.lines.map((line, i) => ({ line, i }));
-    for (let k = shuffled.length - 1; k > 0; k--) {
-      const j = Math.floor(Math.random() * (k + 1));
-      [shuffled[k], shuffled[j]] = [shuffled[j], shuffled[k]];
-    }
+    this.asmTokenMode = Array.isArray(q.tokens);
+    const units = this.asmTokenMode ? q.tokens : q.lines;
+    this.asmUnitCount = units.length;
+    // Перемешиваем; гарантируем, что не совпадает с исходным порядком (если >1)
+    let shuffled;
+    do {
+      shuffled = units.map((v, i) => ({ line: v, i }));
+      for (let k = shuffled.length - 1; k > 0; k--) {
+        const j = Math.floor(Math.random() * (k + 1));
+        [shuffled[k], shuffled[j]] = [shuffled[j], shuffled[k]];
+      }
+    } while (units.length > 1 && shuffled.every((it, i) => it.i === i));
     this.asmTarget = [];
     this.asmBank = shuffled;
+    const hint = this.asmTokenMode
+      ? 'Нажимай кусочки внизу, чтобы собрать строку'
+      : 'Нажимай строки внизу в правильном порядке';
     this.els.lessonBody.innerHTML = `
       <div class="q-prompt">${escapeHtml(q.q)}</div>
-      <div class="assemble-target" id="asm-target"></div>
-      <div class="assemble-bank" id="asm-bank"></div>
+      <div class="assemble-target${this.asmTokenMode ? ' tokens' : ''}" id="asm-target" data-hint="${hint}"></div>
+      <div class="assemble-bank${this.asmTokenMode ? ' tokens' : ''}" id="asm-bank"></div>
     `;
-    this.renderAsm();
+    this.renderAsm(hint);
   }
 
-  renderAsm() {
+  renderAsm(hint) {
     const targetEl = this.els.lessonBody.querySelector('#asm-target');
     const bankEl = this.els.lessonBody.querySelector('#asm-bank');
+    const cls = this.asmTokenMode ? 'asm-tok' : 'asm-line';
     targetEl.innerHTML = this.asmTarget.length
       ? this.asmTarget.map((item, pos) =>
-          `<div class="asm-line in-target" data-pos="${pos}">${escapeHtml(item.line)}</div>`).join('')
-      : '<div class="asm-placeholder">Нажимай строки внизу в правильном порядке</div>';
+          `<div class="${cls} in-target" data-pos="${pos}">${escapeHtml(item.line)}</div>`).join('')
+      : `<div class="asm-placeholder">${escapeHtml(hint || targetEl.dataset.hint || '')}</div>`;
     bankEl.innerHTML = this.asmBank.map((item, pos) =>
-      `<div class="asm-line" data-bank="${pos}">${escapeHtml(item.line)}</div>`).join('');
+      `<div class="${cls}" data-bank="${pos}">${escapeHtml(item.line)}</div>`).join('');
 
-    targetEl.querySelectorAll('.asm-line').forEach(el => {
+    targetEl.querySelectorAll('.' + cls).forEach(el => {
       el.addEventListener('click', () => {
         const pos = parseInt(el.dataset.pos, 10);
         const [item] = this.asmTarget.splice(pos, 1);
         this.asmBank.push(item);
         sound.play('button_tap');
-        this.renderAsm();
-        this.setCheckEnabled(this.asmTarget.length === this.current.q.lines.length);
+        this.renderAsm(hint);
+        this.setCheckEnabled(this.asmTarget.length === this.asmUnitCount);
       });
     });
-    bankEl.querySelectorAll('.asm-line').forEach(el => {
+    bankEl.querySelectorAll('.' + cls).forEach(el => {
       el.addEventListener('click', () => {
         const pos = parseInt(el.dataset.bank, 10);
         const [item] = this.asmBank.splice(pos, 1);
         this.asmTarget.push(item);
         sound.play('button_tap');
-        this.renderAsm();
-        this.setCheckEnabled(this.asmTarget.length === this.current.q.lines.length);
+        this.renderAsm(hint);
+        this.setCheckEnabled(this.asmTarget.length === this.asmUnitCount);
       });
     });
   }
@@ -177,9 +188,10 @@ export class LessonPlayer {
       correct = this.checkOutput(input.value, q);
       correctAnswerText = q.answer;
     } else if (q.type === 'assemble') {
-      correct = this.asmTarget.every((item, i) => item.i === i)
-        && this.asmTarget.length === q.lines.length;
-      correctAnswerText = q.lines.join('\n');
+      const units = q.tokens || q.lines;
+      correct = this.asmTarget.length === units.length
+        && this.asmTarget.every((item, i) => item.i === i);
+      correctAnswerText = q.tokens ? q.tokens.join(' ') : q.lines.join('\n');
     }
 
     this.showFeedback(correct, q, correctAnswerText);
