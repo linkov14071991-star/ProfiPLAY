@@ -12,6 +12,7 @@ import { CURRICULUM, findLesson, findUnit } from './curriculum/index.js';
 import { THEORY } from './curriculum/theory.js';
 import { buildDaily, todayKey } from './daily.js';
 import { buildWeekly, weekKey, currentWeeklyPlan } from './weekly.js';
+import { profikMessage, buildReview } from './profik.js';
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
@@ -36,6 +37,7 @@ const els = {
   treeBack: document.getElementById('tree-back'),
   statStreak: document.getElementById('stat-streak'),
   statXp: document.getElementById('stat-xp'),
+  profikBanner: document.getElementById('profik-banner'),
   dailyCard: document.getElementById('daily-card'),
   weeklyCard: document.getElementById('weekly-card'),
   videosCard: document.getElementById('videos-card'),
@@ -69,6 +71,7 @@ let state = {
   done: new Set(),        // пройденные lessonId
   crowns: {},             // lessonId -> accuracy
   theorySeen: new Set(),  // unitId с прочитанной теорией
+  topicStats: {},         // unitId -> { correct, total } для памяти Профика
   xp: 0,
   streak: 0,
   lastActiveDay: null,
@@ -96,6 +99,7 @@ async function loadState() {
     state.done = new Set(saved.done || []);
     state.crowns = saved.crowns || {};
     state.theorySeen = new Set(saved.theorySeen || []);
+    state.topicStats = saved.topicStats || {};
     state.xp = saved.xp || 0;
     state.streak = saved.streak || 0;
     state.lastActiveDay = saved.lastActiveDay || null;
@@ -109,6 +113,7 @@ async function saveState() {
     done: [...state.done],
     crowns: state.crowns,
     theorySeen: [...state.theorySeen],
+    topicStats: state.topicStats,
     xp: state.xp,
     streak: state.streak,
     lastActiveDay: state.lastActiveDay,
@@ -157,10 +162,33 @@ function goToTree() {
   show('tree');
   els.statStreak.textContent = `🔥 ${state.streak}`;
   els.statXp.textContent = `⭐ ${state.xp}`;
+  renderProfikBanner();
   renderWeeklyCard();
   renderDailyCard();
   renderVideosCard();
   tree.render({ done: state.done, crowns: state.crowns });
+}
+
+function renderProfikBanner() {
+  const msg = profikMessage(state, todayKey(), shiftDay);
+  els.profikBanner.classList.remove('hidden');
+  els.profikBanner.innerHTML = `
+    <div class="pb-cat">🐱</div>
+    <div class="pb-body">
+      <div class="pb-text">${escapeHtml(msg.text)}</div>
+      ${msg.action ? `<button class="pb-action" id="pb-action">${
+        msg.action.type === 'review' ? 'Повторить тему' :
+        msg.action.type === 'daily' ? 'Начать повторение' : 'Поехали'
+      }</button>` : ''}
+    </div>
+  `;
+  if (msg.action) {
+    els.profikBanner.querySelector('#pb-action').onclick = () => {
+      sound.play('button_tap');
+      if (msg.action.type === 'review') openReview(msg.action.unitId);
+      else if (msg.action.type === 'daily') openDaily();
+    };
+  }
 }
 
 function renderWeeklyCard() {
@@ -293,7 +321,8 @@ function openLesson(lessonId) {
   player.start(lesson, { onComplete: onLessonComplete, onQuit: goToTree });
 }
 
-let activeMode = 'lesson';  // 'lesson' | 'daily' | 'weekly'
+let activeMode = 'lesson';  // 'lesson' | 'daily' | 'weekly' | 'review'
+let activeReviewUnit = null;
 
 function openDaily() {
   const daily = buildDaily(state.done);
@@ -311,6 +340,24 @@ function openWeekly() {
   player.start(weekly, { onComplete: onLessonComplete, onQuit: goToTree });
 }
 
+function openReview(unitId) {
+  const review = buildReview(unitId);
+  if (!review) return;
+  activeMode = 'review';
+  activeReviewUnit = unitId;
+  show('lesson');
+  player.start(review, { onComplete: onLessonComplete, onQuit: goToTree });
+}
+
+// Обновить статистику по теме (память Профика)
+function updateTopicStats(unitId, correct, total) {
+  if (!unitId || !total) return;
+  const s = state.topicStats[unitId] || { correct: 0, total: 0 };
+  s.correct += correct;
+  s.total += total;
+  state.topicStats[unitId] = s;
+}
+
 async function onLessonComplete(result) {
   if (result.success) {
     touchStreak();
@@ -319,9 +366,14 @@ async function onLessonComplete(result) {
       state.dailyDoneDay = todayKey();
     } else if (activeMode === 'weekly') {
       state.weeklyDoneKey = weekKey();
+    } else if (activeMode === 'review') {
+      updateTopicStats(activeReviewUnit, result.correctCount, result.totalCount);
     } else {
       state.done.add(result.lessonId);
       state.crowns[result.lessonId] = Math.max(state.crowns[result.lessonId] || 0, result.accuracy);
+      // статистика по теме урока
+      const lesson = findLesson(result.lessonId);
+      if (lesson) updateTopicStats(lesson.unitId, result.correctCount, result.totalCount);
     }
     await saveState();
     syncBackend(result);
@@ -353,6 +405,7 @@ function showResult(result) {
       // повтор того же
       if (activeMode === 'daily') openDaily();
       else if (activeMode === 'weekly') openWeekly();
+      else if (activeMode === 'review') openReview(activeReviewUnit);
       else openLesson(result.lessonId);
     }
   };

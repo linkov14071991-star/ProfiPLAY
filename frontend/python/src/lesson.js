@@ -269,6 +269,8 @@ export class LessonPlayer {
       lessonId: this.lesson.id,
       success,
       accuracy,
+      correctCount: this.correctFirstTry,
+      totalCount: this.total,
       xp: success ? (this.lesson.xp ?? 10) : 0,
       heartsLeft: this.hearts,
     });
