@@ -3,6 +3,7 @@
 import { codeBlock } from './ui/highlight.js';
 import { sound } from './audio/sound_engine.js';
 import { telemetry } from './telemetry/client.js';
+import { safeTrace } from './trace/tracer.js';
 
 const MAX_HEARTS = 5;
 
@@ -59,17 +60,18 @@ export class LessonPlayer {
     const body = this.els.lessonBody;
     body.scrollTop = 0;
     if (q.type === 'mcq') return this.renderMcq(q);
+    if (q.type === 'bug') return this.renderMcq(q, true);
     if (q.type === 'output') return this.renderOutput(q);
     if (q.type === 'assemble') return this.renderAssemble(q);
   }
 
-  // ── MCQ ──
-  renderMcq(q) {
+  // ── MCQ / BUG ──
+  renderMcq(q, isBug = false) {
     const opts = q.options.map((opt, i) =>
       `<button class="mcq-opt${/[=()\[\]".]/.test(opt) ? ' mono' : ''}" data-i="${i}">${escapeHtml(opt)}</button>`
     ).join('');
     this.els.lessonBody.innerHTML = `
-      <div class="q-prompt">${escapeHtml(q.q)}</div>
+      <div class="q-prompt">${isBug ? '🐞 ' : ''}${escapeHtml(q.q)}</div>
       ${q.code ? codeBlock(q.code) : ''}
       <div class="mcq-options">${opts}</div>
     `;
@@ -156,7 +158,7 @@ export class LessonPlayer {
     let correct = false;
     let correctAnswerText = '';
 
-    if (q.type === 'mcq') {
+    if (q.type === 'mcq' || q.type === 'bug') {
       correct = this.selection === q.answer;
       correctAnswerText = q.options[q.answer];
     } else if (q.type === 'output') {
@@ -199,8 +201,8 @@ export class LessonPlayer {
     }
     this.renderProgress();
 
-    // подсветка mcq
-    if (q.type === 'mcq') {
+    // подсветка mcq / bug
+    if (q.type === 'mcq' || q.type === 'bug') {
       this.els.lessonBody.querySelectorAll('.mcq-opt').forEach(b => {
         const i = parseInt(b.dataset.i, 10);
         if (i === q.answer) b.classList.add('correct');
@@ -213,8 +215,35 @@ export class LessonPlayer {
     fb.className = 'feedback ' + (correct ? 'correct' : 'wrong');
     this.els.feedbackHead.textContent = correct ? '✓ Верно!' : '✗ Не так';
     const ansHtml = `<span class="ans">${escapeHtml(correctAnswerText)}</span>`;
-    this.els.feedbackExplain.innerHTML =
-      (correct ? '' : `Правильный ответ: ${ansHtml}<br><br>`) + escapeHtml(q.explain);
+    let html = (correct ? '' : `Правильный ответ: ${ansHtml}<br><br>`) + escapeHtml(q.explain);
+
+    // Пошаговая трассировка для output-заданий (только если вывод совпал с проверенным ответом)
+    if (q.type === 'output' && q.code) {
+      const steps = safeTrace(q.code, q.answer);
+      if (steps && steps.length > 1) {
+        html += `<div class="trace-wrap">
+          <button class="trace-toggle" id="trace-toggle">👁 Показать выполнение по шагам</button>
+          <div class="trace-steps hidden" id="trace-steps">${
+            steps.map(s => `<div class="trace-step">${escapeHtml(s)}</div>`).join('')
+          }</div>
+        </div>`;
+      }
+    }
+    this.els.feedbackExplain.innerHTML = html;
+
+    // обработчик раскрытия трассировки
+    const toggle = this.els.feedbackExplain.querySelector('#trace-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        const box = this.els.feedbackExplain.querySelector('#trace-steps');
+        box.classList.toggle('hidden');
+        toggle.textContent = box.classList.contains('hidden')
+          ? '👁 Показать выполнение по шагам'
+          : '🙈 Скрыть выполнение';
+        sound.play('button_tap');
+        telemetry.emit('trace_view', { lessonId: this.lesson.id, qIndex: this.current.originalIndex });
+      });
+    }
 
     if (this.hearts <= 0) {
       this.els.continueBtn.textContent = 'Попробовать заново';

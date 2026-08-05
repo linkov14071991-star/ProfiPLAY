@@ -230,6 +230,23 @@ html, body {
 .feedback.wrong .feedback-head { color: var(--error); }
 .feedback-explain { font-size: 15px; line-height: 1.5; color: #e0e0e0; margin-bottom: 16px; }
 .feedback-explain .ans { color: var(--primary); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.trace-wrap { margin-top: 14px; }
+.trace-toggle {
+  width: 100%; padding: 11px; font-family: inherit; font-size: 14px; font-weight: 700;
+  color: var(--text); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px; cursor: pointer;
+}
+.trace-toggle:active { transform: scale(0.99); }
+.trace-steps {
+  margin-top: 10px; background: var(--code-bg); border-radius: 10px; padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.1); max-height: 260px; overflow-y: auto;
+}
+.trace-steps.hidden { display: none; }
+.trace-step {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6;
+  color: #d4d4d4; white-space: pre;
+}
+.trace-step:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.04); }
 .continue-btn {
   width: 100%; padding: 15px; font-family: inherit; font-size: 16px; font-weight: 800;
   color: #12151c; border: none; border-radius: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
