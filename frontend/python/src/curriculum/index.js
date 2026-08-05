@@ -5,6 +5,7 @@ import { EGE_UNITS } from './ege.js';
 import { EGE_LIB_UNITS } from './ege_libs.js';
 import { EGE_LIB_UNITS_2 } from './ege_libs2.js';
 import { EGE_TASK_UNITS } from './ege_tasks.js';
+import { DEEP_TASK_LESSONS } from './ege_tasks_deep.js';
 import { EXTRA_LESSONS } from './practice.js';
 import { EXTRA_LESSONS_2 } from './practice2.js';
 import { BUG_LESSONS } from './bugs.js';
@@ -14,7 +15,8 @@ export const CURRICULUM = [...OGE_UNITS, ...EGE_UNITS, ...EGE_LIB_UNITS, ...EGE_
   const extra = EXTRA_LESSONS[unit.id] || [];
   const extra2 = EXTRA_LESSONS_2[unit.id] || [];
   const bugs = BUG_LESSONS[unit.id] || [];
-  return { ...unit, lessons: [...unit.lessons, ...extra, ...extra2, ...bugs] };
+  const deep = DEEP_TASK_LESSONS[unit.id] || [];
+  return { ...unit, lessons: [...unit.lessons, ...extra, ...extra2, ...bugs, ...deep] };
 });
 
 // Плоский список уроков в порядке прохождения
