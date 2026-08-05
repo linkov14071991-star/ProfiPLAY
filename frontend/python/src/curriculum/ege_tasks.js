@@ -1,0 +1,151 @@
+// ege_tasks.js — темы вокруг НОМЕРОВ задач ЕГЭ (по совету эксперта).
+// Библиотека — инструмент, задача экзамена — главная сущность.
+// Здесь глубина: 24, 25, 27 — самые частые и сложные.
+
+export const EGE_TASK_UNITS = [
+  // ── Задача №8: комбинаторика (product) ──
+  {
+    id: 'ege_task8',
+    level: 'ЕГЭ',
+    icon: '🎲',
+    color: '#7c3aed',
+    title: 'Задача №8: комбинаторика',
+    desc: 'подсчёт слов и кодов, product',
+    isBoss: true,
+    lessons: [
+      {
+        id: 'ege_task8_1', title: 'Считаем слова', xp: 20,
+        questions: [
+          { type: 'output', q: 'Сколько слов длины 3 из букв «АБВ» (с повторами)?', code: "from itertools import product\nprint(len(list(product('АБВ', repeat=3))))", answer: '27',
+            explain: '3 буквы, длина 3, с повторами: 3·3·3 = 27.' },
+          { type: 'output', q: 'Сколько кодов длины 4 из «01»?', code: "from itertools import product\nprint(len(list(product('01', repeat=4))))", answer: '16',
+            explain: '2 символа, длина 4: 2⁴ = 16.' },
+          { type: 'output', q: 'Сколько слов длины 4 из «01» БЕЗ двух одинаковых подряд?', code: "from itertools import product\nk = 0\nfor w in product('01', repeat=4):\n    ok = True\n    for i in range(3):\n        if w[i] == w[i + 1]:\n            ok = False\n    if ok:\n        k += 1\nprint(k)", answer: '2',
+            explain: 'Только 0101 и 1010 не имеют двух одинаковых подряд.' },
+          { type: 'mcq', q: 'Какой инструмент — основа задачи 8?',
+            options: ['product', 'combinations', 'gcd', 'dist'], answer: 0,
+            explain: 'product(repeat=n) перебирает все слова длины n с повторами.' },
+          { type: 'mcq', q: 'Шаблон задачи 8: что делаем внутри цикла по product?',
+            options: ['Проверяем условие из задачи, считаем подходящие', 'Сортируем', 'Складываем буквы', 'Ничего'], answer: 0,
+            explain: 'Перебираем все слова, проверяем условие, увеличиваем счётчик.' },
+          { type: 'bug', q: 'Почему сравнение w[i]==w[i+1] может дать IndexError?', code: 'for w in product("01", repeat=4):\n    for i in range(4):\n        if w[i] == w[i + 1]:\n            ...',
+            options: ['range(4) даёт i=3, а w[4] не существует — нужно range(3)', 'product сломан', 'repeat неверный', 'Всё верно'], answer: 0,
+            explain: 'Для пар соседних индексов нужен range(len-1) = range(3), иначе выход за границы.' },
+          { type: 'assemble', q: 'Собери: посчитать все слова длины 2 из «АБВ»',
+            lines: ['from itertools import product', 'a = list(product("АБВ", repeat=2))', 'print(len(a))'],
+            explain: 'Импорт, список всех слов, длина.' },
+        ],
+      },
+    ],
+  },
+
+  // ── Задача №24: обработка строки (re) ──
+  {
+    id: 'ege_task24',
+    level: 'ЕГЭ',
+    icon: '📜',
+    color: '#7c3aed',
+    title: 'Задача №24: обработка строки',
+    desc: 'чтение файла, регулярки, шаблоны',
+    isBoss: true,
+    lessons: [
+      {
+        id: 'ege_task24_1', title: 'Шаблон и чтение', xp: 20,
+        questions: [
+          { type: 'mcq', q: 'Как в задаче 24 читают одну длинную строку из файла?',
+            options: ['open("f.txt").readline()', 'input()', 'int(open("f.txt"))', 'read.all()'], answer: 0,
+            explain: 'readline() читает всю строку целиком — по ней потом ищут шаблоны.' },
+          { type: 'output', q: 'Что выведет программа?', code: "from re import findall\nprint(findall(r'[0-9]+', 'A12BB345'))", answer: "['12', '345']",
+            explain: '[0-9]+ находит группы цифр: 12 и 345.' },
+          { type: 'output', q: 'Что выведет ЖАДНЫЙ шаблон?', code: "from re import findall\nprint(findall(r'B+', 'ABBBA'))", answer: "['BBB']",
+            explain: 'B+ жадно захватывает все B подряд: одно совпадение BBB.' },
+          { type: 'output', q: 'Сколько совпадений даёт лениво?', code: "from re import findall\nprint(len(findall(r'<.+?>', '<a><b><c>')))", answer: '3',
+            explain: 'Ленивый .+? разбивает на 3 тега: <a>, <b>, <c>.' },
+          { type: 'mcq', q: 'Задача 24: 14-ричное число без ведущего нуля, кончается чётной цифрой. Первый символ шаблона?',
+            options: ['[1-9A-D] (не ноль)', '[0-9]', '.', '[02468]'], answer: 0,
+            explain: 'Первая цифра не может быть 0, поэтому [1-9A-D].' },
+          { type: 'mcq', q: 'Зачем в задаче 24 важна ленивость (.+?)?',
+            options: ['Чтобы не склеить соседние совпадения в одно', 'Для скорости', 'Ни за чем', 'Для сортировки'], answer: 0,
+            explain: 'Жадный шаблон может захватить лишнее и слить несколько чисел. Лень режет по одному.' },
+          { type: 'bug', q: 'Почему шаблон r"[0-9]+" лучше писать с префиксом r?',
+            options: ['Чтобы \\ понимался как регулярка, а не спецсимвол Python', 'Для красоты', 'Обязателен', 'Ни за чем'], answer: 0,
+            explain: 'raw-строка r"" отключает обработку \\ в Python — стандарт для регулярок.' },
+        ],
+      },
+    ],
+  },
+
+  // ── Задача №25: маски и делители (fnmatch) ──
+  {
+    id: 'ege_task25',
+    level: 'ЕГЭ',
+    icon: '🔢',
+    color: '#7c3aed',
+    title: 'Задача №25: маски и делители',
+    desc: 'fnmatch, перебор делителей, шаблон',
+    isBoss: true,
+    lessons: [
+      {
+        id: 'ege_task25_1', title: 'Маски чисел', xp: 20,
+        questions: [
+          { type: 'output', q: 'Какие числа из ряда 100, 107, 114, … (шаг 7) подходят под маску «1?2»?', code: "from fnmatch import fnmatch\nres = []\nfor n in range(100, 1000, 7):\n    if fnmatch(str(n), '1?2'):\n        res.append(n)\nprint(res)", answer: '[142]',
+            explain: 'Перебор range(100,1000,7) даёт 100,107,114,121,128,135,142,… Под «1?2» (1-любой-2) из них подходит только 142.' },
+          { type: 'output', q: 'Что вернёт функция поиска делителя, кончающегося на 7, для 119?', code: 'def div(n):\n    for d in range(2, int(n ** 0.5) + 1):\n        if n % d == 0:\n            if d % 10 == 7:\n                return d\n            if (n // d) % 10 == 7:\n                return n // d\n    return 0\nprint(div(119))', answer: '7',
+            explain: '119 = 7·17. Делитель 7 кончается на 7 — возвращаем 7.' },
+          { type: 'output', q: 'Что вернёт div(100), если делителя на 7 нет?', code: 'def div(n):\n    for d in range(2, int(n ** 0.5) + 1):\n        if n % d == 0:\n            if d % 10 == 7:\n                return d\n            if (n // d) % 10 == 7:\n                return n // d\n    return 0\nprint(div(100))', answer: '0',
+            explain: 'У 100 нет делителя, кончающегося на 7 → возвращаем 0.' },
+          { type: 'output', q: 'Что выведет проверка маски?', code: 'from fnmatch import fnmatch\nprint(fnmatch("15243", "1?2*"))', answer: 'True',
+            explain: '1-?-2-* : 1, любой (5), 2, дальше что угодно (43). Подходит.' },
+          { type: 'mcq', q: 'Почему делители ищут только до √n (int(n**0.5)+1)?',
+            options: ['Делители идут парами, второй находится через n//d — быстрее', 'Так короче писать', 'Случайно', 'До n нельзя'], answer: 0,
+            explain: 'Если d — делитель, то и n//d делитель. Достаточно дойти до корня — в разы быстрее.' },
+          { type: 'mcq', q: 'Задача 25: число проверяют маской через...',
+            options: ['fnmatch(str(n), маска)', 'fnmatch(n, маска)', 'n == маска', 'int(маска)'], answer: 0,
+            explain: 'fnmatch работает со строками — число превращают через str(n).' },
+          { type: 'bug', q: 'Почему fnmatch(12345, "1*") даст ошибку?', code: 'from fnmatch import fnmatch\nprint(fnmatch(12345, "1*"))',
+            options: ['Нужна строка: str(12345)', 'Маска неверна', 'Нет импорта', 'Всё верно'], answer: 0,
+            explain: 'fnmatch принимает только строки. Число оборачивают в str().' },
+          { type: 'assemble', q: 'Собери шаблон: первые числа кратные 7, подходящие под маску',
+            lines: ['from fnmatch import fnmatch', 'for n in range(100, 1000, 7):', '    if fnmatch(str(n), "1*7"):', '        print(n)'],
+            explain: 'Перебор кратных 7, проверка маски строки.' },
+        ],
+      },
+    ],
+  },
+
+  // ── Задача №27: обработка данных (dist) ──
+  {
+    id: 'ege_task27',
+    level: 'ЕГЭ',
+    icon: '⭐',
+    color: '#7c3aed',
+    title: 'Задача №27: обработка данных',
+    desc: 'расстояния, кластеры, шаблон dist+centr',
+    isBoss: true,
+    lessons: [
+      {
+        id: 'ege_task27_1', title: 'Расстояния и кластеры', xp: 20,
+        questions: [
+          { type: 'output', q: 'Что выведет расстояние между точками?', code: 'from math import dist\nprint(dist([0, 0], [5, 12]))', answer: '13.0',
+            explain: '√(5² + 12²) = √169 = 13.0. Классическая тройка 5-12-13.' },
+          { type: 'output', q: 'Что выведет медоид (центр кластера)?', code: 'from math import dist\npts = [[0, 0], [3, 4], [6, 8]]\ndef summ(p):\n    return sum(dist(p, q) for q in pts)\nbest = min(pts, key=summ)\nprint(best)', answer: '[3, 4]',
+            explain: 'Медоид — точка с минимальной суммой расстояний до остальных. Это [3, 4].' },
+          { type: 'output', q: 'Что выведет округление расстояния?', code: 'from math import dist\nd = dist([0, 0], [2, 3])\nprint(f"{d:.2f}")', answer: '3.61',
+            explain: '√(4+9)=√13≈3.6055, округляем до 3.61.' },
+          { type: 'mcq', q: 'Что такое медоид в задаче 27?',
+            options: ['Точка кластера с мин. суммой расстояний до остальных', 'Самая левая точка', 'Среднее координат', 'Первая точка'], answer: 0,
+            explain: 'Медоид — «центральная» точка кластера, ближайшая ко всем остальным.' },
+          { type: 'mcq', q: 'Как в задаче 27 обычно читают пары координат из файла?',
+            options: ['[int(x) for x in line.split()] по строкам', 'input()', 'readline() один раз', 'через fnmatch'], answer: 0,
+            explain: 'Каждая строка — координаты точки, режем split() и превращаем в int.' },
+          { type: 'mcq', q: 'Зачем f"{d:.2f}" в ответе задачи 27?',
+            options: ['Округлить расстояние до 2 знаков', 'Перевести в двоичное', 'Ускорить', 'Ни за чем'], answer: 0,
+            explain: 'Ответ часто просят с 2 знаками после запятой — {d:.2f}.' },
+          { type: 'assemble', q: 'Собери функцию расстояния между точками',
+            lines: ['def dist(a, b):', '    return ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** 0.5', 'print(dist([0, 0], [3, 4]))'],
+            explain: 'Теорема Пифагора: корень из суммы квадратов разностей.' },
+        ],
+      },
+    ],
+  },
+];
