@@ -15,6 +15,8 @@ import { buildWeekly, weekKey, currentWeeklyPlan } from './weekly.js';
 import { profikMessage, buildReview } from './profik.js';
 import { readiness, readinessLabel, readinessColor } from './readiness.js';
 import { buildPlan, buildBugFix } from './plan.js';
+import { ProjectsScreen } from './projects_screen.js';
+import { PROJECTS } from './curriculum/projects.js';
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
@@ -31,6 +33,8 @@ const screens = {
   lesson: document.getElementById('s-lesson'),
   theory: document.getElementById('s-theory'),
   videos: document.getElementById('s-videos'),
+  projects: document.getElementById('s-projects'),
+  projectDone: document.getElementById('s-project-done'),
   result: document.getElementById('s-result'),
 };
 const els = {
@@ -40,7 +44,12 @@ const els = {
   statStreak: document.getElementById('stat-streak'),
   statXp: document.getElementById('stat-xp'),
   planCard: document.getElementById('plan-card'),
+  projectsCard: document.getElementById('projects-card'),
   readinessCard: document.getElementById('readiness-card'),
+  // projects screens
+  projectsScroll: document.getElementById('projects-scroll'),
+  projectsBack: document.getElementById('projects-back'),
+  projdoneWrap: document.getElementById('projdone-wrap'),
   profikBanner: document.getElementById('profik-banner'),
   dailyCard: document.getElementById('daily-card'),
   weeklyCard: document.getElementById('weekly-card'),
@@ -80,6 +89,7 @@ let state = {
   speedStats: { count: 0, totalMs: 0 },   // скорость ответов
   bossStats: { correct: 0, total: 0 },    // задачи-боссы ЕГЭ
   planDone: { day: null, ids: [] },       // выполненные пункты плана за день
+  projectsBuilt: new Set(),                // id собранных мини-проектов
   xp: 0,
   streak: 0,
   lastActiveDay: null,
@@ -112,6 +122,7 @@ async function loadState() {
     state.speedStats = saved.speedStats || { count: 0, totalMs: 0 };
     state.bossStats = saved.bossStats || { correct: 0, total: 0 };
     state.planDone = saved.planDone || { day: null, ids: [] };
+    state.projectsBuilt = new Set(saved.projectsBuilt || []);
     state.xp = saved.xp || 0;
     state.streak = saved.streak || 0;
     state.lastActiveDay = saved.lastActiveDay || null;
@@ -130,6 +141,7 @@ async function saveState() {
     speedStats: state.speedStats,
     bossStats: state.bossStats,
     planDone: state.planDone,
+    projectsBuilt: [...state.projectsBuilt],
     xp: state.xp,
     streak: state.streak,
     lastActiveDay: state.lastActiveDay,
@@ -183,6 +195,7 @@ function goToTree() {
   renderProfikBanner();
   renderWeeklyCard();
   renderDailyCard();
+  renderProjectsCard();
   renderVideosCard();
   tree.render({ done: state.done, crowns: state.crowns });
 }
@@ -330,6 +343,19 @@ function renderVideosCard() {
   els.videosCard.onclick = () => { sound.play('button_tap'); openVideos(); };
 }
 
+function renderProjectsCard() {
+  const built = PROJECTS.filter(p => state.projectsBuilt.has(p.id)).length;
+  els.projectsCard.innerHTML = `
+    <div class="pjc-icon">🛠</div>
+    <div style="flex:1;">
+      <div class="pjc-title">Мини-проекты</div>
+      <div class="pjc-sub">Собери настоящую программу · ${built}/${PROJECTS.length} собрано</div>
+    </div>
+    <div class="pjc-arrow">›</div>
+  `;
+  els.projectsCard.onclick = () => { sound.play('button_tap'); openProjects(); };
+}
+
 function renderDailyCard() {
   const daily = buildDaily(state.done);
   if (!daily) { els.dailyCard.classList.add('hidden'); return; }
@@ -369,6 +395,52 @@ videosScreen.bind();
 function openVideos() {
   show('videos');
   videosScreen.show({ onBack: goToTree });
+}
+
+// ── Projects ──
+const projectsScreen = new ProjectsScreen({
+  scroll: els.projectsScroll, back: els.projectsBack, doneWrap: els.projdoneWrap,
+});
+projectsScreen.bindBack();
+
+let activeProject = null;
+
+function isProjectUnlocked(p) {
+  const unit = findUnit(p.unlockAfter);
+  if (!unit) return true;
+  return unit.lessons.some(l => state.done.has(l.id));  // хотя бы один урок темы пройден
+}
+
+function openProjects() {
+  show('projects');
+  projectsScreen.showList({
+    builtSet: state.projectsBuilt,
+    isUnlocked: isProjectUnlocked,
+    onBack: goToTree,
+    onOpen: startProject,
+  });
+}
+
+function startProject(project) {
+  activeProject = project;
+  activeMode = 'project';
+  const lesson = { id: 'project_' + project.id, title: project.title, xp: 25, questions: project.steps };
+  show('lesson');
+  player.start(lesson, { onComplete: onProjectComplete, onQuit: openProjects });
+}
+
+async function onProjectComplete(result) {
+  if (result.success && activeProject) {
+    state.projectsBuilt.add(activeProject.id);
+    state.xp += 25;
+    touchStreak();
+    await saveState();
+    show('projectDone');
+    projectsScreen.showDone(activeProject, { onNext: openProjects });
+  } else {
+    // не собрал — вернуть к списку
+    openProjects();
+  }
 }
 
 let theoryReturnLessonId = null;  // куда идти после «Перейти к заданиям»
