@@ -188,16 +188,19 @@ html, body {
 .unit-block { margin-bottom: 20px; }
 .unit-head {
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-  border-radius: 14px 14px 0 0; color: #12151c; font-weight: 800;
+  border-radius: 14px 14px 0 0; color: #12151c; font-weight: 800; cursor: pointer;
+  transition: transform 80ms;
 }
+.unit-head:active { transform: scale(0.995); }
 .unit-head .unit-emoji { font-size: 26px; }
-.unit-head .unit-info { flex: 1; }
+.unit-head .unit-info { flex: 1; min-width: 0; }
 .unit-head .unit-title { font-size: 17px; }
 .unit-head .unit-desc { font-size: 12px; font-weight: 500; opacity: 0.75; }
-.unit-head .unit-badge {
-  font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px;
-  background: rgba(0,0,0,0.15);
-}
+.unit-head .unit-chevron { font-size: 16px; opacity: 0.6; flex-shrink: 0; }
+/* свёрнутая тема — заголовок скруглён со всех сторон, уроки скрыты */
+.unit-block.collapsed .unit-head { border-radius: 14px; }
+.unit-block.collapsed .unit-lessons { display: none; }
+.unit-block.unit-done .unit-head { opacity: 0.9; }
 .unit-lessons {
   background: var(--surface); border-radius: 0 0 14px 14px; padding: 6px;
   display: flex; flex-direction: column; gap: 4px;

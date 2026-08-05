@@ -10,6 +10,7 @@ export class TreeScreen {
     this.onOpenLesson = onOpenLesson;
     this.onOpenDaily = onOpenDaily;
     this.onOpenTheory = onOpenTheory;
+    this.expanded = new Set();   // unitId, которые ученик вручную раскрыл
   }
 
   // progress: { done: Set<lessonId>, crowns: {lessonId: accuracy} }
@@ -21,8 +22,13 @@ export class TreeScreen {
     let currentFound = false;
 
     for (const unit of CURRICULUM) {
+      const doneCount = unit.lessons.filter(l => doneSet.has(l.id)).length;
+      const unitDone = doneCount === unit.lessons.length;
+      // Пройденные темы сворачиваем (если ученик не раскрыл вручную)
+      const collapsed = unitDone && !this.expanded.has(unit.id);
+
       const block = document.createElement('div');
-      block.className = 'unit-block';
+      block.className = 'unit-block' + (collapsed ? ' collapsed' : '') + (unitDone ? ' unit-done' : '');
 
       const head = document.createElement('div');
       head.className = 'unit-head';
@@ -31,10 +37,19 @@ export class TreeScreen {
         <div class="unit-emoji">${unit.icon}</div>
         <div class="unit-info">
           <div class="unit-title">${escapeHtml(unit.title)}</div>
-          <div class="unit-desc">${escapeHtml(unit.desc)}</div>
+          <div class="unit-desc">${unitDone ? '✓ Пройдено · ' + doneCount + '/' + unit.lessons.length : escapeHtml(unit.desc)}</div>
         </div>
-        <div class="unit-badge">${unit.level}</div>
+        <div class="unit-chevron">${collapsed ? '▸' : '▾'}</div>
       `;
+      // Заголовок сворачивает/разворачивает тему
+      head.addEventListener('click', () => {
+        sound.play('button_tap');
+        const sy = this.scroll.scrollTop;
+        if (this.expanded.has(unit.id)) this.expanded.delete(unit.id);
+        else this.expanded.add(unit.id);
+        this.render(progress);
+        this.scroll.scrollTop = sy;
+      });
       block.appendChild(head);
 
       const lessonsWrap = document.createElement('div');
