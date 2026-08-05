@@ -59,7 +59,8 @@ export class TreeScreen {
       if (THEORY[unit.id]) {
         const tbtn = document.createElement('button');
         tbtn.className = 'unit-theory-btn';
-        tbtn.innerHTML = `<span class="ut-icon">📖</span> Теория${(THEORY[unit.id].videos || []).length ? ' + видео' : ''}<span class="ut-arrow">›</span>`;
+        const hasVid = (THEORY[unit.id].videos || []).length;
+        tbtn.innerHTML = `<span class="ut-icon">${hasVid ? '🎥' : '📖'}</span> ${hasVid ? 'Разбор от Игоря' : 'Теория темы'}<span class="ut-arrow">›</span>`;
         tbtn.addEventListener('click', () => {
           sound.play('button_tap');
           this.onOpenTheory(unit.id);

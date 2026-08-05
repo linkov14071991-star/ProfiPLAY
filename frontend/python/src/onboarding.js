@@ -3,6 +3,7 @@
 import { codeBlock } from './ui/highlight.js';
 import { sound } from './audio/sound_engine.js';
 import { CURRICULUM, FIRST_EGE_UNIT_INDEX } from './curriculum/index.js';
+import { EXAM_PRESETS } from './mentor.js';
 
 // Placement-вопросы: возрастающая сложность. Каждый привязан к юниту.
 const PLACEMENT = [
@@ -53,7 +54,14 @@ export class Onboarding {
         { key: 'ege', label: 'ЕГЭ', desc: '11 класс' },
         { key: 'both', label: 'Просто хочу выучить Python', desc: 'Без привязки к экзамену' },
       ],
-      onPick: (key) => { this.answers.goal = key; this.renderExperience(); },
+      onPick: (key) => {
+        this.answers.goal = key;
+        // дата экзамена — из цели (без лишнего шага)
+        if (key === 'oge') { const p = EXAM_PRESETS.find(x => x.key === 'oge'); this.answers.examMonth = p.month; this.answers.examDay = p.day; }
+        else if (key === 'ege') { const p = EXAM_PRESETS.find(x => x.key === 'ege'); this.answers.examMonth = p.month; this.answers.examDay = p.day; }
+        else { this.answers.examMonth = null; this.answers.examDay = null; }
+        this.renderExperience();
+      },
     });
   }
 
@@ -173,6 +181,8 @@ export class Onboarding {
         goal: this.answers.goal,
         experience: this.answers.experience,
         startUnitIndex: chosenUnitIdx,
+        examMonth: this.answers.examMonth,
+        examDay: this.answers.examDay,
       });
     };
   }

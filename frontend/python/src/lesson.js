@@ -4,6 +4,7 @@ import { codeBlock } from './ui/highlight.js';
 import { sound } from './audio/sound_engine.js';
 import { telemetry } from './telemetry/client.js';
 import { safeTrace } from './trace/tracer.js';
+import { IGOR_MISTAKES } from './mentor.js';
 
 const MAX_HEARTS = 5;
 
@@ -31,6 +32,8 @@ export class LessonPlayer {
     this.answerTimeMs = 0;   // суммарное время на ответы
     this.answerCount = 0;    // сколько ответов дано (для скорости)
     this.qShownAt = 0;
+    this.wrongTotal = 0;     // всего ошибок в уроке (для заметки Игоря и «застрял»)
+    this.igorShown = false;
 
     telemetry.emit('lesson_start', { lessonId: lesson.id });
     this.renderHearts();
@@ -223,6 +226,7 @@ export class LessonPlayer {
       sound.play('error');
       this.tg?.HapticFeedback?.notificationOccurred?.('error');
       this.hearts--;
+      this.wrongTotal++;
       this.answeredWrong.add(this.current.originalIndex);
       // вернуть вопрос в конец очереди
       this.queue.push(this.current);
@@ -246,6 +250,16 @@ export class LessonPlayer {
     this.els.feedbackHead.textContent = correct ? '✓ Верно!' : '✗ Не так';
     const ansHtml = `<span class="ans">${escapeHtml(correctAnswerText)}</span>`;
     let html = (correct ? '' : `Правильный ответ: ${ansHtml}<br><br>`) + escapeHtml(q.explain);
+
+    // Заметка Игоря о частой ошибке — после 2-й ошибки в теме (один раз за урок)
+    if (!correct && !this.igorShown && this.wrongTotal >= 2) {
+      const note = IGOR_MISTAKES[this.lesson.unitId];
+      if (note) {
+        this.igorShown = true;
+        html += `<div class="igor-note"><div class="igor-ava">🧑‍🏫</div><div class="igor-text">${escapeHtml(note)}</div></div>`;
+        telemetry.emit('igor_note_shown', { unitId: this.lesson.unitId });
+      }
+    }
 
     // Пошаговая трассировка для output-заданий (только если вывод совпал с проверенным ответом)
     if (q.type === 'output' && q.code) {
@@ -305,6 +319,8 @@ export class LessonPlayer {
       answerCount: this.answerCount,
       xp: success ? (this.lesson.xp ?? 10) : 0,
       heartsLeft: this.hearts,
+      unitId: this.lesson.unitId,
+      struggled: this.wrongTotal >= 3,
     });
   }
 

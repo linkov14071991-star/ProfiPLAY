@@ -15,6 +15,8 @@ import { buildWeekly, weekKey, currentWeeklyPlan } from './weekly.js';
 import { profikMessage, buildReview } from './profik.js';
 import { readiness, readinessLabel, readinessColor } from './readiness.js';
 import { buildPlan, buildBugFix } from './plan.js';
+import { CHANNEL_URL, IGOR_MISTAKES, IDENTITY, CHANNEL_HINTS, ADAPTIVE, daysToExam } from './mentor.js';
+import { openYouTube } from './ui/youtube.js';
 import { ProjectsScreen } from './projects_screen.js';
 import { PROJECTS } from './curriculum/projects.js';
 
@@ -43,6 +45,7 @@ const els = {
   treeBack: document.getElementById('tree-back'),
   statStreak: document.getElementById('stat-streak'),
   statXp: document.getElementById('stat-xp'),
+  heroCard: document.getElementById('hero-card'),
   planCard: document.getElementById('plan-card'),
   projectsCard: document.getElementById('projects-card'),
   readinessCard: document.getElementById('readiness-card'),
@@ -173,6 +176,7 @@ function startOnboarding() {
   show('onboard');
   onboarding.start(async (profile) => {
     state.profile = profile;
+    telemetry.emit('onboarding_done', { goal: profile.goal, experience: profile.experience, exam: !!profile.examMonth });
     // Пометим все уроки в юнитах ДО стартового как пройденные (по рекомендации теста)
     if (profile.startUnitIndex > 0) {
       for (let i = 0; i < profile.startUnitIndex; i++) {
@@ -191,14 +195,72 @@ function goToTree() {
   show('tree');
   els.statStreak.textContent = `🔥 ${state.streak}`;
   els.statXp.textContent = `⭐ ${state.xp}`;
+  renderHero();
+  renderProfikBanner();
   renderPlanCard();
   renderReadinessCard();
-  renderProfikBanner();
   renderWeeklyCard();
   renderDailyCard();
   renderProjectsCard();
   renderVideosCard();
   tree.render({ done: state.done, crowns: state.crowns });
+}
+
+// Следующий непройденный урок (для кнопки «Продолжить обучение»)
+function nextLesson() {
+  for (const u of CURRICULUM) for (const l of u.lessons) if (!state.done.has(l.id)) return { lesson: l, unit: u };
+  return null;
+}
+
+// ── Главный экран: цель + одна кнопка ──
+function renderHero() {
+  const r = readiness(state);
+  const color = readinessColor(r.total);
+  const nx = nextLesson();
+  // отсчёт до экзамена
+  let countdown = '';
+  const p = state.profile || {};
+  const dte = daysToExam(p.examMonth, p.examDay);
+  if (dte != null) {
+    const examName = p.goal === 'oge' ? 'ОГЭ' : 'ЕГЭ';
+    countdown = `<div class="hero-countdown">До ${examName} осталось <b>${dte}</b> ${plural(dte, 'день', 'дня', 'дней')}</div>`;
+  }
+  const ring = r.hasData
+    ? `<div class="hero-ring" style="background:conic-gradient(${color} ${r.total*3.6}deg, #232a38 0)">
+         <div class="hero-ring-in"><div class="hero-pct" style="color:${color}">${r.total}%</div><div class="hero-ring-lbl">готов</div></div>
+       </div>`
+    : `<div class="hero-ring" style="background:conic-gradient(#2a3040 360deg, #232a38 0)">
+         <div class="hero-ring-in"><div class="hero-pct" style="color:var(--muted)">—</div><div class="hero-ring-lbl">старт</div></div>
+       </div>`;
+
+  const btnLabel = nx
+    ? (state.done.size === 0 ? 'Начать обучение' : 'Продолжить обучение')
+    : 'Курс пройден 🎉';
+
+  els.heroCard.innerHTML = `
+    <div class="hero-top">
+      ${ring}
+      <div class="hero-goal">
+        <div class="hero-title">Готовность к экзамену</div>
+        ${countdown || `<div class="hero-countdown">${escapeHtml(readinessLabel(r.total))}</div>`}
+        ${nx ? `<div class="hero-next">Дальше: ${escapeHtml(nx.unit.icon + ' ' + nx.lesson.title)}</div>` : ''}
+      </div>
+    </div>
+    <button class="hero-continue" id="hero-continue" ${nx ? '' : 'disabled'}>${btnLabel}</button>
+  `;
+  const btn = els.heroCard.querySelector('#hero-continue');
+  if (nx) btn.onclick = () => {
+    sound.play('button_tap');
+    telemetry.emit('continue_pressed', { lessonId: nx.lesson.id });
+    requestLesson(nx.lesson.id);
+  };
+}
+
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
 }
 
 function planDoneToday() {
@@ -296,8 +358,12 @@ function renderReadinessCard() {
   };
 }
 
+let recentMood = null;   // 'struggling' | 'onFire' — разовая адаптивная реплика Профика
+
 function renderProfikBanner() {
-  const msg = profikMessage(state, todayKey(), shiftDay);
+  let msg;
+  if (recentMood && ADAPTIVE[recentMood]) { msg = { text: ADAPTIVE[recentMood], action: null }; recentMood = null; }
+  else msg = profikMessage(state, todayKey(), shiftDay);
   els.profikBanner.classList.remove('hidden');
   els.profikBanner.innerHTML = `
     <div class="pb-cat">🐱</div>
@@ -365,8 +431,8 @@ function renderDailyCard() {
   els.dailyCard.innerHTML = `
     <div class="daily-icon">${doneToday ? '✅' : '🔥'}</div>
     <div style="flex:1;">
-      <div class="daily-title">${doneToday ? 'Повторение пройдено!' : 'Ежедневное повторение'}</div>
-      <div class="daily-sub">${doneToday ? 'Возвращайся завтра за серией' : `${daily.questions.length} вопросов · +${daily.xp} XP`}</div>
+      <div class="daily-title">${doneToday ? 'Задача дня пройдена!' : 'Задача дня от Игоря'}</div>
+      <div class="daily-sub">${doneToday ? 'Возвращайся завтра — серия не прервётся' : `${daily.questions.length} вопросов · +${daily.xp} XP · держит серию`}</div>
     </div>
   `;
   els.dailyCard.onclick = doneToday ? null : () => { sound.play('button_tap'); openDaily(); };
@@ -396,6 +462,13 @@ videosScreen.bind();
 function openVideos() {
   show('videos');
   videosScreen.show({ onBack: goToTree });
+}
+
+function openChannel() {
+  const url = CHANNEL_URL;
+  if (tg && typeof tg.openTelegramLink === 'function') tg.openTelegramLink(url);
+  else if (tg && typeof tg.openLink === 'function') tg.openLink(url);
+  else window.open(url, '_blank', 'noopener');
 }
 
 // ── Projects ──
@@ -560,9 +633,15 @@ function updateTopicStats(unitId, correct, total) {
 }
 
 let lastRatingAwarded = 0;   // рейтинг за последнее прохождение (для экрана результата)
+let lastCompletedUnit = null; // тема, которую только что закрыли (для реплики роста)
+let lastUnitPerfect = false;  // закрыли тему на 100% (для вау-момента)
+let lastStruggled = false;    // урок дался тяжело (предложить видео)
 
 async function onLessonComplete(result) {
   lastRatingAwarded = 0;
+  lastCompletedUnit = null;
+  lastUnitPerfect = false;
+  lastStruggled = !!result.struggled;
   if (result.success) {
     touchStreak();
     state.xp += result.xp;
@@ -591,28 +670,54 @@ async function onLessonComplete(result) {
           state.bossStats.correct += result.correctCount || 0;
           state.bossStats.total += result.totalCount || 0;
         }
+        // тема закрыта целиком? → реплика роста + возможный вау-момент
+        if (unit && unit.lessons.every(l => state.done.has(l.id))) {
+          lastCompletedUnit = unit.id;
+          lastUnitPerfect = unit.lessons.every(l => (state.crowns[l.id] || 0) >= 100);
+        }
       }
       if (wasFirst) lastRatingAwarded = estimateRating(result.xp, result.accuracy);
     }
     await saveState();
     syncBackend(result, activeMode);   // рейтинг сервер даёт только за kind='lesson'
   }
+  // адаптивная реплика Профика на следующем экране дерева
+  if (result.struggled) recentMood = 'struggling';
+  else if (result.success && result.accuracy === 100 && !lastCompletedUnit) recentMood = 'onFire';
   showResult(result);
 }
 
 // ── Result ──
 function showResult(result) {
   show('result');
-  const cat = result.success ? '🎉' : '😿';
-  const title = result.success ? 'Урок пройден!' : 'Почти получилось';
-  if (result.success) { sound.play('correct'); tg?.HapticFeedback?.notificationOccurred?.('success'); }
+  const unitDone = result.success && lastCompletedUnit;
+  const wow = unitDone && lastUnitPerfect;
+  const cat = wow ? '🏅' : (result.success ? '🎉' : '😿');
+  const title = wow ? 'Тема освоена на 100%!' : (unitDone ? 'Тема пройдена!' : (result.success ? 'Урок пройден!' : 'Почти получилось'));
+  if (result.success) { sound.play(wow ? 'shard_reveal' : 'correct'); tg?.HapticFeedback?.notificationOccurred?.('success'); }
 
   const ratingStat = (result.success && lastRatingAwarded > 0)
     ? `<div class="result-stat"><div class="rs-val">+${lastRatingAwarded}</div><div class="rs-lbl">рейтинг</div></div>`
     : '';
+
+  // реплика роста личности от Профика/Игоря
+  let growthHtml = '';
+  if (unitDone && IDENTITY[lastCompletedUnit]) {
+    growthHtml = `<div class="result-growth">🐱 ${escapeHtml(IDENTITY[lastCompletedUnit])}</div>`;
+  }
+  // предложение видео/канала: при «застрял» — видео, при закрытии темы — иногда канал
+  let extraBtn = '';
+  const vids = lastStruggled ? ((THEORY[result.unitId] || {}).videos || []) : [];
+  if (vids.length) {
+    extraBtn = `<button class="result-video" id="result-video" data-vid="${vids[0].id}">🎥 Игорь объясняет это в видео</button>`;
+  } else if (unitDone && CHANNEL_HINTS[lastCompletedUnit]) {
+    extraBtn = `<button class="result-channel" id="result-channel">💬 ${escapeHtml(CHANNEL_HINTS[lastCompletedUnit])}</button>`;
+  }
+
   els.resultWrap.innerHTML = `
-    <div class="result-cat">${cat}</div>
+    <div class="result-cat${wow ? ' wow' : ''}">${cat}</div>
     <div class="result-title">${title}</div>
+    ${growthHtml}
     <div class="result-stats">
       <div class="result-stat"><div class="rs-val">+${result.xp}</div><div class="rs-lbl">XP</div></div>
       ${ratingStat}
@@ -620,8 +725,13 @@ function showResult(result) {
       <div class="result-stat"><div class="rs-val">🔥 ${state.streak}</div><div class="rs-lbl">серия</div></div>
     </div>
     ${result.success && lastRatingAwarded > 0 ? '<div style="font-size:13px;color:var(--muted);margin-top:-4px;">Баллы пошли в общий рейтинг Арены</div>' : ''}
+    ${extraBtn}
     <button class="result-cta" id="result-continue">${result.success ? 'Продолжить' : 'Попробовать снова'}</button>
   `;
+  const vbtn = els.resultWrap.querySelector('#result-video');
+  if (vbtn) vbtn.onclick = () => { sound.play('button_tap'); telemetry.emit('video_from_struggle', { id: vbtn.dataset.vid }); openYouTube(vbtn.dataset.vid); };
+  const cbtn = els.resultWrap.querySelector('#result-channel');
+  if (cbtn) cbtn.onclick = () => { sound.play('button_tap'); telemetry.emit('channel_open', { from: 'result' }); openChannel(); };
   els.resultWrap.querySelector('#result-continue').onclick = () => {
     sound.play('button_tap');
     if (result.success) goToTree();

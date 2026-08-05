@@ -99,6 +99,42 @@ html, body {
 .daily-card .daily-title { font-weight: 700; font-size: 16px; }
 .daily-card .daily-sub { font-size: 13px; opacity: 0.9; margin-top: 2px; }
 
+/* ── ГЛАВНЫЙ HERO: цель + одна кнопка ── */
+.hero-card {
+  margin: 10px 0 16px; padding: 20px 18px; border-radius: 20px;
+  background: linear-gradient(135deg, #1c2333, #2a3244);
+  border: 1px solid rgba(255,215,0,0.2);
+}
+.hero-top { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.hero-ring {
+  width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.hero-ring-in {
+  width: 72px; height: 72px; border-radius: 50%; background: #1c2333;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.hero-pct { font-size: 22px; font-weight: 800; line-height: 1; }
+.hero-ring-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.hero-goal { flex: 1; min-width: 0; }
+.hero-title { font-size: 15px; font-weight: 700; color: var(--muted); }
+.hero-countdown { font-size: 19px; font-weight: 800; margin-top: 4px; line-height: 1.2; }
+.hero-countdown b { color: var(--primary); }
+.hero-next { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.hero-continue {
+  width: 100%; padding: 17px; font-family: inherit; font-size: 18px; font-weight: 800;
+  color: #12151c; background: var(--primary); border: none; border-radius: 15px; cursor: pointer;
+  box-shadow: 0 4px 0 #c9a800; text-transform: uppercase; letter-spacing: 0.5px;
+  transition: transform 80ms;
+}
+.hero-continue:active { transform: translateY(2px); box-shadow: 0 2px 0 #c9a800; }
+.hero-continue:disabled { background: var(--success); box-shadow: 0 4px 0 var(--success-dark); }
+
+.secondary-label {
+  font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1px; margin: 18px 0 8px 4px;
+}
+
 .plan-card {
   margin: 8px 0 14px; padding: 16px; border-radius: 16px;
   background: linear-gradient(135deg, #14532d, #166534); border: 1px solid rgba(88,204,2,0.3);
@@ -328,6 +364,15 @@ html, body {
   color: #d4d4d4; white-space: pre;
 }
 .trace-step:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.04); }
+
+/* заметка Игоря о частой ошибке */
+.igor-note {
+  display: flex; gap: 10px; align-items: flex-start; margin-top: 14px;
+  background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 12px; padding: 11px 13px;
+}
+.igor-note .igor-ava { font-size: 24px; flex-shrink: 0; }
+.igor-note .igor-text { font-size: 14px; line-height: 1.45; color: #f0e2ac; font-style: italic; }
 .continue-btn {
   width: 100%; padding: 15px; font-family: inherit; font-size: 16px; font-weight: 800;
   color: #12151c; border: none; border-radius: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
@@ -345,6 +390,25 @@ html, body {
 .result-stat { background: var(--surface); border-radius: 14px; padding: 14px 20px; min-width: 90px; }
 .result-stat .rs-val { font-size: 24px; font-weight: 800; color: var(--primary); }
 .result-stat .rs-lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.result-growth {
+  font-size: 15px; line-height: 1.5; color: #e6e6e6; max-width: 340px; margin: 6px auto 4px;
+  background: var(--surface); border-radius: 14px; padding: 12px 16px; border-left: 4px solid var(--primary);
+  text-align: left;
+}
+.result-cat.wow { animation: wow-pop 700ms ease-out; }
+@keyframes wow-pop {
+  0% { transform: scale(0) rotate(-20deg); }
+  60% { transform: scale(1.3) rotate(10deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.result-video, .result-channel {
+  width: 100%; max-width: 340px; padding: 13px; margin-top: 12px; font-family: inherit;
+  font-size: 15px; font-weight: 700; border-radius: 14px; cursor: pointer;
+}
+.result-video { color: #fff; background: #cc0000; border: none; }
+.result-channel { color: var(--text); background: var(--surface); border: 1px solid rgba(255,215,0,0.3); }
+.result-video:active, .result-channel:active { transform: scale(0.98); }
+
 .result-cta {
   width: 100%; max-width: 320px; padding: 16px; font-family: inherit; font-size: 17px; font-weight: 800;
   color: #12151c; background: var(--primary); border: none; border-radius: 14px; cursor: pointer;
