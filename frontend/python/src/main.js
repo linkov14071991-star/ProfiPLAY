@@ -432,10 +432,17 @@ function startProject(project) {
 
 async function onProjectComplete(result) {
   if (result.success && activeProject) {
+    const wasFirst = !state.projectsBuilt.has(activeProject.id);
     state.projectsBuilt.add(activeProject.id);
     state.xp += 25;
     touchStreak();
+    // скорость для индекса готовности
+    if (result.answerCount) {
+      state.speedStats.count += result.answerCount;
+      state.speedStats.totalMs += result.answerTimeMs || 0;
+    }
     await saveState();
+    if (wasFirst) syncBackend({ lessonId: 'project_' + activeProject.id, xp: 25, accuracy: result.accuracy }, 'project');
     show('projectDone');
     projectsScreen.showDone(activeProject, { onNext: openProjects });
   } else {
@@ -552,7 +559,10 @@ function updateTopicStats(unitId, correct, total) {
   state.topicStats[unitId] = s;
 }
 
+let lastRatingAwarded = 0;   // рейтинг за последнее прохождение (для экрана результата)
+
 async function onLessonComplete(result) {
+  lastRatingAwarded = 0;
   if (result.success) {
     touchStreak();
     state.xp += result.xp;
@@ -569,6 +579,7 @@ async function onLessonComplete(result) {
       else if (activeMode === 'weekly') state.weeklyDoneKey = weekKey();
       else if (activeMode === 'review') updateTopicStats(activeReviewUnit, result.correctCount, result.totalCount);
     } else {
+      const wasFirst = !state.done.has(result.lessonId);   // первое прохождение → будет рейтинг
       state.done.add(result.lessonId);
       state.crowns[result.lessonId] = Math.max(state.crowns[result.lessonId] || 0, result.accuracy);
       const lesson = findLesson(result.lessonId);
@@ -581,9 +592,10 @@ async function onLessonComplete(result) {
           state.bossStats.total += result.totalCount || 0;
         }
       }
+      if (wasFirst) lastRatingAwarded = estimateRating(result.xp, result.accuracy);
     }
     await saveState();
-    syncBackend(result);
+    syncBackend(result, activeMode);   // рейтинг сервер даёт только за kind='lesson'
   }
   showResult(result);
 }
@@ -595,14 +607,19 @@ function showResult(result) {
   const title = result.success ? 'Урок пройден!' : 'Почти получилось';
   if (result.success) { sound.play('correct'); tg?.HapticFeedback?.notificationOccurred?.('success'); }
 
+  const ratingStat = (result.success && lastRatingAwarded > 0)
+    ? `<div class="result-stat"><div class="rs-val">+${lastRatingAwarded}</div><div class="rs-lbl">рейтинг</div></div>`
+    : '';
   els.resultWrap.innerHTML = `
     <div class="result-cat">${cat}</div>
     <div class="result-title">${title}</div>
     <div class="result-stats">
       <div class="result-stat"><div class="rs-val">+${result.xp}</div><div class="rs-lbl">XP</div></div>
+      ${ratingStat}
       <div class="result-stat"><div class="rs-val">${result.accuracy}%</div><div class="rs-lbl">точность</div></div>
       <div class="result-stat"><div class="rs-val">🔥 ${state.streak}</div><div class="rs-lbl">серия</div></div>
     </div>
+    ${result.success && lastRatingAwarded > 0 ? '<div style="font-size:13px;color:var(--muted);margin-top:-4px;">Баллы пошли в общий рейтинг Арены</div>' : ''}
     <button class="result-cta" id="result-continue">${result.success ? 'Продолжить' : 'Попробовать снова'}</button>
   `;
   els.resultWrap.querySelector('#result-continue').onclick = () => {
@@ -620,7 +637,7 @@ function showResult(result) {
 }
 
 // ── backend sync (best-effort) ──
-async function syncBackend(result) {
+async function syncBackend(result, kind) {
   try {
     await fetch('/api/python/session_end', {
       method: 'POST',
@@ -630,9 +647,16 @@ async function syncBackend(result) {
         lessonId: result.lessonId,
         xpEarned: result.xp,
         accuracy: result.accuracy,
+        kind: kind || 'lesson',   // рейтинг только за kind='lesson'|'project'
       }),
     });
   } catch (e) { /* offline — не страшно */ }
+}
+
+// Клиентская оценка рейтинга за первое прохождение (совпадает с формулой сервера)
+function estimateRating(xp, accuracy) {
+  const base = Math.min(20, Math.max(5, xp || 0));
+  return Math.max(2, Math.min(15, Math.round(base * (accuracy || 0) / 100)));
 }
 
 // ── back button ──

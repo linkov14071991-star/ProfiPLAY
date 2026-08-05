@@ -1338,26 +1338,77 @@ async def python_telemetry_batch(payload: dict = Body(...)):
 @app.post("/api/python/session_end")
 async def python_session_end(payload: dict = Body(...)):
     """
-    Финализация сессии Python-режима: начисление XP.
-    Требует init_data для авторизации.
+    Финализация сессии Python-режима.
+    XP — начисляется всегда. Рейтинг — только за ПЕРВОЕ прохождение
+    реального урока/проекта (сервер хранит зачтённые уроки — накрутка
+    повторами невозможна). Повторы, ежедневки, тесты недели — только XP.
     """
     init_data = payload.get("init_data", "")
-    xp_earned = int(payload.get("xpEarned", 0))
+    xp_earned = int(payload.get("xpEarned", 0) or 0)
     if xp_earned < 0 or xp_earned > 500:
         xp_earned = 0
+    accuracy = int(payload.get("accuracy", 0) or 0)
+    accuracy = max(0, min(100, accuracy))
+    lesson_id = str(payload.get("lessonId", ""))[:64]
+    kind = str(payload.get("kind", ""))
+
     if not init_data:
-        return {"ok": True, "xp_added": 0, "reason": "no_auth"}
+        return {"ok": True, "xp_added": 0, "rating_added": 0, "reason": "no_auth"}
     tg_user = verify_telegram_init_data(init_data, BOT_TOKEN)
     if not tg_user:
-        return {"ok": True, "xp_added": 0, "reason": "bad_auth"}
+        return {"ok": True, "xp_added": 0, "rating_added": 0, "reason": "bad_auth"}
+
+    rating_added = 0
     with get_db() as db:
         me = upsert_user(db, tg_user)
+        uid = me["telegram_id"]
+
+        # таблица зачтённых уроков (создаём при первом обращении)
         db.execute(
-            "UPDATE users SET xp = COALESCE(xp,0) + ? WHERE telegram_id = ?",
-            (xp_earned, me["telegram_id"]),
+            """
+            CREATE TABLE IF NOT EXISTS python_completed (
+                user_id   INTEGER NOT NULL,
+                lesson_id TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now')),
+                PRIMARY KEY (user_id, lesson_id)
+            )
+            """
         )
+
+        # XP — всегда
+        if xp_earned:
+            db.execute(
+                "UPDATE users SET xp = COALESCE(xp,0) + ? WHERE telegram_id = ?",
+                (xp_earned, uid),
+            )
+
+        # Рейтинг — только за первое прохождение реального урока или проекта
+        if kind in ("lesson", "project") and lesson_id:
+            already = db.execute(
+                "SELECT 1 FROM python_completed WHERE user_id = ? AND lesson_id = ?",
+                (uid, lesson_id),
+            ).fetchone()
+            if not already:
+                base = min(20, max(5, xp_earned))
+                rating_added = max(2, min(15, round(base * accuracy / 100)))
+                db.execute(
+                    "UPDATE users SET rating = rating + ? WHERE telegram_id = ?",
+                    (rating_added, uid),
+                )
+                new_rating = db.execute(
+                    "SELECT rating FROM users WHERE telegram_id = ?", (uid,)
+                ).fetchone()["rating"]
+                db.execute(
+                    "INSERT INTO rating_log (user_id, delta, source, balance_after) VALUES (?, ?, ?, ?)",
+                    (uid, rating_added, "python", new_rating),
+                )
+                db.execute(
+                    "INSERT INTO python_completed (user_id, lesson_id) VALUES (?, ?)",
+                    (uid, lesson_id),
+                )
         db.commit()
-    return {"ok": True, "xp_added": xp_earned}
+
+    return {"ok": True, "xp_added": xp_earned, "rating_added": rating_added}
 
 
 # ---------- Раздача статики фронтенда ----------
