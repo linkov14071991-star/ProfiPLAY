@@ -4,6 +4,7 @@ import { THEORY } from './curriculum/theory.js';
 import { codeBlock } from './ui/highlight.js';
 import { sound } from './audio/sound_engine.js';
 import { telemetry } from './telemetry/client.js';
+import { ytThumb, openYouTube } from './ui/youtube.js';
 
 export class TheoryScreen {
   constructor(els) {
@@ -26,26 +27,18 @@ export class TheoryScreen {
 
     let html = `<div class="theory-intro">${escapeHtml(t.intro)}</div>`;
 
-    // видео по теме — конкретные ролики марафона Py.Go
+    // видео по теме — превью-карточки, открываются во внешнем YouTube
     const videos = t.videos || [];
     if (videos.length > 0) {
-      const first = videos[0];
-      html += `
-        <div class="theory-video-label">🎬 Видео по теме — марафон Py.Go</div>
-        <div class="theory-video">
-          <iframe id="theory-iframe" loading="lazy"
-            src="https://www.youtube-nocookie.com/embed/${first.id}"
-            title="${escapeHtml(first.title)}" allow="encrypted-media; picture-in-picture"
-            allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-        </div>`;
-      if (videos.length > 1) {
-        html += `<div class="video-list">`;
-        videos.forEach((v, i) => {
-          html += `<button class="video-item${i === 0 ? ' active' : ''}" data-vid="${v.id}" data-title="${escapeHtml(v.title)}">
-            <span class="vi-play">▶</span> ${escapeHtml(v.title)}</button>`;
-        });
-        html += `</div>`;
-      }
+      html += `<div class="theory-video-label">🎬 Видео по теме — марафон Py.Go</div>`;
+      html += `<div class="video-list">`;
+      videos.forEach((v) => {
+        html += `<button class="video-thumb" data-vid="${v.id}">
+          <div class="vt-img" style="background-image:url('${ytThumb(v.id)}')"><span class="vt-play">▶</span></div>
+          <div class="vt-title">${escapeHtml(v.title)}</div>
+        </button>`;
+      });
+      html += `</div>`;
     }
 
     for (const b of t.blocks) {
@@ -61,18 +54,12 @@ export class TheoryScreen {
     this.els.scroll.innerHTML = html;
     this.els.scroll.scrollTop = 0;
 
-    // переключение видео в списке
-    const iframe = this.els.scroll.querySelector('#theory-iframe');
-    this.els.scroll.querySelectorAll('.video-item').forEach(btn => {
+    // тап по превью — открыть видео во внешнем YouTube
+    this.els.scroll.querySelectorAll('.video-thumb').forEach(btn => {
       btn.addEventListener('click', () => {
-        const vid = btn.dataset.vid;
-        if (iframe) {
-          iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1`;
-          iframe.title = btn.dataset.title;
-        }
-        this.els.scroll.querySelectorAll('.video-item').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         sound.play('button_tap');
+        telemetry.emit('video_open_external', { id: btn.dataset.vid });
+        openYouTube(btn.dataset.vid);
       });
     });
   }

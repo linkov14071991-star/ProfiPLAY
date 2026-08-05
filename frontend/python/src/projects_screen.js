@@ -20,26 +20,26 @@ export class ProjectsScreen {
     telemetry.emit('projects_open', {});
     let html = `<div class="projects-intro">Собери настоящую программу по шагам. В конце увидишь готовый код и как он работает.</div>`;
     for (const p of PROJECTS) {
-      const unlocked = isUnlocked(p);
+      const recommended = isUnlocked(p);   // тема пройдена — рекомендуется
       const built = builtSet.has(p.id);
       const unit = findUnit(p.unlockAfter);
       const status = built ? '✓ Собрано'
-        : unlocked ? `${p.steps.length} шагов`
-        : `🔒 После темы «${unit ? unit.title : '?'}»`;
-      html += `<div class="project-card${built ? ' built' : ''}${unlocked ? '' : ' locked'}" data-id="${p.id}">
+        : recommended ? `${p.steps.length} шагов`
+        : `Лучше после темы «${unit ? unit.title : '?'}»`;
+      html += `<div class="project-card${built ? ' built' : ''}" data-id="${p.id}">
         <div class="proj-icon">${p.icon}</div>
         <div class="proj-body">
           <div class="proj-title">${escapeHtml(p.title)}</div>
           <div class="proj-desc">${escapeHtml(p.desc)}</div>
           <div class="proj-status">${escapeHtml(status)}</div>
         </div>
-        <div class="proj-arrow">${unlocked ? '›' : ''}</div>
+        <div class="proj-arrow">›</div>
       </div>`;
     }
     this.els.scroll.innerHTML = html;
+    // все проекты открываются; тема — лишь рекомендация
     this.els.scroll.querySelectorAll('.project-card').forEach(el => {
       const p = PROJECTS.find(x => x.id === el.dataset.id);
-      if (!isUnlocked(p)) return;
       el.addEventListener('click', () => { sound.play('button_tap'); this.onOpen(p); });
     });
   }
