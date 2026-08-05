@@ -97,7 +97,13 @@ export class Onboarding {
     const p = PLACEMENT[this.placementIndex];
     if (!p) return this.renderResult(this.highestPassedUnit);
     this.selection = null;
-    const opts = p.options.map((o, i) =>
+    // перемешиваем показ вариантов, исходный индекс — в data-i
+    const order = p.options.map((o, i) => ({ o, i }));
+    for (let k = order.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [order[k], order[j]] = [order[j], order[k]];
+    }
+    const opts = order.map(({ o, i }) =>
       `<button class="opt-btn${/[=()\[\]".0-9]/.test(o) ? ' mono' : ''}" data-i="${i}">${escapeHtml(o)}</button>`).join('');
     this.wrap.innerHTML = `
       <div class="onboard-progress">${this.dots(6, this.placementIndex)}</div>

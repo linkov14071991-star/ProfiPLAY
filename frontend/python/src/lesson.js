@@ -71,7 +71,14 @@ export class LessonPlayer {
 
   // ── MCQ / BUG ──
   renderMcq(q, isBug = false) {
-    const opts = q.options.map((opt, i) =>
+    // Перемешиваем ПОКАЗ вариантов, сохраняя исходный индекс в data-i
+    // (иначе правильный ответ почти всегда оказывается первым).
+    const order = q.options.map((opt, i) => ({ opt, i }));
+    for (let k = order.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [order[k], order[j]] = [order[j], order[k]];
+    }
+    const opts = order.map(({ opt, i }) =>
       `<button class="mcq-opt${/[=()\[\]".]/.test(opt) ? ' mono' : ''}" data-i="${i}">${escapeHtml(opt)}</button>`
     ).join('');
     this.els.lessonBody.innerHTML = `
