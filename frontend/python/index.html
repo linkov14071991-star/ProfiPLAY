@@ -26,8 +26,12 @@
         <span class="stat-xp" id="stat-xp">⭐ 0</span>
       </div>
     </header>
-    <div id="daily-card" class="daily-card hidden"></div>
-    <div id="tree-scroll" class="tree-scroll"></div>
+    <div id="tree-scroll" class="tree-scroll">
+      <div id="weekly-card" class="weekly-card hidden"></div>
+      <div id="daily-card" class="daily-card hidden"></div>
+      <div id="videos-card" class="videos-card"></div>
+      <div id="tree-units"></div>
+    </div>
   </section>
 
   <!-- ══ ПЛЕЕР УРОКА ══ -->
@@ -62,6 +66,17 @@
     <div class="theory-footer">
       <button id="theory-start" class="check-btn">Перейти к заданиям →</button>
     </div>
+  </section>
+
+  <!-- ══ ВИДЕО-МАРАФОН ══ -->
+  <section id="s-videos" class="screen hidden">
+    <header class="theory-header">
+      <button id="videos-back" class="icon-btn">←</button>
+      <div class="theory-htitle">🎬 Марафон Py.Go</div>
+      <span style="width:40px"></span>
+    </header>
+    <div class="videos-player hidden" id="videos-player"></div>
+    <div class="videos-scroll" id="videos-scroll"></div>
   </section>
 
   <!-- ══ РЕЗУЛЬТАТ ══ -->

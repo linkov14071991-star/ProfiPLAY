@@ -2,8 +2,13 @@
 
 import { OGE_UNITS } from './oge.js';
 import { EGE_UNITS } from './ege.js';
+import { EXTRA_LESSONS } from './practice.js';
 
-export const CURRICULUM = [...OGE_UNITS, ...EGE_UNITS];
+// Собираем юниты и дополняем практическими уроками
+export const CURRICULUM = [...OGE_UNITS, ...EGE_UNITS].map(unit => {
+  const extra = EXTRA_LESSONS[unit.id] || [];
+  return { ...unit, lessons: [...unit.lessons, ...extra] };
+});
 
 // Плоский список уроков в порядке прохождения
 export function allLessons() {

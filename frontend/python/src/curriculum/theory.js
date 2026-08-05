@@ -277,3 +277,32 @@ export const THEORY = {
 
 // ID плейлиста марафона Py.Go (для кнопки «весь марафон»)
 export const PLAYLIST_ID = 'PLW_RLSKbMD2WTqdex-dCYfRM7JtUooaTe';
+
+// Полный марафон Py.Go: 25 дней кода (по порядку)
+export const MARATHON = [
+  { day: 1,  id: 'E8XjM4JvtrI', title: 'Установка и первая программа', dur: '3:35' },
+  { day: 2,  id: 'EwlgAUwV3BE', title: 'Вывод, типы данных и переменные', dur: '7:06' },
+  { day: 3,  id: 'LTX9YjRabPE', title: 'Арифметика строк', dur: '7:16' },
+  { day: 4,  id: 'Vn6nS4xBJlg', title: 'Арифметика чисел', dur: '7:53' },
+  { day: 5,  id: 'jsRZrw8HIGQ', title: 'Условный оператор, операции сравнения', dur: '9:27' },
+  { day: 6,  id: '04hmvtSbfSg', title: 'Составные условия, логический тип', dur: '8:25' },
+  { day: 7,  id: '2wt6UGUFRGQ', title: 'Переменная цикла FOR', dur: '7:07' },
+  { day: 8,  id: 'iMCjAytQWmk', title: 'Варианты цикла FOR', dur: '7:17' },
+  { day: 9,  id: 'XGgCn95Qi90', title: 'Цикл WHILE', dur: '8:40' },
+  { day: 10, id: 'DLHAesA64Ow', title: 'Индексы строк', dur: '7:27' },
+  { day: 11, id: 'wCPKfkLrYRg', title: 'Срезы строк', dur: '9:43' },
+  { day: 12, id: 'A4pqJe8byTg', title: 'Сравнение строк', dur: '7:10' },
+  { day: 13, id: '-tS7GAZbx44', title: 'Методы строк', dur: '9:35' },
+  { day: 14, id: 'sEFm3hKv5Gc', title: 'Вещественные числа и тип float', dur: '7:49' },
+  { day: 15, id: 'dci0W14OfPk', title: 'Массивы и основные операции с ними', dur: '4:36' },
+  { day: 16, id: 'tcm9jWdp-6o', title: 'Добавление элементов в массив', dur: '10:48' },
+  { day: 17, id: '8FYwxmYq2jk', title: 'Индексы элементов, изменение массива, срезы', dur: '7:27' },
+  { day: 18, id: '9MX_eeIy1mI', title: 'Два типа циклов по массиву', dur: '9:33' },
+  { day: 19, id: 'OrYbn1b5CW0', title: 'Методы join() и split()', dur: '6:40' },
+  { day: 20, id: '97dOQ9pDSyY', title: 'Методы index(), count(), pop(), remove(), insert()', dur: '9:29' },
+  { day: 21, id: 'pEqNSdOKRm4', title: 'Встроенные операторы и функции: in, not in, max, min', dur: '7:09' },
+  { day: 22, id: 'BSJHrx1JmJg', title: 'Функции, основные понятия. Параметры функции', dur: '5:40' },
+  { day: 23, id: 'sH9_nKZCLdY', title: 'Значение функции. Оператор return', dur: '8:55' },
+  { day: 24, id: 'GISy6STCYdQ', title: 'Изменяемые типы. Изменение массивов', dur: '4:33' },
+  { day: 25, id: 'jLWEAQIOcmQ', title: 'Стандартная библиотека Python. Модули', dur: '5:59' },
+];

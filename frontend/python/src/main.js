@@ -7,9 +7,11 @@ import { Onboarding } from './onboarding.js';
 import { TreeScreen } from './tree.js';
 import { LessonPlayer } from './lesson.js';
 import { TheoryScreen } from './theory_screen.js';
+import { VideosScreen } from './videos_screen.js';
 import { CURRICULUM, findLesson, findUnit } from './curriculum/index.js';
 import { THEORY } from './curriculum/theory.js';
 import { buildDaily, todayKey } from './daily.js';
+import { buildWeekly, weekKey, currentWeeklyPlan } from './weekly.js';
 
 const tg = window.Telegram?.WebApp;
 tg?.ready();
@@ -25,15 +27,22 @@ const screens = {
   tree: document.getElementById('s-tree'),
   lesson: document.getElementById('s-lesson'),
   theory: document.getElementById('s-theory'),
+  videos: document.getElementById('s-videos'),
   result: document.getElementById('s-result'),
 };
 const els = {
   onboardWrap: document.getElementById('onboard-wrap'),
-  treeScroll: document.getElementById('tree-scroll'),
+  treeUnits: document.getElementById('tree-units'),
   treeBack: document.getElementById('tree-back'),
   statStreak: document.getElementById('stat-streak'),
   statXp: document.getElementById('stat-xp'),
   dailyCard: document.getElementById('daily-card'),
+  weeklyCard: document.getElementById('weekly-card'),
+  videosCard: document.getElementById('videos-card'),
+  // videos screen
+  videosScroll: document.getElementById('videos-scroll'),
+  videosPlayer: document.getElementById('videos-player'),
+  videosBack: document.getElementById('videos-back'),
   // lesson
   lessonBody: document.getElementById('lesson-body'),
   lessonFooter: document.getElementById('lesson-footer'),
@@ -64,6 +73,7 @@ let state = {
   streak: 0,
   lastActiveDay: null,
   dailyDoneDay: null,
+  weeklyDoneKey: null,    // ISO-неделя пройденного теста недели
 };
 
 // ── init sound on gesture ──
@@ -90,6 +100,7 @@ async function loadState() {
     state.streak = saved.streak || 0;
     state.lastActiveDay = saved.lastActiveDay || null;
     state.dailyDoneDay = saved.dailyDoneDay || null;
+    state.weeklyDoneKey = saved.weeklyDoneKey || null;
   }
 }
 async function saveState() {
@@ -102,6 +113,7 @@ async function saveState() {
     streak: state.streak,
     lastActiveDay: state.lastActiveDay,
     dailyDoneDay: state.dailyDoneDay,
+    weeklyDoneKey: state.weeklyDoneKey,
   });
 }
 
@@ -139,14 +151,42 @@ function startOnboarding() {
 }
 
 // ── Tree ──
-const tree = new TreeScreen(els.treeScroll, requestLesson, openDaily, openTheory);
+const tree = new TreeScreen(els.treeUnits, requestLesson, openDaily, openTheory);
 
 function goToTree() {
   show('tree');
   els.statStreak.textContent = `🔥 ${state.streak}`;
   els.statXp.textContent = `⭐ ${state.xp}`;
+  renderWeeklyCard();
   renderDailyCard();
+  renderVideosCard();
   tree.render({ done: state.done, crowns: state.crowns });
+}
+
+function renderWeeklyCard() {
+  const plan = currentWeeklyPlan();
+  const doneThisWeek = state.weeklyDoneKey === weekKey();
+  els.weeklyCard.classList.remove('hidden');
+  els.weeklyCard.innerHTML = `
+    <div class="wk-icon">${doneThisWeek ? '✅' : '🏆'}</div>
+    <div style="flex:1;">
+      <div class="wk-title">Тест недели: ${escapeHtml(plan.title)}</div>
+      <div class="wk-sub">${doneThisWeek ? 'Пройден! Новый — в понедельник' : '12 вопросов · +40 XP'}</div>
+    </div>
+  `;
+  els.weeklyCard.onclick = doneThisWeek ? null : () => { sound.play('button_tap'); openWeekly(); };
+}
+
+function renderVideosCard() {
+  els.videosCard.innerHTML = `
+    <div class="vc-icon">🎬</div>
+    <div style="flex:1;">
+      <div class="vc-title">Видео-марафон Py.Go</div>
+      <div class="vc-sub">25 видеоуроков от простого к сложному</div>
+    </div>
+    <div class="vc-arrow">›</div>
+  `;
+  els.videosCard.onclick = () => { sound.play('button_tap'); openVideos(); };
 }
 
 function renderDailyCard() {
@@ -173,13 +213,22 @@ els.lessonQuit.addEventListener('click', () => {
   if (confirm('Выйти из урока? Прогресс урока не сохранится.')) player.quit();
 });
 
-let activeDailyLesson = null;
-
 // ── Theory ──
 const theoryScreen = new TheoryScreen({
   scroll: els.theoryScroll, htitle: els.theoryHtitle, back: els.theoryBack, start: els.theoryStart,
 });
 theoryScreen.bind();
+
+// ── Videos ──
+const videosScreen = new VideosScreen({
+  scroll: els.videosScroll, player: els.videosPlayer, back: els.videosBack,
+});
+videosScreen.bind();
+
+function openVideos() {
+  show('videos');
+  videosScreen.show({ onBack: goToTree });
+}
 
 let theoryReturnLessonId = null;  // куда идти после «Перейти к заданиям»
 
@@ -225,7 +274,7 @@ function showTheoryOffer(unitId, lessonId) {
   offer.className = 'theory-offer';
   offer.innerHTML = `
     <h3>📖 Сначала теория?</h3>
-    <p>Перед заданиями по теме «${escapeHtml(unit.title)}» можно освежить материал${THEORY[unitId].videoIndex ? ' и посмотреть видео' : ''}. Это не обязательно.</p>
+    <p>Перед заданиями по теме «${escapeHtml(unit.title)}» можно освежить материал${(THEORY[unitId].videos || []).length ? ' и посмотреть видео' : ''}. Это не обязательно.</p>
     <div class="offer-btns">
       <button class="offer-primary" id="offer-yes">Изучить теорию</button>
       <button class="offer-secondary" id="offer-no">Сразу к заданиям</button>
@@ -239,25 +288,37 @@ function showTheoryOffer(unitId, lessonId) {
 function openLesson(lessonId) {
   const lesson = findLesson(lessonId);
   if (!lesson) return;
-  activeDailyLesson = null;
+  activeMode = 'lesson';
   show('lesson');
   player.start(lesson, { onComplete: onLessonComplete, onQuit: goToTree });
 }
 
+let activeMode = 'lesson';  // 'lesson' | 'daily' | 'weekly'
+
 function openDaily() {
   const daily = buildDaily(state.done);
   if (!daily) return;
-  activeDailyLesson = daily;
+  activeMode = 'daily';
   show('lesson');
   player.start(daily, { onComplete: onLessonComplete, onQuit: goToTree });
+}
+
+function openWeekly() {
+  const weekly = buildWeekly();
+  if (!weekly) return;
+  activeMode = 'weekly';
+  show('lesson');
+  player.start(weekly, { onComplete: onLessonComplete, onQuit: goToTree });
 }
 
 async function onLessonComplete(result) {
   if (result.success) {
     touchStreak();
     state.xp += result.xp;
-    if (activeDailyLesson) {
+    if (activeMode === 'daily') {
       state.dailyDoneDay = todayKey();
+    } else if (activeMode === 'weekly') {
+      state.weeklyDoneKey = weekKey();
     } else {
       state.done.add(result.lessonId);
       state.crowns[result.lessonId] = Math.max(state.crowns[result.lessonId] || 0, result.accuracy);
@@ -289,8 +350,9 @@ function showResult(result) {
     sound.play('button_tap');
     if (result.success) goToTree();
     else {
-      // повтор того же урока
-      if (activeDailyLesson) openDaily();
+      // повтор того же
+      if (activeMode === 'daily') openDaily();
+      else if (activeMode === 'weekly') openWeekly();
       else openLesson(result.lessonId);
     }
   };
