@@ -203,6 +203,7 @@ export const THEORY = {
       { h: 'return завершает функцию', t: 'После return функция сразу отдаёт значение и заканчивается.' },
     ],
     videos: [
+      { id: 'BSJHrx1JmJg', title: 'Функции, основные понятия. Параметры' },
       { id: 'sH9_nKZCLdY', title: 'Значение функции. Оператор return' },
     ],
   },
@@ -224,6 +225,7 @@ export const THEORY = {
     videos: [
       { id: 'wCPKfkLrYRg', title: 'Срезы строк' },
       { id: '-tS7GAZbx44', title: 'Методы строк' },
+      { id: 'OrYbn1b5CW0', title: 'Методы join() и split()' },
     ],
   },
 
