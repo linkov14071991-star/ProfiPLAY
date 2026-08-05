@@ -54,6 +54,7 @@ export class TheoryScreen {
         <div class="tb-text">${escapeHtml(b.t)}</div>
         ${b.code ? codeBlock(b.code) : ''}
         ${b.out != null ? `<div class="theory-out">${escapeHtml(b.out)}</div>` : ''}
+        ${b.tip ? `<div class="theory-tip">💡 ${escapeHtml(b.tip)}</div>` : ''}
       </div>`;
     }
 

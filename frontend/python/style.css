@@ -308,6 +308,11 @@ html, body {
   white-space: pre; overflow-x: auto;
 }
 .theory-out::before { content: '→ '; color: var(--muted); }
+.theory-tip {
+  margin-top: 8px; font-size: 13px; line-height: 1.45; color: #e8d9a0;
+  background: rgba(255,215,0,0.08); border-left: 3px solid var(--primary);
+  border-radius: 8px; padding: 8px 12px;
+}
 .theory-video {
   margin: 8px 0 24px; border-radius: 14px; overflow: hidden; background: #000;
   aspect-ratio: 16 / 9; border: 1px solid rgba(255,255,255,0.1);
