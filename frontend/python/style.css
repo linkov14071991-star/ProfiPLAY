@@ -140,7 +140,13 @@ html, body {
   background: linear-gradient(135deg, #14532d, #166534); border: 1px solid rgba(88,204,2,0.3);
 }
 .plan-card.hidden { display: none; }
-.plan-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.plan-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.plan-subtitle { font-size: 12px; color: rgba(255,255,255,0.75); margin-bottom: 12px; line-height: 1.4; }
+.plan-subtitle b { color: #fff; }
+.pi-gain {
+  font-size: 12px; font-weight: 800; color: #58cc02; background: rgba(88,204,2,0.15);
+  padding: 3px 8px; border-radius: 999px; flex-shrink: 0;
+}
 .plan-title { font-size: 17px; font-weight: 800; color: #fff; }
 .plan-count { font-size: 13px; color: rgba(255,255,255,0.7); margin-left: auto; }
 .plan-item {
@@ -157,6 +163,28 @@ html, body {
 .plan-item .pi-check { font-size: 18px; flex-shrink: 0; color: #58cc02; }
 .plan-item.done .pi-text { text-decoration: line-through; }
 .plan-done-all { text-align: center; color: #fff; font-size: 14px; padding: 6px; }
+
+/* ══ МОЙ ПРОГРЕСС ══ */
+.progress-card {
+  margin: 0 0 14px; padding: 14px 16px; border-radius: 16px;
+  background: var(--surface); border: 1px solid rgba(255,255,255,0.06);
+}
+.progress-card.hidden { display: none; }
+.prg-head { font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.prg-delta { font-size: 12px; font-weight: 700; color: var(--muted); }
+.prg-delta.up { color: #58cc02; }
+.prg-delta.down { color: #ff5b5b; }
+.prg-grid { display: flex; gap: 8px; }
+.prg-cell { flex: 1; text-align: center; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px 4px; }
+.prg-val { font-size: 20px; font-weight: 800; color: var(--text); }
+.prg-of { font-size: 13px; color: var(--muted); font-weight: 700; }
+.prg-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.2; }
+.prg-topics { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.prg-topic { font-size: 13px; color: var(--muted); }
+.prg-topic b { color: var(--text); }
+.prg-dot { font-size: 11px; }
+.prg-dot.ok { color: #58cc02; }
+.prg-dot.bad { color: #ffb020; }
 
 .readiness-card {
   margin: 8px 0 14px; padding: 16px; border-radius: 16px;
@@ -500,6 +528,11 @@ html, body {
 .offer-secondary {
   width: 100%; padding: 14px; font-family: inherit; font-size: 15px; font-weight: 700;
   color: var(--text); background: transparent; border: 2px solid var(--surface-2); border-radius: 14px; cursor: pointer;
+}
+.boss-intro { border-top: 3px solid var(--primary); }
+.boss-intro-badge {
+  display: inline-block; font-size: 13px; font-weight: 800; color: var(--primary);
+  background: rgba(255,215,0,0.1); border-radius: 999px; padding: 5px 12px; margin-bottom: 10px;
 }
 
 /* ══ ПРОЕКТЫ ══ */

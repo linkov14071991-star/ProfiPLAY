@@ -12,10 +12,10 @@ import { CURRICULUM, findLesson, findUnit } from './curriculum/index.js';
 import { THEORY } from './curriculum/theory.js';
 import { buildDaily, todayKey } from './daily.js';
 import { buildWeekly, weekKey, currentWeeklyPlan } from './weekly.js';
-import { profikMessage, buildReview } from './profik.js';
+import { profikMessage, buildReview, weakestTopic, strongestTopic } from './profik.js';
 import { readiness, readinessLabel, readinessColor } from './readiness.js';
-import { buildPlan, buildBugFix } from './plan.js';
-import { CHANNEL_URL, IGOR_MISTAKES, IDENTITY, CHANNEL_HINTS, ADAPTIVE, daysToExam } from './mentor.js';
+import { buildPlan, buildBugFix, planReadinessGain } from './plan.js';
+import { CHANNEL_URL, IGOR_MISTAKES, IDENTITY, CHANNEL_HINTS, CHANNEL_CONTINUE, EXPERT_NOTES, ADAPTIVE, daysToExam } from './mentor.js';
 import { openYouTube } from './ui/youtube.js';
 import { ProjectsScreen } from './projects_screen.js';
 import { PROJECTS } from './curriculum/projects.js';
@@ -47,6 +47,7 @@ const els = {
   statXp: document.getElementById('stat-xp'),
   heroCard: document.getElementById('hero-card'),
   planCard: document.getElementById('plan-card'),
+  progressCard: document.getElementById('progress-card'),
   projectsCard: document.getElementById('projects-card'),
   readinessCard: document.getElementById('readiness-card'),
   // projects screens
@@ -87,6 +88,7 @@ let state = {
   done: new Set(),        // пройденные lessonId
   crowns: {},             // lessonId -> accuracy
   theorySeen: new Set(),  // unitId с прочитанной теорией
+  bossIntroSeen: new Set(),  // unitId боссов с показанной экспертной заметкой
   topicStats: {},         // unitId -> { correct, total } для памяти Профика
   reviewStats: { correct: 0, total: 0 },  // повторения (стабильность)
   speedStats: { count: 0, totalMs: 0 },   // скорость ответов
@@ -98,6 +100,8 @@ let state = {
   lastActiveDay: null,
   dailyDoneDay: null,
   weeklyDoneKey: null,    // ISO-неделя пройденного теста недели
+  weekSolved: { week: null, count: 0 },   // решено заданий на текущей неделе
+  readinessSnap: null,    // { week, value } — снимок готовности прошлой недели (для дельты)
 };
 
 // ── init sound on gesture ──
@@ -120,6 +124,7 @@ async function loadState() {
     state.done = new Set(saved.done || []);
     state.crowns = saved.crowns || {};
     state.theorySeen = new Set(saved.theorySeen || []);
+    state.bossIntroSeen = new Set(saved.bossIntroSeen || []);
     state.topicStats = saved.topicStats || {};
     state.reviewStats = saved.reviewStats || { correct: 0, total: 0 };
     state.speedStats = saved.speedStats || { count: 0, totalMs: 0 };
@@ -131,6 +136,8 @@ async function loadState() {
     state.lastActiveDay = saved.lastActiveDay || null;
     state.dailyDoneDay = saved.dailyDoneDay || null;
     state.weeklyDoneKey = saved.weeklyDoneKey || null;
+    state.weekSolved = saved.weekSolved || { week: null, count: 0 };
+    state.readinessSnap = saved.readinessSnap || null;
   }
 }
 async function saveState() {
@@ -140,6 +147,7 @@ async function saveState() {
     done: [...state.done],
     crowns: state.crowns,
     theorySeen: [...state.theorySeen],
+    bossIntroSeen: [...state.bossIntroSeen],
     topicStats: state.topicStats,
     reviewStats: state.reviewStats,
     speedStats: state.speedStats,
@@ -151,6 +159,8 @@ async function saveState() {
     lastActiveDay: state.lastActiveDay,
     dailyDoneDay: state.dailyDoneDay,
     weeklyDoneKey: state.weeklyDoneKey,
+    weekSolved: state.weekSolved,
+    readinessSnap: state.readinessSnap,
   });
 }
 
@@ -198,6 +208,7 @@ function goToTree() {
   renderHero();
   renderProfikBanner();
   renderPlanCard();
+  renderProgressCard();
   renderReadinessCard();
   renderWeeklyCard();
   renderDailyCard();
@@ -237,13 +248,16 @@ function renderHero() {
     ? (state.done.size === 0 ? 'Начать обучение' : 'Продолжить обучение')
     : 'Курс пройден 🎉';
 
+  const examTitle = p.goal === 'oge' ? 'Подготовка к ОГЭ по информатике'
+    : p.goal === 'ege' ? 'Подготовка к ЕГЭ по информатике'
+    : 'Подготовка к экзамену по информатике';
   els.heroCard.innerHTML = `
     <div class="hero-top">
       ${ring}
       <div class="hero-goal">
-        <div class="hero-title">Готовность к экзамену</div>
+        <div class="hero-title">${examTitle}</div>
         ${countdown || `<div class="hero-countdown">${escapeHtml(readinessLabel(r.total))}</div>`}
-        ${nx ? `<div class="hero-next">Дальше: ${escapeHtml(nx.unit.icon + ' ' + nx.lesson.title)}</div>` : ''}
+        ${nx ? `<div class="hero-next">Сегодня: ${escapeHtml(nx.unit.icon + ' ' + nx.lesson.title)}</div>` : ''}
       </div>
     </div>
     <button class="hero-continue" id="hero-continue" ${nx ? '' : 'disabled'}>${btnLabel}</button>
@@ -276,12 +290,14 @@ function renderPlanCard() {
   const doneCount = items.filter(i => doneIds.includes(i.id)).length;
   const allDone = doneCount === items.length;
 
+  const gain = planReadinessGain(items);
   let html = `<div class="plan-header">
-    <div class="plan-title">🎯 План на сегодня</div>
+    <div class="plan-title">🎯 Маршрут на сегодня</div>
     <div class="plan-count">${doneCount} / ${items.length}</div>
-  </div>`;
+  </div>
+  <div class="plan-subtitle">Профик собрал его под твою готовность. Пройдёшь — <b>готовность +${gain}%</b>.</div>`;
   if (allDone) {
-    html += `<div class="plan-done-all">Всё выполнено! Отличный день 🎉</div>`;
+    html += `<div class="plan-done-all">Маршрут пройден! Ты стал ближе к экзамену 🎉</div>`;
   }
   for (const it of items) {
     const done = doneIds.includes(it.id);
@@ -291,7 +307,7 @@ function renderPlanCard() {
         <div class="pi-text">${escapeHtml(it.text)}</div>
         <div class="pi-sub">${escapeHtml(it.sub)}</div>
       </div>
-      <div class="pi-check">${done ? '✓' : '›'}</div>
+      ${done ? '<div class="pi-check">✓</div>' : (it.gain ? `<div class="pi-gain">+${it.gain}%</div>` : '<div class="pi-check">›</div>')}
     </div>`;
   }
   els.planCard.innerHTML = html;
@@ -312,12 +328,54 @@ function markPlanDone(id) {
   if (!ids.includes(id)) { ids.push(id); saveState(); }
 }
 
+// «Мой прогресс» — личный кабинет: готовность+дельта за неделю, решено за неделю,
+// сильная/слабая тема, всего пройдено. Обновляет недельный снимок готовности.
+function renderProgressCard() {
+  if (!els.progressCard) return;
+  const r = readiness(state);
+  if (!r.hasData && state.done.size === 0) { els.progressCard.classList.add('hidden'); return; }
+  const wk = weekKey();
+
+  // дельта готовности с прошлой недели + обновление снимка при смене недели
+  let deltaHtml = '';
+  if (state.readinessSnap && state.readinessSnap.week !== wk) {
+    const d = r.total - state.readinessSnap.value;
+    const sign = d > 0 ? '+' : '';
+    const cls = d > 0 ? 'up' : (d < 0 ? 'down' : '');
+    deltaHtml = `<span class="prg-delta ${cls}">${sign}${d}% за неделю</span>`;
+  }
+  if (!state.readinessSnap || state.readinessSnap.week !== wk) {
+    state.readinessSnap = { week: wk, value: r.total };
+    saveState();
+  }
+
+  const solved = (state.weekSolved.week === wk) ? state.weekSolved.count : 0;
+  const totalLessons = CURRICULUM.reduce((s, u) => s + u.lessons.length, 0);
+  const strong = strongestTopic(state.topicStats || {});
+  const weak = weakestTopic(state.topicStats || {});
+
+  els.progressCard.classList.remove('hidden');
+  els.progressCard.innerHTML = `
+    <div class="prg-head">📊 Мой прогресс ${deltaHtml}</div>
+    <div class="prg-grid">
+      <div class="prg-cell"><div class="prg-val">${r.hasData ? r.total + '%' : '—'}</div><div class="prg-lbl">готовность</div></div>
+      <div class="prg-cell"><div class="prg-val">${solved}</div><div class="prg-lbl">решено за неделю</div></div>
+      <div class="prg-cell"><div class="prg-val">${state.done.size}<span class="prg-of">/${totalLessons}</span></div><div class="prg-lbl">уроков пройдено</div></div>
+    </div>
+    ${(strong || weak) ? `<div class="prg-topics">
+      ${strong ? `<div class="prg-topic"><span class="prg-dot ok">▲</span> сильная: <b>${escapeHtml(strong.title)}</b> (${strong.accuracy}%)</div>` : ''}
+      ${weak ? `<div class="prg-topic"><span class="prg-dot bad">▼</span> подтянуть: <b>${escapeHtml(weak.title)}</b> (${weak.accuracy}%)</div>` : ''}
+    </div>` : ''}
+  `;
+}
+
 function dispatchPlanAction(action) {
   switch (action.type) {
     case 'review': openReview(action.unitId); break;
     case 'daily': openDaily(); break;
     case 'bugfix': openBugFix(); break;
     case 'boss': requestLesson(findUnit(action.unitId).lessons[0].id); break;
+    case 'lesson': requestLesson(action.lessonId); break;
     case 'video': openTheory(action.unitId); break;
   }
 }
@@ -371,7 +429,8 @@ function renderProfikBanner() {
       <div class="pb-text">${escapeHtml(msg.text)}</div>
       ${msg.action ? `<button class="pb-action" id="pb-action">${
         msg.action.type === 'review' ? 'Повторить тему' :
-        msg.action.type === 'daily' ? 'Начать повторение' : 'Поехали'
+        msg.action.type === 'daily' ? 'Начать повторение' :
+        msg.action.type === 'lesson' ? 'Начать тему' : 'Поехали'
       }</button>` : ''}
     </div>
   `;
@@ -380,6 +439,7 @@ function renderProfikBanner() {
       sound.play('button_tap');
       if (msg.action.type === 'review') openReview(msg.action.unitId);
       else if (msg.action.type === 'daily') openDaily();
+      else if (msg.action.type === 'lesson') requestLesson(msg.action.lessonId);
     };
   }
 }
@@ -555,11 +615,39 @@ function requestLesson(lessonId) {
   const hasTheory = !!THEORY[lesson.unitId];
   const notSeen = !state.theorySeen.has(lesson.unitId);
 
+  // Экспертная заметка перед задачей-боссом ЕГЭ — «почему это важно» (один раз).
+  if (isFirstLessonOfUnit && unit && unit.isBoss && EXPERT_NOTES[unit.id] && !state.bossIntroSeen.has(unit.id)) {
+    showBossIntro(unit, lessonId);
+    return;
+  }
   if (isFirstLessonOfUnit && hasTheory && notSeen) {
     showTheoryOffer(lesson.unitId, lessonId);
   } else {
     openLesson(lessonId);
   }
+}
+
+function showBossIntro(unit, lessonId) {
+  state.bossIntroSeen.add(unit.id);
+  saveState();
+  telemetry.emit('boss_intro_shown', { unit: unit.id });
+  const offer = document.createElement('div');
+  offer.className = 'theory-offer boss-intro';
+  offer.innerHTML = `
+    <div class="boss-intro-badge">🧠 Разбор от Игоря</div>
+    <h3>${escapeHtml(unit.title)}</h3>
+    <p>${escapeHtml(EXPERT_NOTES[unit.id])}</p>
+    <div class="offer-btns">
+      <button class="offer-primary" id="boss-go">Разобрать задачу</button>
+    </div>
+  `;
+  document.getElementById('app').appendChild(offer);
+  offer.querySelector('#boss-go').onclick = () => {
+    sound.play('button_tap'); offer.remove();
+    const hasTheory = !!THEORY[unit.id];
+    if (hasTheory && !state.theorySeen.has(unit.id)) showTheoryOffer(unit.id, lessonId);
+    else openLesson(lessonId);
+  };
 }
 
 function showTheoryOffer(unitId, lessonId) {
@@ -645,6 +733,10 @@ async function onLessonComplete(result) {
   if (result.success) {
     touchStreak();
     state.xp += result.xp;
+    // счётчик решённых заданий за неделю (для «Мой прогресс»)
+    const wk = weekKey();
+    if (state.weekSolved.week !== wk) state.weekSolved = { week: wk, count: 0 };
+    state.weekSolved.count += result.correctCount || 0;
     // скорость (для индекса готовности)
     if (result.answerCount) {
       state.speedStats.count += result.answerCount;
@@ -708,8 +800,11 @@ function showResult(result) {
   // предложение видео/канала: при «застрял» — видео, при закрытии темы — иногда канал
   let extraBtn = '';
   const vids = lastStruggled ? ((THEORY[result.unitId] || {}).videos || []) : [];
+  const programComplete = unitDone && CURRICULUM.every(u => u.lessons.every(l => state.done.has(l.id)));
   if (vids.length) {
     extraBtn = `<button class="result-video" id="result-video" data-vid="${vids[0].id}">🎥 Игорь объясняет это в видео</button>`;
+  } else if (programComplete) {
+    extraBtn = `<button class="result-channel" id="result-channel">🎓 ${escapeHtml(CHANNEL_CONTINUE)}</button>`;
   } else if (unitDone && CHANNEL_HINTS[lastCompletedUnit]) {
     extraBtn = `<button class="result-channel" id="result-channel">💬 ${escapeHtml(CHANNEL_HINTS[lastCompletedUnit])}</button>`;
   }

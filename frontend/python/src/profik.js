@@ -1,6 +1,7 @@
 // profik.js — «память» Профика: анализ слабых тем и персональные реплики.
 
 import { CURRICULUM, findUnit } from './curriculum/index.js';
+import { daysToExam } from './mentor.js';
 
 const MIN_SAMPLES = 6;   // минимум ответов по теме для суждения о слабости
 
@@ -62,6 +63,18 @@ export function profikMessage(state, todayKey, shiftDay) {
     };
   }
 
+  // 3) Проактивный наставник: «почему именно сегодня» с привязкой к экзамену
+  const p = state.profile || {};
+  const dte = daysToExam(p.examMonth, p.examDay);
+  const nextL = nextNewLesson(state);
+  if (nextL) {
+    const examName = p.goal === 'oge' ? 'ОГЭ' : 'ЕГЭ';
+    const timing = dte != null
+      ? `До ${examName} ${dte} ${pl(dte, 'день', 'дня', 'дней')}. Сейчас самое время взяться за «${nextL.lesson.title}».`
+      : `Двигаемся дальше. Сегодня советую взяться за «${nextL.lesson.title}».`;
+    return { text: timing, action: { type: 'lesson', lessonId: nextL.lesson.id } };
+  }
+
   // 3) Всё хорошо + есть сильная тема
   if (strong && lessonsDone >= 3) {
     return {
@@ -86,6 +99,19 @@ function daysBetween(a, b) {
   const d1 = new Date(a + 'T00:00:00Z');
   const d2 = new Date(b + 'T00:00:00Z');
   return Math.round((d2 - d1) / 86400000);
+}
+
+function nextNewLesson(state) {
+  const done = state.done || new Set();
+  for (const u of CURRICULUM) for (const l of u.lessons) if (!done.has(l.id)) return { lesson: l, unit: u };
+  return null;
+}
+
+function pl(n, one, few, many) {
+  const a = n % 10, b = n % 100;
+  if (a === 1 && b !== 11) return one;
+  if (a >= 2 && a <= 4 && (b < 10 || b >= 20)) return few;
+  return many;
 }
 
 // Собрать урок-повторение по конкретной теме (слабой).
