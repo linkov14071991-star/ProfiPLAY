@@ -252,10 +252,10 @@ function renderHero() {
 
   // 2) Кольцо готовности — «готовность к цели»
   const ring = r.hasData
-    ? `<div class="hero-ring" style="background:conic-gradient(${color} ${r.total*3.6}deg, #232a38 0)">
+    ? `<div class="hero-ring" style="background:conic-gradient(${color} ${r.total*3.6}deg, #3A2A5C 0)">
          <div class="hero-ring-in"><div class="hero-pct" style="color:${color}">${r.total}%</div><div class="hero-ring-lbl">к цели</div></div>
        </div>`
-    : `<div class="hero-ring" style="background:conic-gradient(#2a3040 360deg, #232a38 0)">
+    : `<div class="hero-ring" style="background:conic-gradient(#3A2A5C 360deg, #3A2A5C 0)">
          <div class="hero-ring-in"><div class="hero-pct" style="color:var(--muted)">—</div><div class="hero-ring-lbl">старт</div></div>
        </div>`;
 
@@ -467,8 +467,8 @@ function renderReadinessCard() {
 
   els.readinessCard.innerHTML = `
     <div class="readiness-top">
-      <div class="readiness-ring" style="background:conic-gradient(${color} ${r.total * 3.6}deg, #2a3040 0)">
-        <div style="width:44px;height:44px;border-radius:50%;background:#1a1f2b;display:flex;align-items:center;justify-content:center;color:${color}">${r.total}</div>
+      <div class="readiness-ring" style="background:conic-gradient(${color} ${r.total * 3.6}deg, #3A2A5C 0)">
+        <div style="width:44px;height:44px;border-radius:50%;background:#2E2154;display:flex;align-items:center;justify-content:center;color:${color}">${r.total}</div>
       </div>
       <div class="readiness-info">
         <div class="readiness-title">Готовность к цели</div>
@@ -502,7 +502,7 @@ function renderProfikBanner() {
   else msg = profikMessage(state, todayKey(), shiftDay);
   els.profikBanner.classList.remove('hidden');
   els.profikBanner.innerHTML = `
-    <div class="pb-cat">🐱</div>
+    <img class="pb-cat" src="profik.svg" alt="Профик">
     <div class="pb-body">
       <div class="pb-text">${escapeHtml(msg.text)}</div>
       ${msg.action ? `<button class="pb-action" id="pb-action">${
@@ -928,7 +928,7 @@ function showResult(result) {
   if (lastMastery) {
     growthHtml = `<div class="result-growth mastery">🎓 ${escapeHtml(lastMastery.text)}</div>`;
   } else if (unitDone && IDENTITY[lastCompletedUnit]) {
-    growthHtml = `<div class="result-growth">🐱 ${escapeHtml(IDENTITY[lastCompletedUnit])}</div>`;
+    growthHtml = `<div class="result-growth with-cat"><img class="growth-cat" src="profik.svg" alt="Профик">${escapeHtml(IDENTITY[lastCompletedUnit])}</div>`;
   }
   // предложение видео/канала: при «застрял» — видео, при закрытии темы — иногда канал
   let extraBtn = '';
