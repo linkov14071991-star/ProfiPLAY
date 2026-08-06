@@ -5,6 +5,7 @@ import { codeBlock } from './ui/highlight.js';
 import { sound } from './audio/sound_engine.js';
 import { telemetry } from './telemetry/client.js';
 import { ytThumb, openYouTube } from './ui/youtube.js';
+import { IGOR_THOUGHTS, IGOR_THOUGHTS_POOL } from './mentor.js';
 
 export class TheoryScreen {
   constructor(els) {
@@ -26,6 +27,12 @@ export class TheoryScreen {
     }
 
     let html = `<div class="theory-intro">${escapeHtml(t.intro)}</div>`;
+
+    // «Мысль Игоря» — живое наблюдение из практики (то, что нельзя скопировать)
+    const thought = IGOR_THOUGHTS[unit.id] || IGOR_THOUGHTS_POOL[(unit.id.length) % IGOR_THOUGHTS_POOL.length];
+    if (thought) {
+      html += `<div class="igor-thought"><div class="it-head">💬 Мысль Игоря</div>${escapeHtml(thought)}</div>`;
+    }
 
     // видео по теме — превью-карточки, открываются во внешнем YouTube
     const videos = t.videos || [];

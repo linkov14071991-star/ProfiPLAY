@@ -60,8 +60,37 @@ export class Onboarding {
         if (key === 'oge') { const p = EXAM_PRESETS.find(x => x.key === 'oge'); this.answers.examMonth = p.month; this.answers.examDay = p.day; }
         else if (key === 'ege') { const p = EXAM_PRESETS.find(x => x.key === 'ege'); this.answers.examMonth = p.month; this.answers.examDay = p.day; }
         else { this.answers.examMonth = null; this.answers.examDay = null; }
-        this.renderExperience();
+        if (key === 'both') { this.answers.targetScore = null; this.renderExperience(); }
+        else this.renderTarget(key);
       },
+    });
+  }
+
+  // Шаг 1.5 — целевой результат (эмоциональный якорь)
+  renderTarget(goal) {
+    const isOge = goal === 'oge';
+    const cfg = isOge
+      ? {
+          title: 'На какую оценку метишь?',
+          sub: 'Поставим цель — и я поведу тебя к ней.',
+          options: [
+            { key: '4', label: 'На 4', desc: 'уверенный результат' },
+            { key: '5', label: 'На 5', desc: 'по-максимуму' },
+          ],
+        }
+      : {
+          title: 'На сколько баллов метишь?',
+          sub: 'Выбирай смело — цель важнее, чем кажется. Я подстрою маршрут.',
+          options: [
+            { key: '75', label: '75+ баллов', desc: 'проходной на бюджет' },
+            { key: '85', label: '85+ баллов', desc: 'сильный результат' },
+            { key: '95', label: '95+ баллов', desc: 'на максимум' },
+          ],
+        };
+    this.renderChoice({
+      dots: 4, active: 0, cat: '🎯',
+      title: cfg.title, sub: cfg.sub, options: cfg.options,
+      onPick: (key) => { this.answers.targetScore = parseInt(key, 10); this.renderExperience(); },
     });
   }
 
@@ -183,17 +212,19 @@ export class Onboarding {
         startUnitIndex: chosenUnitIdx,
         examMonth: this.answers.examMonth,
         examDay: this.answers.examDay,
+        targetScore: this.answers.targetScore ?? null,
       });
     };
   }
 
-  renderChoice({ dots, active, cat, title, options, onPick }) {
+  renderChoice({ dots, active, cat, title, sub, options, onPick }) {
     const opts = options.map(o =>
       `<button class="opt-btn" data-key="${o.key}">${escapeHtml(o.label)}<span class="opt-desc">${escapeHtml(o.desc)}</span></button>`).join('');
     this.wrap.innerHTML = `
       <div class="onboard-progress">${this.dots(dots, active)}</div>
       <div class="onboard-cat">${cat}</div>
       <div class="onboard-title">${escapeHtml(title)}</div>
+      ${sub ? `<div class="onboard-sub">${escapeHtml(sub)}</div>` : ''}
       <div class="onboard-options">${opts}</div>
       <button class="onboard-cta" id="ob-next" disabled>Дальше</button>
     `;

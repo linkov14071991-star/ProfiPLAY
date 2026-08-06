@@ -34,6 +34,8 @@ export class LessonPlayer {
     this.qShownAt = 0;
     this.wrongTotal = 0;     // всего ошибок в уроке (для заметки Игоря и «застрял»)
     this.igorShown = false;
+    this.runCorrect = 0;     // текущая серия верных подряд
+    this.maxRunCorrect = 0;  // лучшая серия верных за урок (для микро-побед)
 
     telemetry.emit('lesson_start', { lessonId: lesson.id });
     this.renderHearts();
@@ -221,12 +223,15 @@ export class LessonPlayer {
       this.tg?.HapticFeedback?.notificationOccurred?.('success');
       this.done++;
       if (first) this.correctFirstTry++;
+      this.runCorrect++;
+      if (this.runCorrect > this.maxRunCorrect) this.maxRunCorrect = this.runCorrect;
       telemetry.emit('answer', { lessonId: this.lesson.id, qIndex: this.current.originalIndex, correct: true, firstTry: first });
     } else {
       sound.play('error');
       this.tg?.HapticFeedback?.notificationOccurred?.('error');
       this.hearts--;
       this.wrongTotal++;
+      this.runCorrect = 0;
       this.answeredWrong.add(this.current.originalIndex);
       // вернуть вопрос в конец очереди
       this.queue.push(this.current);
@@ -321,6 +326,9 @@ export class LessonPlayer {
       heartsLeft: this.hearts,
       unitId: this.lesson.unitId,
       struggled: this.wrongTotal >= 3,
+      flawless: success && this.wrongTotal === 0,   // без единой ошибки
+      maxRun: this.maxRunCorrect,                    // лучшая серия верных подряд
+      durationSec,                                   // длительность урока (для «быстрее вчера»)
     });
   }
 

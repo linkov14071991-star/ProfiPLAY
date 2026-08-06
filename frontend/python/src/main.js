@@ -8,14 +8,14 @@ import { TreeScreen } from './tree.js';
 import { LessonPlayer } from './lesson.js';
 import { TheoryScreen } from './theory_screen.js';
 import { VideosScreen } from './videos_screen.js';
-import { CURRICULUM, findLesson, findUnit } from './curriculum/index.js';
+import { CURRICULUM, findLesson, findUnit, FIRST_EGE_UNIT_INDEX } from './curriculum/index.js';
 import { THEORY } from './curriculum/theory.js';
 import { buildDaily, todayKey } from './daily.js';
 import { buildWeekly, weekKey, currentWeeklyPlan } from './weekly.js';
 import { profikMessage, buildReview, weakestTopic, strongestTopic } from './profik.js';
-import { readiness, readinessLabel, readinessColor } from './readiness.js';
+import { readiness, readinessLabel, readinessColor, projectMastery } from './readiness.js';
 import { buildPlan, buildBugFix, planReadinessGain } from './plan.js';
-import { CHANNEL_URL, IGOR_MISTAKES, IDENTITY, CHANNEL_HINTS, CHANNEL_CONTINUE, EXPERT_NOTES, ADAPTIVE, daysToExam } from './mentor.js';
+import { CHANNEL_URL, IGOR_MISTAKES, IDENTITY, CHANNEL_HINTS, CHANNEL_CONTINUE, EXPERT_NOTES, MASTERY, ADAPTIVE, daysToExam, tomorrowHook } from './mentor.js';
 import { openYouTube } from './ui/youtube.js';
 import { ProjectsScreen } from './projects_screen.js';
 import { PROJECTS } from './curriculum/projects.js';
@@ -102,6 +102,11 @@ let state = {
   weeklyDoneKey: null,    // ISO-неделя пройденного теста недели
   weekSolved: { week: null, count: 0 },   // решено заданий на текущей неделе
   readinessSnap: null,    // { week, value } — снимок готовности прошлой недели (для дельты)
+  hadFlawless: false,     // был ли хоть один идеальный урок (для «первый идеальный»)
+  lastLessonSec: null,    // длительность прошлого урока (для «быстрее, чем в прошлый раз»)
+  masteryShown: [],       // показанные вехи роста мастерства
+  firstOpenDay: null,     // первый день использования (для когорт/воронки)
+  lastOpenDay: null,      // прошлый день открытия (для D1/D7)
 };
 
 // ── init sound on gesture ──
@@ -138,6 +143,11 @@ async function loadState() {
     state.weeklyDoneKey = saved.weeklyDoneKey || null;
     state.weekSolved = saved.weekSolved || { week: null, count: 0 };
     state.readinessSnap = saved.readinessSnap || null;
+    state.hadFlawless = saved.hadFlawless || false;
+    state.lastLessonSec = saved.lastLessonSec || null;
+    state.masteryShown = saved.masteryShown || [];
+    state.firstOpenDay = saved.firstOpenDay || null;
+    state.lastOpenDay = saved.lastOpenDay || null;
   }
 }
 async function saveState() {
@@ -161,6 +171,11 @@ async function saveState() {
     weeklyDoneKey: state.weeklyDoneKey,
     weekSolved: state.weekSolved,
     readinessSnap: state.readinessSnap,
+    hadFlawless: state.hadFlawless,
+    lastLessonSec: state.lastLessonSec,
+    masteryShown: state.masteryShown,
+    firstOpenDay: state.firstOpenDay,
+    lastOpenDay: state.lastOpenDay,
   });
 }
 
@@ -223,43 +238,55 @@ function nextLesson() {
   return null;
 }
 
-// ── Главный экран: цель + одна кнопка ──
+// ── Главный экран: ЭМОЦИОНАЛЬНАЯ ЦЕЛЬ + одна кнопка ──
+// Центр — мечта ученика (балл/оценка). Индекс готовности — внутренняя механика,
+// показан как «готовность к цели». Экзамен постоянно чувствуется.
 function renderHero() {
   const r = readiness(state);
   const color = readinessColor(r.total);
   const nx = nextLesson();
-  // отсчёт до экзамена
-  let countdown = '';
   const p = state.profile || {};
-  const dte = daysToExam(p.examMonth, p.examDay);
-  if (dte != null) {
-    const examName = p.goal === 'oge' ? 'ОГЭ' : 'ЕГЭ';
-    countdown = `<div class="hero-countdown">До ${examName} осталось <b>${dte}</b> ${plural(dte, 'день', 'дня', 'дней')}</div>`;
-  }
+
+  // 1) Эмоциональная цель
+  const goalLine = heroGoalLine(p);
+
+  // 2) Кольцо готовности — «готовность к цели»
   const ring = r.hasData
     ? `<div class="hero-ring" style="background:conic-gradient(${color} ${r.total*3.6}deg, #232a38 0)">
-         <div class="hero-ring-in"><div class="hero-pct" style="color:${color}">${r.total}%</div><div class="hero-ring-lbl">готов</div></div>
+         <div class="hero-ring-in"><div class="hero-pct" style="color:${color}">${r.total}%</div><div class="hero-ring-lbl">к цели</div></div>
        </div>`
     : `<div class="hero-ring" style="background:conic-gradient(#2a3040 360deg, #232a38 0)">
          <div class="hero-ring-in"><div class="hero-pct" style="color:var(--muted)">—</div><div class="hero-ring-lbl">старт</div></div>
        </div>`;
 
-  const btnLabel = nx
-    ? (state.done.size === 0 ? 'Начать обучение' : 'Продолжить обучение')
-    : 'Курс пройден 🎉';
+  // 3) Экзамен всегда чувствуется: отсчёт + осталось тем + уже умею задачи
+  const dte = daysToExam(p.examMonth, p.examDay);
+  const examName = p.goal === 'oge' ? 'ОГЭ' : 'ЕГЭ';
+  const countdown = dte != null
+    ? `До ${examName} <b>${dte}</b> ${plural(dte, 'день', 'дня', 'дней')}`
+    : escapeHtml(readinessLabel(r.total));
+  const remainThemes = CURRICULUM.filter(u => !u.lessons.every(l => state.done.has(l.id))).length;
+  const themesLine = remainThemes > 0
+    ? `осталось пройти <b>${remainThemes}</b> ${plural(remainThemes, 'тему', 'темы', 'тем')}`
+    : 'вся программа пройдена';
+  const bossNums = solvedBossNumbers();
+  const bossLine = bossNums.length
+    ? `<div class="hero-boss">Ты уже умеешь решать ${bossNums.map(n => '№' + n).join(', ')} 💪</div>` : '';
 
-  const examTitle = p.goal === 'oge' ? 'Подготовка к ОГЭ по информатике'
-    : p.goal === 'ege' ? 'Подготовка к ЕГЭ по информатике'
-    : 'Подготовка к экзамену по информатике';
+  const btnLabel = nx
+    ? (state.done.size === 0 ? 'Начать подготовку' : 'Следующий шаг')
+    : 'Программа пройдена 🎉';
+
   els.heroCard.innerHTML = `
     <div class="hero-top">
       ${ring}
       <div class="hero-goal">
-        <div class="hero-title">${examTitle}</div>
-        ${countdown || `<div class="hero-countdown">${escapeHtml(readinessLabel(r.total))}</div>`}
+        ${goalLine}
+        <div class="hero-countdown">${countdown} · ${themesLine}</div>
         ${nx ? `<div class="hero-next">Сегодня: ${escapeHtml(nx.unit.icon + ' ' + nx.lesson.title)}</div>` : ''}
       </div>
     </div>
+    ${bossLine}
     <button class="hero-continue" id="hero-continue" ${nx ? '' : 'disabled'}>${btnLabel}</button>
   `;
   const btn = els.heroCard.querySelector('#hero-continue');
@@ -268,6 +295,34 @@ function renderHero() {
     telemetry.emit('continue_pressed', { lessonId: nx.lesson.id });
     requestLesson(nx.lesson.id);
   };
+}
+
+// Эмоциональный заголовок цели.
+function heroGoalLine(p) {
+  if (p.targetScore && p.goal === 'ege') {
+    return `<div class="hero-title"><span class="hero-goal-em">🎯 Цель: ${p.targetScore} ${plural(p.targetScore, 'балл', 'балла', 'баллов')}</span></div>
+            <div class="hero-goal-sub">Готовлю тебя к этому результату на ЕГЭ</div>`;
+  }
+  if (p.targetScore && p.goal === 'oge') {
+    return `<div class="hero-title"><span class="hero-goal-em">🎯 Цель: сдать ОГЭ на ${p.targetScore}</span></div>
+            <div class="hero-goal-sub">Ведём к этой оценке шаг за шагом</div>`;
+  }
+  const examTitle = p.goal === 'oge' ? 'Подготовка к ОГЭ по информатике'
+    : p.goal === 'ege' ? 'Подготовка к ЕГЭ по информатике'
+    : 'Изучаем Python шаг за шагом';
+  return `<div class="hero-title">${examTitle}</div>`;
+}
+
+// Номера задач-боссов ЕГЭ, которые ученик уже закрыл (для «ты уже умеешь …»).
+function solvedBossNumbers() {
+  const nums = [];
+  for (const u of CURRICULUM) {
+    if (!u.isBoss) continue;
+    if (!u.lessons.every(l => state.done.has(l.id))) continue;
+    const m = /№\s*(\d+)/.exec(u.title);
+    if (m) nums.push(parseInt(m[1], 10));
+  }
+  return nums.sort((a, b) => a - b);
 }
 
 function plural(n, one, few, many) {
@@ -295,7 +350,7 @@ function renderPlanCard() {
     <div class="plan-title">🎯 Маршрут на сегодня</div>
     <div class="plan-count">${doneCount} / ${items.length}</div>
   </div>
-  <div class="plan-subtitle">Профик собрал его под твою готовность. Пройдёшь — <b>готовность +${gain}%</b>.</div>`;
+  <div class="plan-subtitle">Я составил тебе маршрут под твою цель. Пройдёшь — <b>готовность +${gain}%</b>.</div>`;
   if (allDone) {
     html += `<div class="plan-done-all">Маршрут пройден! Ты стал ближе к экзамену 🎉</div>`;
   }
@@ -336,13 +391,15 @@ function renderProgressCard() {
   if (!r.hasData && state.done.size === 0) { els.progressCard.classList.add('hidden'); return; }
   const wk = weekKey();
 
-  // дельта готовности с прошлой недели + обновление снимка при смене недели
-  let deltaHtml = '';
+  // дельта готовности с прошлой недели + нарратив истории + обновление снимка
+  let deltaHtml = '', historyHtml = '';
   if (state.readinessSnap && state.readinessSnap.week !== wk) {
-    const d = r.total - state.readinessSnap.value;
+    const was = state.readinessSnap.value;
+    const d = r.total - was;
     const sign = d > 0 ? '+' : '';
     const cls = d > 0 ? 'up' : (d < 0 ? 'down' : '');
     deltaHtml = `<span class="prg-delta ${cls}">${sign}${d}% за неделю</span>`;
+    if (d !== 0) historyHtml = `<div class="prg-history">Неделю назад — <b>${was}%</b>, сегодня — <b>${r.total}%</b>. ${d > 0 ? 'Так держать 💪' : 'Вернём форму — я помогу.'}</div>`;
   }
   if (!state.readinessSnap || state.readinessSnap.week !== wk) {
     state.readinessSnap = { week: wk, value: r.total };
@@ -357,6 +414,7 @@ function renderProgressCard() {
   els.progressCard.classList.remove('hidden');
   els.progressCard.innerHTML = `
     <div class="prg-head">📊 Мой прогресс ${deltaHtml}</div>
+    ${historyHtml}
     <div class="prg-grid">
       <div class="prg-cell"><div class="prg-val">${r.hasData ? r.total + '%' : '—'}</div><div class="prg-lbl">готовность</div></div>
       <div class="prg-cell"><div class="prg-val">${solved}</div><div class="prg-lbl">решено за неделю</div></div>
@@ -394,18 +452,31 @@ function renderReadinessCard() {
       <div class="rd-val${c.has ? '' : ' empty'}">${valTxt}</div>
     </div>`;
   }).join('');
+
+  // «Почему столько» — самое слабое место + проекция закрытия темы (доверие к индексу)
+  const weak = weakestTopic(state.topicStats || {});
+  let whyHtml = '';
+  if (weak) {
+    const projected = projectMastery(state, weak.unitId);
+    const delta = projected - r.total;
+    whyHtml = `<div class="rd-why">
+      <div class="rd-why-line">Самое слабое место: <b>${escapeHtml(weak.title)}</b> · ${weak.accuracy}%</div>
+      ${delta > 0 ? `<button class="rd-why-cta" id="rd-fix" data-unit="${weak.unitId}">Закрыть тему → станет ${projected}% <span class="rd-plus">+${delta}</span></button>` : ''}
+    </div>`;
+  }
+
   els.readinessCard.innerHTML = `
     <div class="readiness-top">
       <div class="readiness-ring" style="background:conic-gradient(${color} ${r.total * 3.6}deg, #2a3040 0)">
         <div style="width:44px;height:44px;border-radius:50%;background:#1a1f2b;display:flex;align-items:center;justify-content:center;color:${color}">${r.total}</div>
       </div>
       <div class="readiness-info">
-        <div class="readiness-title">Готовность к экзамену</div>
+        <div class="readiness-title">Готовность к цели</div>
         <div class="readiness-sub">${escapeHtml(readinessLabel(r.total))}</div>
       </div>
       <div class="readiness-arrow" id="rd-arrow">▾</div>
     </div>
-    <div class="readiness-detail" id="rd-detail">${rows}</div>
+    <div class="readiness-detail" id="rd-detail">${rows}${whyHtml}</div>
   `;
   els.readinessCard.onclick = () => {
     const d = els.readinessCard.querySelector('#rd-detail');
@@ -413,6 +484,13 @@ function renderReadinessCard() {
     d.classList.toggle('open');
     a.textContent = d.classList.contains('open') ? '▴' : '▾';
     sound.play('button_tap');
+  };
+  const fixBtn = els.readinessCard.querySelector('#rd-fix');
+  if (fixBtn) fixBtn.onclick = (e) => {
+    e.stopPropagation();
+    sound.play('button_tap');
+    telemetry.emit('readiness_fix', { unit: fixBtn.dataset.unit });
+    openReview(fixBtn.dataset.unit);
   };
 }
 
@@ -577,7 +655,7 @@ async function onProjectComplete(result) {
     await saveState();
     if (wasFirst) syncBackend({ lessonId: 'project_' + activeProject.id, xp: 25, accuracy: result.accuracy }, 'project');
     show('projectDone');
-    projectsScreen.showDone(activeProject, { onNext: openProjects });
+    projectsScreen.showDone(activeProject, { onNext: openProjects, onChannel: () => { telemetry.emit('channel_open', { from: 'project' }); openChannel(); } });
   } else {
     // не собрал — вернуть к списку
     openProjects();
@@ -751,7 +829,9 @@ async function onLessonComplete(result) {
       else if (activeMode === 'review') updateTopicStats(activeReviewUnit, result.correctCount, result.totalCount);
     } else {
       const wasFirst = !state.done.has(result.lessonId);   // первое прохождение → будет рейтинг
+      const wasEmpty = state.done.size === 0;
       state.done.add(result.lessonId);
+      if (wasEmpty) telemetry.emit('first_lesson_done', { lessonId: result.lessonId, accuracy: result.accuracy });
       state.crowns[result.lessonId] = Math.max(state.crowns[result.lessonId] || 0, result.accuracy);
       const lesson = findLesson(result.lessonId);
       if (lesson) {
@@ -769,7 +849,13 @@ async function onLessonComplete(result) {
         }
       }
       if (wasFirst) lastRatingAwarded = estimateRating(result.xp, result.accuracy);
+      // веха роста мастерства (только для основных уроков)
+      lastMastery = checkMastery();
     }
+    // микро-победы (эмоция каждые пару минут)
+    lastMicroWins = computeMicroWins(result);
+    if (result.flawless) state.hadFlawless = true;
+    if (activeMode === 'lesson') state.lastLessonSec = result.durationSec ?? null;
     await saveState();
     syncBackend(result, activeMode);   // рейтинг сервер даёт только за kind='lesson'
   }
@@ -777,6 +863,45 @@ async function onLessonComplete(result) {
   if (result.struggled) recentMood = 'struggling';
   else if (result.success && result.accuracy === 100 && !lastCompletedUnit) recentMood = 'onFire';
   showResult(result);
+}
+
+let lastMicroWins = [];
+let lastMastery = null;
+
+// Эмоциональные микро-победы за сессию (не ачивки — мгновенная радость).
+function computeMicroWins(result) {
+  const wins = [];
+  if (!result.success) return wins;
+  if (result.flawless && !state.hadFlawless) wins.push('🏅 Твой первый идеальный урок!');
+  else if (result.flawless) wins.push('🎯 Ни одной ошибки');
+  if ((result.maxRun || 0) >= 4) wins.push(`🔥 ${result.maxRun} верных подряд`);
+  if (activeMode === 'lesson' && state.lastLessonSec != null && result.durationSec != null
+      && result.durationSec < state.lastLessonSec) {
+    wins.push('⚡ Быстрее, чем в прошлый раз');
+  }
+  return wins.slice(0, 2);   // не перегружаем
+}
+
+// Вехи роста мастерства — крупные рубежи (показываем один раз каждую).
+function checkMastery() {
+  const done = state.done;
+  const unitDone = (u) => u.lessons.every(l => done.has(l.id));
+  const shown = new Set(state.masteryShown || []);
+  const candidates = [];
+  const bosses = CURRICULUM.filter(u => u.isBoss);
+  if (bosses.length && bosses.every(unitDone)) candidates.push('all_bosses');
+  const ogeUnits = CURRICULUM.slice(0, FIRST_EGE_UNIT_INDEX ?? CURRICULUM.length);
+  if (ogeUnits.length && ogeUnits.every(unitDone)) candidates.push('oge_base_done');
+  const funcU = findUnit('ege_func'); if (funcU && unitDone(funcU)) candidates.push('func_done');
+  const listsU = findUnit('ege_lists'); if (listsU && unitDone(listsU)) candidates.push('lists_done');
+  if (bosses.some(unitDone)) candidates.push('first_boss');
+  for (const key of candidates) {
+    if (!shown.has(key) && MASTERY[key]) {
+      state.masteryShown = [...shown, key];
+      return { key, text: MASTERY[key] };
+    }
+  }
+  return null;
 }
 
 // ── Result ──
@@ -792,9 +917,17 @@ function showResult(result) {
     ? `<div class="result-stat"><div class="rs-val">+${lastRatingAwarded}</div><div class="rs-lbl">рейтинг</div></div>`
     : '';
 
-  // реплика роста личности от Профика/Игоря
+  // микро-победы — эмоциональные вспышки за сессию
+  let winsHtml = '';
+  if (lastMicroWins.length) {
+    winsHtml = `<div class="result-wins">${lastMicroWins.map(w => `<span class="result-win">${escapeHtml(w)}</span>`).join('')}</div>`;
+  }
+
+  // реплика роста личности + веха мастерства от Профика/Игоря
   let growthHtml = '';
-  if (unitDone && IDENTITY[lastCompletedUnit]) {
+  if (lastMastery) {
+    growthHtml = `<div class="result-growth mastery">🎓 ${escapeHtml(lastMastery.text)}</div>`;
+  } else if (unitDone && IDENTITY[lastCompletedUnit]) {
     growthHtml = `<div class="result-growth">🐱 ${escapeHtml(IDENTITY[lastCompletedUnit])}</div>`;
   }
   // предложение видео/канала: при «застрял» — видео, при закрытии темы — иногда канал
@@ -812,6 +945,7 @@ function showResult(result) {
   els.resultWrap.innerHTML = `
     <div class="result-cat${wow ? ' wow' : ''}">${cat}</div>
     <div class="result-title">${title}</div>
+    ${winsHtml}
     ${growthHtml}
     <div class="result-stats">
       <div class="result-stat"><div class="rs-val">+${result.xp}</div><div class="rs-lbl">XP</div></div>
@@ -822,6 +956,7 @@ function showResult(result) {
     ${result.success && lastRatingAwarded > 0 ? '<div style="font-size:13px;color:var(--muted);margin-top:-4px;">Баллы пошли в общий рейтинг Арены</div>' : ''}
     ${extraBtn}
     <button class="result-cta" id="result-continue">${result.success ? 'Продолжить' : 'Попробовать снова'}</button>
+    ${(result.success && (unitDone || activeMode === 'daily' || activeMode === 'weekly')) ? `<div class="result-tomorrow">🌙 ${escapeHtml(tomorrowHook(todayKey()))}</div>` : ''}
   `;
   const vbtn = els.resultWrap.querySelector('#result-video');
   if (vbtn) vbtn.onclick = () => { sound.play('button_tap'); telemetry.emit('video_from_struggle', { id: vbtn.dataset.vid }); openYouTube(vbtn.dataset.vid); };
@@ -873,6 +1008,31 @@ els.treeBack.addEventListener('click', () => {
 // ── boot ──
 (async () => {
   await loadState();
+  emitAppOpen();
   if (state.profile) goToTree();
   else startOnboarding();
 })();
+
+// Воронка: открытие приложения с когортой и возвратом (для D1/D7).
+function emitAppOpen() {
+  const today = todayKey();
+  if (!state.firstOpenDay) state.firstOpenDay = today;
+  const daysSinceInstall = daysBetweenKeys(state.firstOpenDay, today);
+  const daysSinceLast = state.lastOpenDay ? daysBetweenKeys(state.lastOpenDay, today) : null;
+  const returned = state.lastOpenDay && state.lastOpenDay !== today;
+  telemetry.emit('app_open', {
+    day: today,
+    daysSinceInstall,
+    daysSinceLast,
+    returnDay: returned ? daysSinceInstall : null,   // D1/D7 маркер
+    hasProfile: !!state.profile,
+    lessonsDone: state.done.size,
+    reachedEge: solvedBossNumbers().length > 0 || [...state.done].some(id => /ege_/.test(id)),
+  });
+  if (state.lastOpenDay !== today) { state.lastOpenDay = today; saveState(); }
+}
+
+function daysBetweenKeys(a, b) {
+  const d1 = new Date(a + 'T00:00:00Z'), d2 = new Date(b + 'T00:00:00Z');
+  return Math.round((d2 - d1) / 86400000);
+}

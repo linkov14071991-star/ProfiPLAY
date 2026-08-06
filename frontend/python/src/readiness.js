@@ -53,6 +53,17 @@ export function readiness(state) {
   };
 }
 
+// Проекция: каким станет индекс, если освоить тему unitId на 100%.
+// Честная оценка «на что повлияет закрытие слабого места».
+export function projectMastery(state, unitId) {
+  const ts = { ...(state.topicStats || {}) };
+  const cur = ts[unitId] || { correct: 0, total: 0 };
+  const total = Math.max(cur.total, 1);
+  ts[unitId] = { correct: total, total };   // как будто тема освоена без ошибок
+  const projected = readiness({ ...state, topicStats: ts });
+  return projected.total;
+}
+
 // Короткая подпись под числом
 export function readinessLabel(total) {
   if (total >= 85) return 'Отличная форма — экзамен по плечу';

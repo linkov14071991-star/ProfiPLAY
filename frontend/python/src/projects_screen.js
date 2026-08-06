@@ -44,7 +44,7 @@ export class ProjectsScreen {
     });
   }
 
-  showDone(project, { onNext }) {
+  showDone(project, { onNext, onChannel }) {
     this.onDoneNext = onNext;
     sound.play('correct');
     const ex = project.example;
@@ -56,8 +56,12 @@ export class ProjectsScreen {
       ${codeBlock(project.finalCode)}
       <div class="projdone-label">Как она работает:</div>
       <div class="projdone-run"><span class="run-lbl">Ввод:</span>\n${escapeHtml(ex.input)}\n\n<span class="run-lbl">Вывод:</span>\n${escapeHtml(ex.output)}</div>
+      <div class="projdone-course">💬 А в канале Игорь показывает, как такую же задачу решают за пару минут прямо на ЕГЭ — с приёмами, которые экономят время.</div>
+      <button class="projdone-channel" id="projdone-channel">Посмотреть у Игоря</button>
       <button class="projdone-cta" id="projdone-cta">Отлично!</button>
     `;
+    const ch = this.els.doneWrap.querySelector('#projdone-channel');
+    if (ch) ch.onclick = () => { sound.play('button_tap'); onChannel && onChannel(); };
     this.els.doneWrap.querySelector('#projdone-cta').onclick = () => {
       sound.play('button_tap');
       this.onDoneNext && this.onDoneNext();

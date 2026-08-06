@@ -60,7 +60,13 @@ export class TreeScreen {
         const tbtn = document.createElement('button');
         tbtn.className = 'unit-theory-btn';
         const hasVid = (THEORY[unit.id].videos || []).length;
-        tbtn.innerHTML = `<span class="ut-icon">${hasVid ? '🎥' : '📖'}</span> ${hasVid ? 'Разбор от Игоря' : 'Теория темы'}<span class="ut-arrow">›</span>`;
+        // «Разбор от Игоря» — редкое событие: только для сложных/боссовых тем.
+        // Обычные темы: видео по теме или просто теория.
+        let ticon, tlabel;
+        if (unit.isBoss) { ticon = '🎥'; tlabel = 'Разбор от Игоря'; tbtn.classList.add('is-event'); }
+        else if (hasVid) { ticon = '📺'; tlabel = 'Видео по теме'; }
+        else { ticon = '📖'; tlabel = 'Теория темы'; }
+        tbtn.innerHTML = `<span class="ut-icon">${ticon}</span> ${tlabel}<span class="ut-arrow">›</span>`;
         tbtn.addEventListener('click', () => {
           sound.play('button_tap');
           this.onOpenTheory(unit.id);
