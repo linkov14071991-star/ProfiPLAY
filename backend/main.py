@@ -77,6 +77,33 @@ CATEGORIES_FILE = BASE_DIR / "categories.json"
 with open(WORDS_FILE, "r", encoding="utf-8") as f:
     WORDS = json.load(f)
 
+# Доступные предметы словесных игр (Крокодил, Alias, Шпион)
+SUBJECTS = [s for s in ("informatika", "matematika", "fizika") if s in WORDS]
+
+
+def _parse_subjects(subjects: str) -> list[str]:
+    """Разбирает параметр subjects (через запятую) → список валидных предметов.
+    Пусто/мусор → информатика по умолчанию (обратная совместимость)."""
+    picked = [s.strip() for s in (subjects or "").split(",") if s.strip() in SUBJECTS]
+    return picked or ["informatika"]
+
+
+def _pool_words(subjects: str, difficulty: str) -> list[dict]:
+    """Собирает слова выбранных предметов на заданной сложности в один пул.
+    Каждый элемент нормализован до {word, banned, emoji}."""
+    result = []
+    for subj in _parse_subjects(subjects):
+        for it in WORDS.get(subj, {}).get(difficulty, []):
+            if isinstance(it, dict):
+                result.append({
+                    "word": it["word"],
+                    "banned": it.get("banned", []),
+                    "emoji": it.get("emoji", ""),
+                })
+            else:
+                result.append({"word": it, "banned": [], "emoji": ""})
+    return result
+
 with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
     QUESTIONS = json.load(f)
 
@@ -457,32 +484,26 @@ async def check_subscription(user_id: int = Query(...)):
 
 
 @app.get("/api/words")
-async def get_words(difficulty: str = Query("easy")):
-    """Возвращает перемешанный список слов (только термины) для Крокодила."""
+async def get_words(difficulty: str = Query("easy"), subjects: str = Query("informatika")):
+    """Слова для Крокодила (термин + эмодзи) из выбранных предметов."""
     if difficulty not in ("easy", "medium", "hard"):
         raise HTTPException(status_code=400, detail="Bad difficulty")
-    items = WORDS["informatika"][difficulty].copy()
+    items = _pool_words(subjects, difficulty)
     random.shuffle(items)
-    # Крокодилу нужны только термины
-    words = [item["word"] if isinstance(item, dict) else item for item in items]
-    return {"words": words}
+    # Крокодилу нужны термин и картинка-эмодзи
+    result = [{"word": it["word"], "emoji": it["emoji"]} for it in items]
+    # обратная совместимость: старый ключ words со строками
+    return {"items": result, "words": [it["word"] for it in result]}
 
 
 @app.get("/api/alias")
-async def get_alias_words(difficulty: str = Query("easy")):
-    """Возвращает слова с запретными словами для Alias."""
+async def get_alias_words(difficulty: str = Query("easy"), subjects: str = Query("informatika")):
+    """Слова с запретными словами и эмодзи для Alias из выбранных предметов."""
     if difficulty not in ("easy", "medium", "hard"):
         raise HTTPException(status_code=400, detail="Bad difficulty")
-    items = WORDS["informatika"][difficulty].copy()
+    items = _pool_words(subjects, difficulty)
     random.shuffle(items)
-    # Нормализуем: если вдруг где-то остались просто строки — добавим пустой banned
-    result = []
-    for it in items:
-        if isinstance(it, dict):
-            result.append({"word": it["word"], "banned": it.get("banned", [])})
-        else:
-            result.append({"word": it, "banned": []})
-    return {"items": result}
+    return {"items": items}
 
 
 @app.get("/api/questions")
@@ -513,18 +534,17 @@ async def get_categories(difficulty: str = Query("easy"), limit: int = Query(30)
 
 
 @app.get("/api/spy")
-async def get_spy(difficulty: str = Query("easy")):
-    """Одно случайное слово и список отвлекающих слов (для Шпиона)."""
+async def get_spy(difficulty: str = Query("easy"), subjects: str = Query("informatika")):
+    """Одно случайное слово (+эмодзи) и список отвлекающих слов (для Шпиона)."""
     if difficulty not in ("easy", "medium", "hard"):
         raise HTTPException(status_code=400, detail="Bad difficulty")
-    items = WORDS["informatika"][difficulty].copy()
-    words = [it["word"] if isinstance(it, dict) else it for it in items]
-    random.shuffle(words)
-    if not words:
+    items = _pool_words(subjects, difficulty)
+    random.shuffle(items)
+    if not items:
         raise HTTPException(status_code=500, detail="No words")
-    target = words[0]
-    decoys = words[1:8]  # 7 других слов той же сложности
-    return {"word": target, "decoys": decoys}
+    target = items[0]
+    decoys = [it["word"] for it in items[1:8]]  # 7 других слов
+    return {"word": target["word"], "emoji": target["emoji"], "decoys": decoys}
 
 
 @app.get("/api/marathon")

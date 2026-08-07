@@ -245,6 +245,13 @@
       <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
+    <label class="field">Предметы <span class="field-hint">— можно несколько</span></label>
+    <div class="pills pills-multi" id="croco-subjects">
+      <button class="pill active" data-value="informatika">💻 Информатика</button>
+      <button class="pill" data-value="matematika">📐 Математика</button>
+      <button class="pill" data-value="fizika">⚛️ Физика</button>
+    </div>
+
     <label class="field">Длительность раунда</label>
     <div class="pills" id="croco-duration">
       <button class="pill" data-value="60">60 сек</button>
@@ -268,6 +275,7 @@
   </div>
 
   <div class="word-box">
+    <div class="word-emoji" id="word-emoji"></div>
     <div class="word" id="word">—</div>
   </div>
 
@@ -549,6 +557,13 @@
       <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
+    <label class="field">Предметы <span class="field-hint">— можно несколько</span></label>
+    <div class="pills pills-multi" id="alias-subjects">
+      <button class="pill active" data-value="informatika">💻 Информатика</button>
+      <button class="pill" data-value="matematika">📐 Математика</button>
+      <button class="pill" data-value="fizika">⚛️ Физика</button>
+    </div>
+
     <label class="field">Длительность раунда</label>
     <div class="pills" id="alias-duration">
       <button class="pill" data-value="60">60 сек</button>
@@ -573,6 +588,7 @@
   </div>
 
   <div class="alias-word-box">
+    <div class="word-emoji" id="alias-emoji"></div>
     <div class="alias-word" id="alias-word">—</div>
     <div class="alias-banned-title">Запретные слова:</div>
     <ul class="alias-banned" id="alias-banned"></ul>
@@ -1106,6 +1122,13 @@
       <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
 
+    <label class="field">Предметы <span class="field-hint">— можно несколько</span></label>
+    <div class="pills pills-multi" id="spy-subjects">
+      <button class="pill active" data-value="informatika">💻 Информатика</button>
+      <button class="pill" data-value="matematika">📐 Математика</button>
+      <button class="pill" data-value="fizika">⚛️ Физика</button>
+    </div>
+
     <label class="field">Время обсуждения</label>
     <div class="pills" id="spy-time">
       <button class="pill" data-value="120">2 мин</button>
@@ -1132,7 +1155,8 @@
 <section id="screen-spy-role" class="screen">
   <div class="card" style="margin:auto;">
     <p class="subtitle" style="text-align:center;">Твоя роль:</p>
-    <div id="spy-role-word" style="text-align:center; font-size:36px; font-weight:800; margin:20px 0; color:var(--brand-purple); word-break:break-word;">—</div>
+    <div id="spy-role-emoji" style="text-align:center; font-size:56px; margin:8px 0 0;"></div>
+    <div id="spy-role-word" style="text-align:center; font-size:36px; font-weight:800; margin:8px 0 20px; color:var(--brand-purple); word-break:break-word;">—</div>
     <p id="spy-role-note" style="text-align:center; color:var(--text-on-light); opacity:0.8;">Запомни слово. Не показывай никому.</p>
     <button id="btn-spy-next-player" class="btn btn-primary btn-big">Готово, скрыть</button>
   </div>

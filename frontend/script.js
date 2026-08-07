@@ -92,6 +92,48 @@ function setupPills(containerId, onChange, cast = (v) => v) {
   });
 }
 
+// Мультивыбор пилюль: можно отметить несколько, но минимум одну не даём снять.
+// onChange получает массив выбранных значений. Возвращает функцию чтения текущего выбора.
+function setupPillsMulti(containerId, onChange) {
+  const container = document.getElementById(containerId);
+  const read = () => [...container.querySelectorAll(".pill.active")].map((p) => p.dataset.value);
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest(".pill");
+    if (!btn) return;
+    const activeCount = container.querySelectorAll(".pill.active").length;
+    if (btn.classList.contains("active") && activeCount <= 1) { hapticLight(); return; } // нельзя снять последний
+    btn.classList.toggle("active");
+    onChange(read());
+    hapticLight();
+  });
+  return read;
+}
+
+// Звуковой сигнал окончания времени (WebAudio, без внешних файлов).
+let _audioCtx = null;
+function playTimeUpSound() {
+  try {
+    _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    if (ctx.state === "suspended") ctx.resume();
+    // три коротких нисходящих гудка
+    [880, 660, 440].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.value = freq;
+      const t0 = ctx.currentTime + i * 0.22;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.2);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.22);
+    });
+    if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred("warning");
+  } catch (e) { /* звук недоступен — не критично */ }
+}
+
 // ==== Меню игр (делегирование по клику) ====
 document.body.addEventListener("click", (e) => {
   const card = e.target.closest(".game-card");
@@ -122,6 +164,7 @@ document.querySelectorAll(".btn-back").forEach((btn) => {
 const croco = {
   difficulty: "easy",
   duration: 90,
+  subjects: ["informatika"],
   words: [],
   wordIndex: 0,
   timer: null,
@@ -132,11 +175,12 @@ const croco = {
 
 setupPills("croco-difficulty", (v) => (croco.difficulty = v));
 setupPills("croco-duration", (v) => (croco.duration = v), (v) => parseInt(v, 10));
+setupPillsMulti("croco-subjects", (arr) => (croco.subjects = arr));
 
 async function crocoLoadWords() {
-  const r = await fetch(`/api/words?difficulty=${croco.difficulty}`);
+  const r = await fetch(`/api/words?difficulty=${croco.difficulty}&subjects=${croco.subjects.join(",")}`);
   const data = await r.json();
-  croco.words = data.words;
+  croco.words = data.items || (data.words || []).map((w) => ({ word: w, emoji: "" }));
   croco.wordIndex = 0;
 }
 
@@ -145,7 +189,9 @@ function crocoNextWord() {
     croco.words.sort(() => Math.random() - 0.5);
     croco.wordIndex = 0;
   }
-  document.getElementById("word").textContent = croco.words[croco.wordIndex++];
+  const item = croco.words[croco.wordIndex++];
+  document.getElementById("word").textContent = item.word;
+  document.getElementById("word-emoji").textContent = item.emoji || "";
 }
 
 function crocoUpdateTimer() {
@@ -162,7 +208,7 @@ function crocoStartTimer() {
   croco.timer = setInterval(() => {
     croco.timeLeft--;
     crocoUpdateTimer();
-    if (croco.timeLeft <= 0) crocoStop();
+    if (croco.timeLeft <= 0) { playTimeUpSound(); crocoStop(); }
   }, 1000);
 }
 
@@ -300,7 +346,7 @@ function sprintStartTimer() {
   sprint.timer = setInterval(() => {
     sprint.timeLeft--;
     sprintUpdateTimer();
-    if (sprint.timeLeft <= 0) sprintFinish();
+    if (sprint.timeLeft <= 0) { playTimeUpSound(); sprintFinish(); }
   }, 1000);
 }
 
@@ -411,6 +457,7 @@ document.getElementById("btn-sprint-stop").addEventListener("click", sprintFinis
 const alias = {
   difficulty: "easy",
   duration: 90,
+  subjects: ["informatika"],
   items: [],
   idx: 0,
   timer: null,
@@ -422,9 +469,10 @@ const alias = {
 
 setupPills("alias-difficulty", (v) => (alias.difficulty = v));
 setupPills("alias-duration", (v) => (alias.duration = v), (v) => parseInt(v, 10));
+setupPillsMulti("alias-subjects", (arr) => (alias.subjects = arr));
 
 async function aliasLoad() {
-  const r = await fetch(`/api/alias?difficulty=${alias.difficulty}`);
+  const r = await fetch(`/api/alias?difficulty=${alias.difficulty}&subjects=${alias.subjects.join(",")}`);
   const d = await r.json();
   alias.items = d.items;
   alias.idx = 0;
@@ -437,6 +485,7 @@ function aliasNextWord() {
   }
   const it = alias.items[alias.idx++];
   document.getElementById("alias-word").textContent = it.word;
+  document.getElementById("alias-emoji").textContent = it.emoji || "";
   const ul = document.getElementById("alias-banned");
   ul.innerHTML = "";
   (it.banned || []).forEach((w) => {
@@ -460,7 +509,7 @@ function aliasStartTimer() {
   alias.timer = setInterval(() => {
     alias.timeLeft--;
     aliasUpdateTimer();
-    if (alias.timeLeft <= 0) aliasStop();
+    if (alias.timeLeft <= 0) { playTimeUpSound(); aliasStop(); }
   }, 1000);
 }
 
@@ -851,8 +900,10 @@ const spy = {
   players: 4,
   difficulty: "easy",
   discussTime: 180,
+  subjects: ["informatika"],
   spyIndex: 0,        // индекс игрока-шпиона (0..players-1)
   word: "",
+  emoji: "",
   decoys: [],
   currentPlayer: 0,   // 0..players-1 при раздаче ролей
   timer: null,
@@ -862,13 +913,15 @@ const spy = {
 setupPills("spy-players", (v) => (spy.players = v), (v) => parseInt(v, 10));
 setupPills("spy-difficulty", (v) => (spy.difficulty = v));
 setupPills("spy-time", (v) => (spy.discussTime = v), (v) => parseInt(v, 10));
+setupPillsMulti("spy-subjects", (arr) => (spy.subjects = arr));
 
 async function spyStart() {
   hapticMedium();
   // Получаем слово и обманки
-  const r = await fetch(`/api/spy?difficulty=${spy.difficulty}`);
+  const r = await fetch(`/api/spy?difficulty=${spy.difficulty}&subjects=${spy.subjects.join(",")}`);
   const d = await r.json();
   spy.word = d.word;
+  spy.emoji = d.emoji || "";
   spy.decoys = d.decoys;
   spy.spyIndex = Math.floor(Math.random() * spy.players);
   spy.currentPlayer = 0;
@@ -882,11 +935,14 @@ function spyShowPass() {
 }
 
 function spyShowRole() {
+  const emojiEl = document.getElementById("spy-role-emoji");
   if (spy.currentPlayer === spy.spyIndex) {
-    document.getElementById("spy-role-word").textContent = "🕵 ТЫ ШПИОН";
+    emojiEl.textContent = "🕵";
+    document.getElementById("spy-role-word").textContent = "ТЫ ШПИОН";
     document.getElementById("spy-role-note").textContent =
       "Слова ты не знаешь. Слушай других и попробуй угадать, о чём речь.";
   } else {
+    emojiEl.textContent = spy.emoji || "";
     document.getElementById("spy-role-word").textContent = spy.word;
     document.getElementById("spy-role-note").textContent =
       "Запомни слово. Не показывай никому.";
@@ -913,6 +969,7 @@ function spyStartDiscussion() {
     if (spy.timeLeft <= 0) {
       clearInterval(spy.timer);
       spy.timer = null;
+      playTimeUpSound();
       spyShowVote();
     }
   }, 1000);
