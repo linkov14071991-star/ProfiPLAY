@@ -20,9 +20,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import time
+
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 WEBAPP_URL = os.environ["WEBAPP_URL"]
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@profimatika_inf")
+
+# Версия сборки для сброса кэша мини-аппа. Меняется на каждый деплой (Railway
+# отдаёт RAILWAY_GIT_COMMIT_SHA), поэтому Telegram открывает свежую версию, а не
+# закэшированную. Fallback — время запуска.
+APP_VER = (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or str(int(time.time())))[:8]
+
+
+def _bust(url: str) -> str:
+    """Добавляет ?v=<версия> к адресу — Telegram считает его новым и грузит заново."""
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}v={APP_VER}"
+
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -31,7 +45,7 @@ dp = Dispatcher()
 def _kb_open_app(url: str, label: str = "🎮 Играть в Профик Арена") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=label, web_app=WebAppInfo(url=url))],
+            [InlineKeyboardButton(text=label, web_app=WebAppInfo(url=_bust(url)))],
             [
                 InlineKeyboardButton(
                     text="📢 Подписаться на канал",
