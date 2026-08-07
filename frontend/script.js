@@ -22,6 +22,7 @@ const SCREENS = {
   duelResult: "screen-duel-result",
   duelHistory: "screen-duel-history",
   crocoSetup: "screen-croco-setup",
+  crocoTheme: "screen-croco-theme", // выбор темы (перед словом)
   game: "screen-game",           // игра Крокодил
   result: "screen-result",       // итоги Крокодила
   sprintSetup: "screen-sprint-setup",
@@ -142,7 +143,7 @@ document.body.addEventListener("click", (e) => {
   if (!game) return;
   hapticMedium();
   if (game === "party") showScreen("party");
-  if (game === "crocodile") showScreen("crocoSetup");
+  if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); }
   if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
   if (game === "alias") showScreen("aliasSetup");
   if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
@@ -161,74 +162,132 @@ document.querySelectorAll(".btn-back").forEach((btn) => {
 // ==============================
 // ========= КРОКОДИЛ ===========
 // ==============================
+// Механика: игроки по очереди. Ход = выбрать тему → показать слово → угадали →
+// телефон берёт угадавший и выбирает тему заново. Общий таймер идёт непрерывно.
 const croco = {
-  difficulty: "easy",
-  duration: 90,
-  subjects: ["informatika"],
-  words: [],
-  wordIndex: 0,
+  duration: 60,        // общее время игры, сек (1/3/5 мин)
+  pools: {},           // { informatika:[{word,emoji}], matematika:[...], fizika:[...] }
+  idx: {},             // индекс в каждом пуле
+  curSubject: null,
   timer: null,
   timeLeft: 0,
   guessed: 0,
-  skipped: 0,
+  running: false,
 };
 
-setupPills("croco-difficulty", (v) => (croco.difficulty = v));
-setupPills("croco-duration", (v) => (croco.duration = v), (v) => parseInt(v, 10));
-setupPillsMulti("croco-subjects", (arr) => (croco.subjects = arr));
+const CROCO_SUBJECTS = ["informatika", "matematika", "fizika"];
 
-async function crocoLoadWords() {
-  const r = await fetch(`/api/words?difficulty=${croco.difficulty}&subjects=${croco.subjects.join(",")}`);
-  const data = await r.json();
-  croco.words = data.items || (data.words || []).map((w) => ({ word: w, emoji: "" }));
-  croco.wordIndex = 0;
-}
+setupPills("croco-time", (v) => { croco.duration = v; renderCrocoRecord(); }, (v) => parseInt(v, 10));
 
-function crocoNextWord() {
-  if (croco.wordIndex >= croco.words.length) {
-    croco.words.sort(() => Math.random() - 0.5);
-    croco.wordIndex = 0;
+// --- Рекорды Крокодила (по времени игры) ---
+const crocoRecords = {};
+function crocoRecordKey() { return `croco_${croco.duration}`; }
+function getCrocoRecord() { return crocoRecords[crocoRecordKey()] || 0; }
+function saveCrocoRecord(score) {
+  const key = crocoRecordKey();
+  if (score > (crocoRecords[key] || 0)) {
+    crocoRecords[key] = score;
+    tg?.CloudStorage?.setItem?.(key, String(score), () => {});
+    return true;
   }
-  const item = croco.words[croco.wordIndex++];
-  document.getElementById("word").textContent = item.word;
-  document.getElementById("word-emoji").textContent = item.emoji || "";
+  return false;
+}
+function loadCrocoRecordsFromCloud() {
+  if (!tg?.CloudStorage) return;
+  const keys = [60, 180, 300].map((t) => `croco_${t}`);
+  tg.CloudStorage.getItems(keys, (err, values) => {
+    if (err || !values) return;
+    Object.entries(values).forEach(([k, v]) => { if (v) crocoRecords[k] = parseInt(v, 10) || 0; });
+    renderCrocoRecord();
+  });
+}
+function renderCrocoRecord() {
+  const rec = getCrocoRecord();
+  const hint = document.getElementById("croco-record-hint");
+  if (rec > 0) { document.getElementById("croco-record").textContent = rec; hint.style.display = "block"; }
+  else { hint.style.display = "none"; }
 }
 
+async function crocoLoadPools() {
+  // грузим все три темы (микс всех уровней) один раз на игру
+  const results = await Promise.all(
+    CROCO_SUBJECTS.map((s) => fetch(`/api/words?difficulty=mixed&subjects=${s}`).then((r) => r.json()))
+  );
+  CROCO_SUBJECTS.forEach((s, i) => {
+    const items = results[i].items || [];
+    items.sort(() => Math.random() - 0.5);
+    croco.pools[s] = items;
+    croco.idx[s] = 0;
+  });
+}
+
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 function crocoUpdateTimer() {
-  const el = document.getElementById("timer");
-  el.textContent = croco.timeLeft;
-  el.classList.remove("warn", "danger");
-  if (croco.timeLeft <= 5) el.classList.add("danger");
-  else if (croco.timeLeft <= 15) el.classList.add("warn");
+  document.querySelectorAll(".croco-timer").forEach((el) => {
+    el.textContent = fmtTime(Math.max(0, croco.timeLeft));
+    el.classList.remove("warn", "danger");
+    if (croco.timeLeft <= 5) el.classList.add("danger");
+    else if (croco.timeLeft <= 15) el.classList.add("warn");
+  });
+  document.querySelectorAll(".croco-guessed").forEach((el) => (el.textContent = croco.guessed));
 }
 
 function crocoStartTimer() {
   croco.timeLeft = croco.duration;
+  croco.running = true;
   crocoUpdateTimer();
   croco.timer = setInterval(() => {
     croco.timeLeft--;
     crocoUpdateTimer();
-    if (croco.timeLeft <= 0) { playTimeUpSound(); crocoStop(); }
+    if (croco.timeLeft <= 0) { playTimeUpSound(); crocoFinish(); }
   }, 1000);
 }
 
 async function crocoStart() {
   hapticMedium();
-  await crocoLoadWords();
+  await crocoLoadPools();
   croco.guessed = 0;
-  croco.skipped = 0;
-  document.getElementById("score-guessed").textContent = 0;
-  document.getElementById("score-skipped").textContent = 0;
-  showScreen("game");
-  crocoNextWord();
+  croco.curSubject = null;
   crocoStartTimer();
+  crocoShowThemePicker();
 }
 
-async function crocoStop() {
+// Экран выбора темы (перед каждым словом)
+function crocoShowThemePicker() {
+  if (!croco.running) return;
+  crocoUpdateTimer();
+  showScreen("crocoTheme");
+}
+
+// Показать слово выбранной темы
+function crocoShowWord(subject) {
+  croco.curSubject = subject;
+  crocoNextWord();
+  showScreen("game");
+}
+
+function crocoNextWord() {
+  const s = croco.curSubject;
+  const pool = croco.pools[s] || [];
+  if (!pool.length) return;
+  if (croco.idx[s] >= pool.length) { pool.sort(() => Math.random() - 0.5); croco.idx[s] = 0; }
+  const item = pool[croco.idx[s]++];
+  document.getElementById("word").textContent = item.word;
+  document.getElementById("word-emoji").textContent = item.emoji || "";
+  crocoUpdateTimer();
+}
+
+async function crocoFinish() {
   clearInterval(croco.timer);
   croco.timer = null;
+  croco.running = false;
+  const isRecord = saveCrocoRecord(croco.guessed);
   document.getElementById("result-guessed").textContent = croco.guessed;
-  document.getElementById("result-skipped").textContent = croco.skipped;
+  document.getElementById("result-record").textContent = getCrocoRecord();
+  document.getElementById("croco-new-record").style.display = isRecord && croco.guessed > 0 ? "block" : "none";
   showScreen("result");
   hapticSuccess();
   const res = await awardTraining("party", 5);
@@ -237,19 +296,23 @@ async function crocoStop() {
 
 document.getElementById("btn-croco-start").addEventListener("click", crocoStart);
 document.getElementById("btn-croco-again").addEventListener("click", crocoStart);
+// Выбор темы на экране-пикере
+document.querySelectorAll("#screen-croco-theme .theme-btn").forEach((btn) => {
+  btn.addEventListener("click", () => { hapticLight(); crocoShowWord(btn.dataset.subject); });
+});
+// Угадано → следующий ход: телефон берёт угадавший, снова выбор темы
 document.getElementById("btn-guessed").addEventListener("click", () => {
   croco.guessed++;
-  document.getElementById("score-guessed").textContent = croco.guessed;
   hapticLight();
-  crocoNextWord();
+  crocoShowThemePicker();
 });
+// Другое слово той же темы (сложное слово можно пропустить)
 document.getElementById("btn-skip").addEventListener("click", () => {
-  croco.skipped++;
-  document.getElementById("score-skipped").textContent = croco.skipped;
   hapticLight();
   crocoNextWord();
 });
-document.getElementById("btn-stop").addEventListener("click", crocoStop);
+document.getElementById("btn-stop").addEventListener("click", crocoFinish);
+document.getElementById("btn-croco-theme-stop").addEventListener("click", crocoFinish);
 
 // ==============================
 // ========== СПРИНТ ============
@@ -458,6 +521,7 @@ const alias = {
   difficulty: "easy",
   duration: 90,
   subjects: ["informatika"],
+  showBanned: true,
   items: [],
   idx: 0,
   timer: null,
@@ -470,6 +534,9 @@ const alias = {
 setupPills("alias-difficulty", (v) => (alias.difficulty = v));
 setupPills("alias-duration", (v) => (alias.duration = v), (v) => parseInt(v, 10));
 setupPillsMulti("alias-subjects", (arr) => (alias.subjects = arr));
+document.getElementById("alias-banned-toggle").addEventListener("change", (e) => {
+  alias.showBanned = e.target.checked;
+});
 
 async function aliasLoad() {
   const r = await fetch(`/api/alias?difficulty=${alias.difficulty}&subjects=${alias.subjects.join(",")}`);
@@ -487,12 +554,20 @@ function aliasNextWord() {
   document.getElementById("alias-word").textContent = it.word;
   document.getElementById("alias-emoji").textContent = it.emoji || "";
   const ul = document.getElementById("alias-banned");
+  const title = document.querySelector(".alias-banned-title");
   ul.innerHTML = "";
-  (it.banned || []).forEach((w) => {
-    const li = document.createElement("li");
-    li.textContent = w;
-    ul.appendChild(li);
-  });
+  if (alias.showBanned) {
+    if (title) title.style.display = "";
+    ul.style.display = "";
+    (it.banned || []).forEach((w) => {
+      const li = document.createElement("li");
+      li.textContent = w;
+      ul.appendChild(li);
+    });
+  } else {
+    if (title) title.style.display = "none";
+    ul.style.display = "none";
+  }
 }
 
 function aliasUpdateTimer() {
@@ -2660,4 +2735,5 @@ function showTrainingResult(opts) {
 
 // ==== Старт ====
 loadRecordsFromCloud();
+loadCrocoRecordsFromCloud();
 checkSubscription();

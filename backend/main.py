@@ -90,18 +90,20 @@ def _parse_subjects(subjects: str) -> list[str]:
 
 def _pool_words(subjects: str, difficulty: str) -> list[dict]:
     """Собирает слова выбранных предметов на заданной сложности в один пул.
-    Каждый элемент нормализован до {word, banned, emoji}."""
+    difficulty='mixed' → все уровни. Каждый элемент → {word, banned, emoji}."""
+    levels = ("easy", "medium", "hard") if difficulty == "mixed" else (difficulty,)
     result = []
     for subj in _parse_subjects(subjects):
-        for it in WORDS.get(subj, {}).get(difficulty, []):
-            if isinstance(it, dict):
-                result.append({
-                    "word": it["word"],
-                    "banned": it.get("banned", []),
-                    "emoji": it.get("emoji", ""),
-                })
-            else:
-                result.append({"word": it, "banned": [], "emoji": ""})
+        for lv in levels:
+            for it in WORDS.get(subj, {}).get(lv, []):
+                if isinstance(it, dict):
+                    result.append({
+                        "word": it["word"],
+                        "banned": it.get("banned", []),
+                        "emoji": it.get("emoji", ""),
+                    })
+                else:
+                    result.append({"word": it, "banned": [], "emoji": ""})
     return result
 
 with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
@@ -486,7 +488,7 @@ async def check_subscription(user_id: int = Query(...)):
 @app.get("/api/words")
 async def get_words(difficulty: str = Query("easy"), subjects: str = Query("informatika")):
     """Слова для Крокодила (термин + эмодзи) из выбранных предметов."""
-    if difficulty not in ("easy", "medium", "hard"):
+    if difficulty not in ("easy", "medium", "hard", "mixed"):
         raise HTTPException(status_code=400, detail="Bad difficulty")
     items = _pool_words(subjects, difficulty)
     random.shuffle(items)

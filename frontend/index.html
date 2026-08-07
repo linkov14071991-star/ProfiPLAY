@@ -236,41 +236,50 @@
   </div>
   <div class="card">
     <h1>🐊 Крокодил</h1>
-    <p class="subtitle">Показывай жестами — друзья угадывают</p>
+    <p class="subtitle">Показывай жестами — друзья угадывают. Кто угадал — берёт телефон.</p>
 
-    <label class="field">Сложность</label>
-    <div class="pills" id="croco-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
+    <label class="field">Время игры</label>
+    <div class="pills" id="croco-time">
+      <button class="pill active" data-value="60">1 мин</button>
+      <button class="pill" data-value="180">3 мин</button>
+      <button class="pill" data-value="300">5 мин</button>
     </div>
 
-    <label class="field">Предметы <span class="field-hint">— можно несколько</span></label>
-    <div class="pills pills-multi" id="croco-subjects">
-      <button class="pill active" data-value="informatika">💻 Информатика</button>
-      <button class="pill" data-value="matematika">📐 Математика</button>
-      <button class="pill" data-value="fizika">⚛️ Физика</button>
+    <div class="record-hint" id="croco-record-hint" style="display:none;">
+      🏆 Рекорд: <b id="croco-record">0</b> слов
     </div>
 
-    <label class="field">Длительность раунда</label>
-    <div class="pills" id="croco-duration">
-      <button class="pill" data-value="60">60 сек</button>
-      <button class="pill active" data-value="90">90 сек</button>
-      <button class="pill" data-value="120">120 сек</button>
-    </div>
-
-    <button id="btn-croco-start" class="btn btn-primary btn-big">Начать раунд</button>
+    <button id="btn-croco-start" class="btn btn-primary btn-big">Начать игру</button>
     <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
   </div>
 </section>
 
-<!-- ==== Экран: игра Крокодил ==== -->
+<!-- ==== Экран: выбор темы (перед каждым словом) ==== -->
+<section id="screen-croco-theme" class="screen">
+  <div class="game-header">
+    <div class="timer croco-timer" id="croco-theme-timer">1:00</div>
+    <div class="score-mini">
+      <span class="ok">✅ <span class="croco-guessed">0</span></span>
+    </div>
+  </div>
+  <div class="card" style="margin:auto; text-align:center;">
+    <h1 style="font-size:22px;">Выбери тему</h1>
+    <p class="subtitle">Возьми телефон и выбери, что показывать</p>
+    <div class="theme-picker">
+      <button class="theme-btn" data-subject="informatika"><span class="theme-emoji">💻</span> Информатика</button>
+      <button class="theme-btn" data-subject="matematika"><span class="theme-emoji">📐</span> Математика</button>
+      <button class="theme-btn" data-subject="fizika"><span class="theme-emoji">⚛️</span> Физика</button>
+    </div>
+  </div>
+  <button id="btn-croco-theme-stop" class="btn btn-link">Завершить игру</button>
+</section>
+
+<!-- ==== Экран: игра Крокодил (показ слова) ==== -->
 <section id="screen-game" class="screen">
   <div class="game-header">
-    <div class="timer" id="timer">90</div>
+    <div class="timer croco-timer" id="timer">1:00</div>
     <div class="score-mini">
-      <span class="ok">✅ <span id="score-guessed">0</span></span>
-      <span class="skip">⏭ <span id="score-skipped">0</span></span>
+      <span class="ok">✅ <span class="croco-guessed">0</span></span>
     </div>
   </div>
 
@@ -280,11 +289,11 @@
   </div>
 
   <div class="game-actions">
-    <button id="btn-skip" class="btn btn-skip btn-big">Пропустить</button>
+    <button id="btn-skip" class="btn btn-skip btn-big">Другое слово</button>
     <button id="btn-guessed" class="btn btn-ok btn-big">Угадано!</button>
   </div>
 
-  <button id="btn-stop" class="btn btn-link">Остановить раунд</button>
+  <button id="btn-stop" class="btn btn-link">Завершить игру</button>
 </section>
 
 <!-- ==== Экран: итоги Крокодила ==== -->
@@ -294,18 +303,19 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1>🏁 Раунд окончен</h1>
+    <h1>🏁 Время вышло!</h1>
+    <div id="croco-new-record" class="new-record-badge" style="display:none;">🎉 Новый рекорд!</div>
     <div class="result-stats">
       <div class="stat stat-ok">
         <div class="stat-num" id="result-guessed">0</div>
-        <div class="stat-label">Угадано</div>
+        <div class="stat-label">Угадано слов</div>
       </div>
-      <div class="stat stat-skip">
-        <div class="stat-num" id="result-skipped">0</div>
-        <div class="stat-label">Пропущено</div>
+      <div class="stat stat-ok">
+        <div class="stat-num" id="result-record">0</div>
+        <div class="stat-label">🏆 Рекорд</div>
       </div>
     </div>
-    <button id="btn-croco-again" class="btn btn-primary btn-big">Ещё раунд</button>
+    <button id="btn-croco-again" class="btn btn-primary btn-big">Играть ещё</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>
@@ -563,6 +573,11 @@
       <button class="pill" data-value="matematika">📐 Математика</button>
       <button class="pill" data-value="fizika">⚛️ Физика</button>
     </div>
+
+    <label class="checkbox-row">
+      <input type="checkbox" id="alias-banned-toggle" checked>
+      <span>Показывать запретные слова</span>
+    </label>
 
     <label class="field">Длительность раунда</label>
     <div class="pills" id="alias-duration">

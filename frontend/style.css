@@ -305,6 +305,38 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .word-emoji { font-size: 64px; line-height: 1; margin-bottom: 6px; text-align: center; }
 .word-emoji:empty { display: none; }
 
+/* Галочка (Alias — запретные слова) */
+.checkbox-row {
+  display: flex; align-items: center; gap: 10px; margin: 4px 0 16px;
+  font-size: 15px; color: var(--text-on-light); cursor: pointer; text-transform: none; letter-spacing: 0;
+}
+.checkbox-row input[type="checkbox"] {
+  width: 22px; height: 22px; accent-color: var(--brand-purple); cursor: pointer; flex-shrink: 0;
+}
+
+/* Выбор темы в Крокодиле */
+.theme-picker { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.theme-btn {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 18px 20px; border: 2px solid var(--brand-purple); border-radius: var(--radius);
+  background: transparent; color: var(--brand-purple); font-family: inherit;
+  font-size: 18px; font-weight: 700; cursor: pointer; transition: transform 0.12s, background 0.2s, color 0.2s;
+}
+.theme-btn:active { transform: scale(0.97); background: var(--brand-purple); color: #fff; }
+.theme-btn .theme-emoji { font-size: 26px; }
+
+/* Рекорд-подсказка и бейдж нового рекорда */
+.record-hint {
+  text-align: center; font-size: 15px; color: var(--text-on-light);
+  background: rgba(180, 242, 77, 0.25); border-radius: var(--radius-sm);
+  padding: 10px; margin: 4px 0 16px;
+}
+.record-hint b { color: var(--brand-purple); }
+.new-record-badge {
+  text-align: center; font-size: 17px; font-weight: 800; color: var(--text-on-light);
+  background: var(--brand-lime); border-radius: var(--radius-sm); padding: 12px; margin: 0 0 16px;
+}
+
 /* Пиллы с двумя строками (сложность + звёзды) */
 .pill-diff {
   display: flex;
