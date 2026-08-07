@@ -143,7 +143,7 @@
       <div class="icon">🎭</div>
       <div class="info">
         <div class="title">Играть в компании</div>
-        <div class="desc">Крокодил, Alias, 5 секунд, Шпион, Кто я? — все командные игры.</div>
+        <div class="desc">Крокодил, Alias, Банк времени, Шпион, Кто я? — все командные игры.</div>
         <div class="card-stat" id="card-party-stat"></div>
       </div>
     </div>
@@ -202,11 +202,11 @@
         <div class="desc">💬 Объясняй словами</div>
       </div>
     </div>
-    <div class="game-card" data-game="fivesec">
-      <div class="icon">⏱</div>
+    <div class="game-card" data-game="timebank">
+      <div class="icon">⏳</div>
       <div class="info">
-        <div class="title">5 секунд</div>
-        <div class="desc">⚡ Ответь быстрее всех</div>
+        <div class="title">Банк времени</div>
+        <div class="desc">🎬 3 раунда · шоу для видео с друзьями</div>
       </div>
     </div>
     <div class="game-card" data-game="spy">
@@ -1039,78 +1039,112 @@
   </div>
 </section>
 
-<!-- ==== Экраны: 5 секунд ==== -->
-<section id="screen-five-setup" class="screen">
+<!-- ==== Экраны: Банк времени ==== -->
+<section id="screen-tb-setup" class="screen">
   <div class="brand-header">
     <img src="/profik.svg" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1>⏱ 5 секунд</h1>
-    <p class="subtitle">Назови 3 ответа за 5 секунд · по очереди</p>
+    <h1>⏳ Банк времени</h1>
+    <p class="subtitle">3 раунда на двоих-троих. Копи время в Alias и Крокодиле — трать в финале «Кто я».</p>
 
-    <label class="field">Игроков</label>
-    <div class="pills" id="five-players">
-      <button class="pill" data-value="2">2</button>
-      <button class="pill active" data-value="3">3</button>
-      <button class="pill" data-value="4">4</button>
-      <button class="pill" data-value="5">5+</button>
-    </div>
+    <label class="field">Имя гостя (для таблицы рекордов)</label>
+    <input type="text" id="tb-guest-name" class="text-input" placeholder="Например: Аня" maxlength="20">
 
-    <label class="field">Сложность категорий</label>
-    <div class="pills" id="five-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
-      <button class="pill" data-value="mixed">Микс</button>
-    </div>
-
-    <label class="field">Кругов</label>
-    <div class="pills" id="five-rounds">
-      <button class="pill" data-value="2">2</button>
-      <button class="pill active" data-value="3">3</button>
-      <button class="pill" data-value="5">5</button>
-    </div>
-
-    <button id="btn-five-start" class="btn btn-primary btn-big">Начать</button>
+    <button id="btn-tb-start" class="btn btn-primary btn-big">Начать игру</button>
     <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+
+    <div id="tb-records" class="tb-records"></div>
   </div>
 </section>
 
-<section id="screen-five-turn" class="screen">
-  <div class="card card-dark" style="margin-top:auto; margin-bottom:auto;">
-    <h1 style="text-align:center;">Ход игрока</h1>
-    <div style="text-align:center; font-size:64px; font-weight:800; color:var(--brand-lime); margin:16px 0;" id="five-turn-num">1</div>
-    <p style="text-align:center;">Возьмите телефон и нажмите «Готов», когда прочитаете категорию.</p>
-    <button id="btn-five-ready" class="btn btn-lime btn-big">Готов!</button>
-    <button class="btn btn-link btn-back" data-back="fiveSetup">← Назад к настройкам</button>
+<!-- Экран перед попыткой: раунд, ведущий, выбор сложности -->
+<section id="screen-tb-attempt" class="screen">
+  <div class="card card-dark" style="margin:auto;">
+    <div class="tb-round-badge" id="tb-attempt-round">Раунд 1 · Alias</div>
+    <h1 style="text-align:center;" id="tb-attempt-title">Попытка 1</h1>
+    <p style="text-align:center;">Ведущий: <b id="tb-attempt-leader">Игрок 1</b>. Выбери сложность — рискни ради секунд!</p>
+
+    <div class="pills" id="tb-difficulty" style="margin-top:16px;">
+      <button class="pill pill-diff active" data-value="easy"><span>Просто</span><span class="pill-hint">2 сек/слово</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средне</span><span class="pill-hint">4 сек/слово</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложно</span><span class="pill-hint">6 сек/слово</span></button>
+    </div>
+
+    <div class="tb-bank-line">🏦 В банке: <b id="tb-attempt-bank">0</b> сек</div>
+    <button id="btn-tb-attempt-go" class="btn btn-lime btn-big">Старт · 60 секунд</button>
+    <button class="btn btn-link btn-back" data-back="tbSetup">← Назад к настройкам</button>
   </div>
 </section>
 
-<section id="screen-five-play" class="screen">
-  <div style="text-align:center; margin-top:20px;">
-    <p style="color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; font-size:13px; margin-bottom:8px;">Игрок <span id="five-player-badge">1</span></p>
+<!-- Экран игры (слово + таймер попытки) -->
+<section id="screen-tb-play" class="screen">
+  <div class="game-header">
+    <div class="timer" id="tb-play-timer">60</div>
+    <div class="score-mini">
+      <span class="ok">✅ <span id="tb-play-count">0</span></span>
+      <span class="skip">🏦 <span id="tb-play-bank">0</span>с</span>
+    </div>
   </div>
-  <div class="q-card" style="flex:1; margin:12px 4px;">
-    <div class="q-text" id="five-category">—</div>
+  <div class="word-box">
+    <div class="word-emoji" id="tb-play-emoji"></div>
+    <div class="word" id="tb-play-word">—</div>
+    <div class="tb-banned" id="tb-play-banned"></div>
   </div>
-  <div class="timer" id="five-timer" style="text-align:center; margin-bottom:16px;">5</div>
-  <div class="game-actions" style="padding:0 4px;">
-    <button id="btn-five-fail" class="btn btn-skip btn-big">Не успел</button>
-    <button id="btn-five-ok" class="btn btn-ok btn-big">Успел!</button>
+  <div class="game-actions">
+    <button id="btn-tb-skip" class="btn btn-skip btn-big">Пропустить</button>
+    <button id="btn-tb-ok" class="btn btn-ok btn-big">Угадано!</button>
   </div>
 </section>
 
-<section id="screen-five-result" class="screen">
+<!-- Экран перед финалом: банк + выбор сложности финального слова -->
+<section id="screen-tb-final-intro" class="screen">
+  <div class="card card-dark" style="margin:auto; text-align:center;">
+    <div class="tb-round-badge">Раунд 3 · Кто я</div>
+    <h1>Финал!</h1>
+    <p>Вы накопили банк времени:</p>
+    <div class="tb-bank-big" id="tb-final-bank">0:00</div>
+    <p>Угадай <b>одно</b> слово за это время. Один держит телефон ко лбу — другой подсказывает.</p>
+    <label class="field" style="color:#fff;">Сложность финального слова</label>
+    <div class="pills" id="tb-final-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Просто</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средне</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложно</span><span class="pill-hint">×2</span></button>
+    </div>
+    <button id="btn-tb-final-go" class="btn btn-lime btn-big">Поехали!</button>
+  </div>
+</section>
+
+<!-- Финальная игра: одно слово, таймер вниз от банка -->
+<section id="screen-tb-final" class="screen">
+  <div class="game-header">
+    <div class="timer" id="tb-final-timer">0:00</div>
+    <div class="score-mini"><span class="ok" id="tb-final-mult">×1</span></div>
+  </div>
+  <div class="word-box">
+    <div class="tb-final-hint">Держи ко лбу — не подглядывай! Друг подсказывает.</div>
+    <div class="word-emoji" id="tb-final-emoji"></div>
+    <div class="word" id="tb-final-word">—</div>
+  </div>
+  <div class="game-actions" style="grid-template-columns:1fr;">
+    <button id="btn-tb-final-ok" class="btn btn-ok btn-big">Угадал!</button>
+  </div>
+</section>
+
+<!-- Итоги -->
+<section id="screen-tb-result" class="screen">
   <div class="brand-header">
     <img src="/profik.svg" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1>🏁 Итоги</h1>
-    <div id="five-score-list"></div>
-    <p style="text-align:center; margin-top:16px;" id="five-winner-note"></p>
-    <button id="btn-five-again" class="btn btn-primary btn-big">Ещё раз</button>
+    <h1 id="tb-result-title">🏁 Итог</h1>
+    <div id="tb-result-newrecord" class="new-record-badge" style="display:none;">🎉 Новый рекорд!</div>
+    <div class="tb-score-big" id="tb-result-score">0</div>
+    <p style="text-align:center; color:var(--text-muted); margin-top:-6px;" id="tb-result-sub">очков</p>
+    <div id="tb-result-records" class="tb-records"></div>
+    <button id="btn-tb-again" class="btn btn-primary btn-big">Играть ещё</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>

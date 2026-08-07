@@ -337,6 +337,41 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   background: var(--brand-lime); border-radius: var(--radius-sm); padding: 12px; margin: 0 0 16px;
 }
 
+/* ===== Банк времени ===== */
+.text-input {
+  width: 100%; padding: 14px 16px; margin-bottom: 16px; font-family: inherit; font-size: 16px;
+  border: 2px solid var(--brand-purple); border-radius: var(--radius-sm);
+  background: #fff; color: var(--text-on-light); box-sizing: border-box;
+}
+.text-input:focus { outline: none; border-color: var(--brand-lime); }
+.tb-round-badge {
+  display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--brand-lime); background: rgba(180,242,77,0.15); border-radius: 999px;
+  padding: 5px 14px; margin: 0 auto 8px; text-align: center;
+}
+.card-dark .tb-round-badge { display: block; width: fit-content; margin-left: auto; margin-right: auto; }
+.tb-bank-line { text-align: center; font-size: 15px; margin: 14px 0; }
+.tb-bank-line b, .tb-bank-big { color: var(--brand-lime); }
+.tb-bank-big { font-size: 48px; font-weight: 800; text-align: center; margin: 8px 0 14px; }
+.tb-banned { font-size: 13px; color: var(--danger); margin-top: 10px; text-align: center; line-height: 1.4; }
+.tb-banned span { font-weight: 700; }
+.tb-final-hint { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 12px; line-height: 1.4; }
+.tb-score-big { font-size: 64px; font-weight: 800; text-align: center; color: var(--brand-purple); line-height: 1; }
+/* таблица рекордов */
+.tb-records { margin-top: 18px; }
+.tb-records-title { font-size: 14px; font-weight: 800; color: var(--text-on-light); margin-bottom: 8px; }
+.tb-records-empty { font-size: 14px; color: var(--text-muted); text-align: center; padding: 12px; }
+.tb-rec-row {
+  display: grid; grid-template-columns: 24px 1fr auto auto; gap: 10px; align-items: center;
+  padding: 8px 10px; border-radius: 10px; font-size: 14px; color: var(--text-on-light);
+}
+.tb-rec-row:nth-child(even) { background: rgba(102,54,233,0.05); }
+.tb-rec-row.top { background: rgba(180,242,77,0.25); font-weight: 700; }
+.tb-rec-place { color: var(--text-muted); font-weight: 700; text-align: center; }
+.tb-rec-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-rec-score { font-weight: 800; color: var(--brand-purple); }
+.tb-rec-date { font-size: 12px; color: var(--text-muted); }
+
 /* Пиллы с двумя строками (сложность + звёзды) */
 .pill-diff {
   display: flex;

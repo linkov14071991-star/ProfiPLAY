@@ -34,10 +34,12 @@ const SCREENS = {
   marathonSetup: "screen-marathon-setup",
   marathon: "screen-marathon",
   marathonResult: "screen-marathon-result",
-  fiveSetup: "screen-five-setup",
-  fiveTurn: "screen-five-turn",
-  fivePlay: "screen-five-play",
-  fiveResult: "screen-five-result",
+  tbSetup: "screen-tb-setup",
+  tbAttempt: "screen-tb-attempt",
+  tbPlay: "screen-tb-play",
+  tbFinalIntro: "screen-tb-final-intro",
+  tbFinal: "screen-tb-final",
+  tbResult: "screen-tb-result",
   spySetup: "screen-spy-setup",
   spyPass: "screen-spy-pass",
   spyRole: "screen-spy-role",
@@ -147,7 +149,7 @@ document.body.addEventListener("click", (e) => {
   if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
   if (game === "alias") showScreen("aliasSetup");
   if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
-  if (game === "fivesec") showScreen("fiveSetup");
+  if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); }
   if (game === "spy") showScreen("spySetup");
   if (game === "whoami") showScreen("whoamiSetup");
   if (game === "duel") showScreen("duelSetup");
@@ -850,129 +852,217 @@ document.getElementById("btn-marathon-stop").addEventListener("click", () => mar
 })();
 
 // ==============================
-// ========= 5 СЕКУНД ===========
+// ======= БАНК ВРЕМЕНИ =========
 // ==============================
-const five = {
-  players: 3,
-  rounds: 3,
+// 3 раунда: Alias (2 попытки) → Крокодил (2 попытки) копят банк секунд,
+// финал «Кто я» (1 слово) тратит банк. Очки = остаток × множитель.
+const TB_SUBJECTS = "informatika,matematika,fizika";
+const TB_SEC_PER_WORD = { easy: 2, medium: 4, hard: 6 };
+const TB_FINAL_MULT = { easy: 1, medium: 1.5, hard: 2 };
+const TB_ATTEMPT_TIME = 60;
+
+const tb = {
+  guest: "",
+  step: 0,          // 0..3: 0=R1p1,1=R1p2,2=R2p1,3=R2p2
+  bank: 0,          // накопленные секунды
   difficulty: "easy",
-  categories: [],
-  catIdx: 0,
-  currentPlayer: 1,
-  currentRound: 1,
-  scores: [],
-  timer: null,
-  timeLeft: 0,
-  locked: false,
+  items: [], idx: 0,
+  timer: null, timeLeft: 0, count: 0,
+  finalDifficulty: "easy", finalMult: 1,
+  finalTimer: null, finalLeft: 0, finalWord: null,
+  score: 0,
 };
 
-setupPills("five-players", (v) => (five.players = v), (v) => parseInt(v, 10));
-setupPills("five-rounds", (v) => (five.rounds = v), (v) => parseInt(v, 10));
-setupPills("five-difficulty", (v) => (five.difficulty = v));
+// шаги: раунд (1=Alias,2=Крокодил), попытка (1/2), ведущий (по попытке)
+const TB_STEPS = [
+  { round: 1, attempt: 1 }, { round: 1, attempt: 2 },
+  { round: 2, attempt: 1 }, { round: 2, attempt: 2 },
+];
+function tbRoundName(r) { return r === 1 ? "Alias" : "Крокодил"; }
 
-async function fiveLoadCats() {
-  const r = await fetch(`/api/categories?difficulty=${five.difficulty}&limit=100`);
-  const d = await r.json();
-  five.categories = d.categories;
-  five.catIdx = 0;
-}
+document.getElementById("btn-tb-start").addEventListener("click", tbStart);
+document.getElementById("btn-tb-again").addEventListener("click", () => { tbRenderRecords(); showScreen("tbSetup"); });
+setupPills("tb-difficulty", (v) => (tb.difficulty = v));
+setupPills("tb-final-difficulty", (v) => { tb.finalDifficulty = v; tb.finalMult = TB_FINAL_MULT[v]; });
 
-async function fiveStart() {
+function tbStart() {
   hapticMedium();
-  await fiveLoadCats();
-  five.scores = new Array(five.players).fill(0);
-  five.currentPlayer = 1;
-  five.currentRound = 1;
-  fiveShowTurn();
+  const name = document.getElementById("tb-guest-name").value.trim();
+  tb.guest = name || "Гость";
+  tb.bank = 0;
+  tb.step = 0;
+  tb.score = 0;
+  tbShowAttempt();
 }
 
-function fiveShowTurn() {
-  if (five.currentRound > five.rounds) {
-    fiveShowResult();
-    return;
-  }
-  document.getElementById("five-turn-num").textContent = `Игрок ${five.currentPlayer}`;
-  showScreen("fiveTurn");
+// Экран перед попыткой
+function tbShowAttempt() {
+  const s = TB_STEPS[tb.step];
+  tb.difficulty = "easy";
+  document.querySelectorAll("#tb-difficulty .pill").forEach((p, i) => p.classList.toggle("active", i === 0));
+  document.getElementById("tb-attempt-round").textContent = `Раунд ${s.round} · ${tbRoundName(s.round)}`;
+  document.getElementById("tb-attempt-title").textContent = `Попытка ${s.attempt} из 2`;
+  document.getElementById("tb-attempt-leader").textContent = `Игрок ${s.attempt}`;
+  document.getElementById("tb-attempt-bank").textContent = tb.bank;
+  showScreen("tbAttempt");
 }
 
-function fivePlay() {
-  if (five.catIdx >= five.categories.length) {
-    five.categories.sort(() => Math.random() - 0.5);
-    five.catIdx = 0;
-  }
-  document.getElementById("five-category").textContent = five.categories[five.catIdx++];
-  document.getElementById("five-player-badge").textContent = five.currentPlayer;
-  five.locked = false;
-  showScreen("fivePlay");
-  fiveStartTimer();
+async function tbLoadItems(round, difficulty) {
+  const url = round === 1
+    ? `/api/alias?difficulty=${difficulty}&subjects=${TB_SUBJECTS}`
+    : `/api/words?difficulty=${difficulty}&subjects=${TB_SUBJECTS}`;
+  const d = await (await fetch(url)).json();
+  tb.items = d.items || [];
+  tb.items.sort(() => Math.random() - 0.5);
+  tb.idx = 0;
 }
 
-function fiveStartTimer() {
-  five.timeLeft = 5;
-  const el = document.getElementById("five-timer");
-  el.textContent = 5;
-  el.classList.add("danger");
-  five.timer = setInterval(() => {
-    five.timeLeft--;
-    el.textContent = five.timeLeft;
-    if (five.timeLeft <= 0) {
-      clearInterval(five.timer);
-      // Время вышло — засчитываем как "не успел", если игрок ещё не нажал
-      if (!five.locked) fiveResolve(false);
-    }
+async function tbAttemptGo() {
+  hapticMedium();
+  const s = TB_STEPS[tb.step];
+  await tbLoadItems(s.round, tb.difficulty);
+  tb.count = 0;
+  tb.timeLeft = TB_ATTEMPT_TIME;
+  tbNextWord(s.round);
+  tbRenderPlay();
+  showScreen("tbPlay");
+  tb.timer = setInterval(() => {
+    tb.timeLeft--;
+    tbRenderPlay();
+    if (tb.timeLeft <= 0) { playTimeUpSound(); tbEndAttempt(); }
   }, 1000);
 }
 
-function fiveResolve(success) {
-  if (five.locked) return;
-  five.locked = true;
-  clearInterval(five.timer);
-  if (success) {
-    five.scores[five.currentPlayer - 1]++;
-    hapticSuccess();
+function tbNextWord(round) {
+  if (tb.idx >= tb.items.length) { tb.items.sort(() => Math.random() - 0.5); tb.idx = 0; }
+  const it = tb.items[tb.idx++];
+  tb.cur = it;
+  document.getElementById("tb-play-word").textContent = it.word;
+  document.getElementById("tb-play-emoji").textContent = it.emoji || "";
+  const bannedEl = document.getElementById("tb-play-banned");
+  if (round === 1 && (it.banned || []).length) {
+    bannedEl.innerHTML = "Нельзя: " + it.banned.map((w) => `<span>${w}</span>`).join(", ");
+    bannedEl.style.display = "";
   } else {
-    hapticError();
+    bannedEl.style.display = "none";
   }
-  // Следующий игрок / круг
-  five.currentPlayer++;
-  if (five.currentPlayer > five.players) {
-    five.currentPlayer = 1;
-    five.currentRound++;
-  }
-  setTimeout(fiveShowTurn, 500);
 }
 
-async function fiveShowResult() {
+function tbRenderPlay() {
+  const el = document.getElementById("tb-play-timer");
+  el.textContent = tb.timeLeft;
+  el.classList.toggle("danger", tb.timeLeft <= 5);
+  el.classList.toggle("warn", tb.timeLeft > 5 && tb.timeLeft <= 15);
+  document.getElementById("tb-play-count").textContent = tb.count;
+  document.getElementById("tb-play-bank").textContent = tb.bank + tb.count * TB_SEC_PER_WORD[tb.difficulty];
+}
+
+function tbEndAttempt() {
+  clearInterval(tb.timer);
+  tb.timer = null;
+  tb.bank += tb.count * TB_SEC_PER_WORD[tb.difficulty];
+  tb.step++;
+  if (tb.step >= TB_STEPS.length) tbShowFinalIntro();
+  else tbShowAttempt();
+}
+
+// ── Финал ──
+function tbShowFinalIntro() {
+  tb.finalDifficulty = "easy";
+  tb.finalMult = 1;
+  document.querySelectorAll("#tb-final-difficulty .pill").forEach((p, i) => p.classList.toggle("active", i === 0));
+  document.getElementById("tb-final-bank").textContent = fmtTime(tb.bank);
+  showScreen("tbFinalIntro");
+}
+
+async function tbFinalGo() {
+  hapticMedium();
+  const d = await (await fetch(`/api/words?difficulty=${tb.finalDifficulty}&subjects=${TB_SUBJECTS}`)).json();
+  const items = d.items || [];
+  tb.finalWord = items[Math.floor(Math.random() * items.length)] || { word: "—", emoji: "" };
+  document.getElementById("tb-final-word").textContent = tb.finalWord.word;
+  document.getElementById("tb-final-emoji").textContent = tb.finalWord.emoji || "";
+  document.getElementById("tb-final-mult").textContent = "×" + tb.finalMult;
+  tb.finalLeft = tb.bank;
+  tbRenderFinalTimer();
+  showScreen("tbFinal");
+  tb.finalTimer = setInterval(() => {
+    tb.finalLeft--;
+    tbRenderFinalTimer();
+    if (tb.finalLeft <= 0) { playTimeUpSound(); tbFinishFinal(false); }
+  }, 1000);
+}
+
+function tbRenderFinalTimer() {
+  const el = document.getElementById("tb-final-timer");
+  el.textContent = fmtTime(Math.max(0, tb.finalLeft));
+  el.classList.toggle("danger", tb.finalLeft <= 5);
+  el.classList.toggle("warn", tb.finalLeft > 5 && tb.finalLeft <= 15);
+}
+
+function tbFinishFinal(guessed) {
+  if (tb.finalTimer) { clearInterval(tb.finalTimer); tb.finalTimer = null; }
+  tb.score = guessed ? Math.round(Math.max(0, tb.finalLeft) * tb.finalMult) : 0;
+  const isRecord = tbSaveRecord(tb.guest, tb.score);
+  document.getElementById("tb-result-title").textContent = guessed ? "🏁 Угадали!" : "😿 Не успели";
+  document.getElementById("tb-result-score").textContent = tb.score;
+  document.getElementById("tb-result-newrecord").style.display = (isRecord && tb.score > 0) ? "block" : "none";
+  tbRenderRecords("tb-result-records");
+  showScreen("tbResult");
+  if (guessed) hapticSuccess(); else hapticError();
   awardTraining("party", 5).then(showRatingToast);
-  const wrap = document.getElementById("five-score-list");
-  wrap.innerHTML = "";
-  const maxScore = Math.max(...five.scores);
-  const list = document.createElement("div");
-  list.className = "five-scores";
-  five.scores.forEach((s, i) => {
-    const row = document.createElement("div");
-    row.className = "five-score-row";
-    if (s === maxScore && maxScore > 0) row.classList.add("win");
-    row.innerHTML = `<span>Игрок ${i + 1}</span><span>${s} 🏅</span>`;
-    list.appendChild(row);
-  });
-  wrap.appendChild(list);
-
-  const winners = five.scores
-    .map((s, i) => [s, i + 1])
-    .filter(([s]) => s === maxScore && maxScore > 0)
-    .map(([, i]) => `Игрок ${i}`);
-  document.getElementById("five-winner-note").textContent =
-    winners.length ? `🏆 Победитель: ${winners.join(", ")}` : "Никто не набрал очков";
-  showScreen("fiveResult");
-  hapticSuccess();
 }
 
-document.getElementById("btn-five-start").addEventListener("click", fiveStart);
-document.getElementById("btn-five-again").addEventListener("click", fiveStart);
-document.getElementById("btn-five-ready").addEventListener("click", fivePlay);
-document.getElementById("btn-five-ok").addEventListener("click", () => fiveResolve(true));
-document.getElementById("btn-five-fail").addEventListener("click", () => fiveResolve(false));
+document.getElementById("btn-tb-attempt-go").addEventListener("click", tbAttemptGo);
+document.getElementById("btn-tb-ok").addEventListener("click", () => {
+  const s = TB_STEPS[tb.step];
+  tb.count++;
+  hapticLight();
+  tbNextWord(s.round);
+  tbRenderPlay();
+});
+document.getElementById("btn-tb-skip").addEventListener("click", () => {
+  const s = TB_STEPS[tb.step];
+  hapticLight();
+  tbNextWord(s.round);
+});
+document.getElementById("btn-tb-final-go").addEventListener("click", tbFinalGo);
+document.getElementById("btn-tb-final-ok").addEventListener("click", () => tbFinishFinal(true));
+
+// ── Рекорды (имя + очки + дата) ──
+let tbRecords = [];
+function tbLoadRecordsFromCloud() {
+  if (!tg?.CloudStorage) return;
+  tg.CloudStorage.getItem("timebank_records", (err, val) => {
+    if (err || !val) return;
+    try { tbRecords = JSON.parse(val) || []; } catch (e) { tbRecords = []; }
+    tbRenderRecords();
+  });
+}
+function tbSaveRecord(name, score) {
+  const today = new Date().toLocaleDateString("ru-RU");
+  const best = tbRecords.length ? Math.max(...tbRecords.map((r) => r.score)) : 0;
+  const isRecord = score > best;
+  tbRecords.push({ name, score, date: today });
+  tbRecords.sort((a, b) => b.score - a.score);
+  tbRecords = tbRecords.slice(0, 20);
+  tg?.CloudStorage?.setItem?.("timebank_records", JSON.stringify(tbRecords), () => {});
+  return isRecord;
+}
+function tbRenderRecords(targetId = "tb-records") {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  if (!tbRecords.length) { el.innerHTML = `<div class="tb-records-empty">Рекордов пока нет — станьте первым!</div>`; return; }
+  const rows = tbRecords.slice(0, 8).map((r, i) => `
+    <div class="tb-rec-row${i === 0 ? " top" : ""}">
+      <span class="tb-rec-place">${i + 1}</span>
+      <span class="tb-rec-name">${escapeTb(r.name)}</span>
+      <span class="tb-rec-score">${r.score}</span>
+      <span class="tb-rec-date">${r.date}</span>
+    </div>`).join("");
+  el.innerHTML = `<div class="tb-records-title">🏆 Таблица рекордов</div>${rows}`;
+}
+function escapeTb(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 // ==============================
 // =========== ШПИОН ============
@@ -2742,4 +2832,5 @@ function showTrainingResult(opts) {
 // ==== Старт ====
 loadRecordsFromCloud();
 loadCrocoRecordsFromCloud();
+tbLoadRecordsFromCloud();
 checkSubscription();
