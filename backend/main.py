@@ -81,14 +81,14 @@ with open(WORDS_FILE, "r", encoding="utf-8") as f:
 SUBJECTS = [s for s in ("informatika", "matematika", "fizika") if s in WORDS]
 
 
-def _parse_subjects(subjects: str) -> list[str]:
+def _parse_subjects(subjects: str) -> list:
     """Разбирает параметр subjects (через запятую) → список валидных предметов.
     Пусто/мусор → информатика по умолчанию (обратная совместимость)."""
     picked = [s.strip() for s in (subjects or "").split(",") if s.strip() in SUBJECTS]
     return picked or ["informatika"]
 
 
-def _pool_words(subjects: str, difficulty: str) -> list[dict]:
+def _pool_words(subjects: str, difficulty: str) -> list:
     """Собирает слова выбранных предметов на заданной сложности в один пул.
     difficulty='mixed' → все уровни. Каждый элемент → {word, banned, emoji}."""
     levels = ("easy", "medium", "hard") if difficulty == "mixed" else (difficulty,)

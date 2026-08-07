@@ -71,7 +71,12 @@ async function checkSubscription() {
   let subscribed = true;
   if (userId) {
     try {
-      const r = await fetch(`/api/check_subscription?user_id=${userId}`);
+      // таймаут 6 сек: если бэкенд молчит — не держим ученика на экране проверки,
+      // а пускаем внутрь (fail-open). Подписку перепроверим позже.
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 6000);
+      const r = await fetch(`/api/check_subscription?user_id=${userId}`, { signal: ctrl.signal });
+      clearTimeout(t);
       const data = await r.json();
       subscribed = !!data.subscribed;
     } catch (e) { subscribed = true; }
