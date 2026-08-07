@@ -173,6 +173,7 @@ const croco = {
   timeLeft: 0,
   guessed: 0,
   running: false,
+  started: false,     // таймер запущен (после первого выбора слова)
 };
 
 const CROCO_SUBJECTS = ["informatika", "matematika", "fizika"];
@@ -238,6 +239,7 @@ function crocoUpdateTimer() {
 function crocoStartTimer() {
   croco.timeLeft = croco.duration;
   croco.running = true;
+  croco.started = true;
   crocoUpdateTimer();
   croco.timer = setInterval(() => {
     croco.timeLeft--;
@@ -251,20 +253,24 @@ async function crocoStart() {
   await crocoLoadPools();
   croco.guessed = 0;
   croco.curSubject = null;
-  crocoStartTimer();
+  croco.started = false;         // таймер ещё не идёт — можно вернуться в настройки
+  croco.timeLeft = croco.duration;
   crocoShowThemePicker();
 }
 
 // Экран выбора темы (перед каждым словом)
 function crocoShowThemePicker() {
-  if (!croco.running) return;
   crocoUpdateTimer();
+  // до старта — кнопка «Назад», после старта — «Завершить игру»
+  document.getElementById("btn-croco-theme-back").style.display = croco.started ? "none" : "";
+  document.getElementById("btn-croco-theme-stop").style.display = croco.started ? "" : "none";
   showScreen("crocoTheme");
 }
 
-// Показать слово выбранной темы
+// Показать слово выбранной темы. Первый выбор запускает таймер (игра началась).
 function crocoShowWord(subject) {
   croco.curSubject = subject;
+  if (!croco.started) crocoStartTimer();
   crocoNextWord();
   showScreen("game");
 }
