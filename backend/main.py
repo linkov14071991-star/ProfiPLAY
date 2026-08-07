@@ -1437,18 +1437,26 @@ async def python_session_end(payload: dict = Body(...)):
 # Всё, что не /api/*, отдаём как статику
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
+# Запрет кэширования: чтобы Telegram/браузер всегда брали свежие index.html/script.js/style.css
+# после каждого деплоя, а не показывали старую версию из кэша.
+_NO_CACHE = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
 
 @app.get("/")
 async def root():
-    return FileResponse(FRONTEND_DIR / "index.html")
+    return FileResponse(FRONTEND_DIR / "index.html", headers=_NO_CACHE)
 
 
 @app.get("/{path:path}")
 async def spa(path: str):
     file_path = FRONTEND_DIR / path
     if file_path.exists() and file_path.is_file():
-        return FileResponse(file_path)
-    return FileResponse(FRONTEND_DIR / "index.html")
+        return FileResponse(file_path, headers=_NO_CACHE)
+    return FileResponse(FRONTEND_DIR / "index.html", headers=_NO_CACHE)
 
 
 if __name__ == "__main__":
