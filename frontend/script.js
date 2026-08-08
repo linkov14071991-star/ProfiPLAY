@@ -1,5 +1,7 @@
 // ==== Telegram WebApp init ====
-const tg = window.Telegram?.WebApp;
+// SDK грузится асинхронно (не блокирует страницу, если telegram.org недоступен).
+// tg может появиться чуть позже — присваиваем через let и добираем в boot().
+let tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
   tg.expand();
@@ -2835,7 +2837,22 @@ function showTrainingResult(opts) {
 }
 
 // ==== Старт ====
-loadRecordsFromCloud();
-loadCrocoRecordsFromCloud();
-tbLoadRecordsFromCloud();
-checkSubscription();
+// Ждём Telegram SDK до 2.5 сек (он грузится async). Если пришёл — используем его;
+// если нет (обычный браузер или заблокирован telegram.org) — стартуем без него,
+// чтобы приложение НИКОГДА не зависало на экране проверки.
+function boot() {
+  let waited = 0;
+  const iv = setInterval(() => {
+    const wa = window.Telegram?.WebApp;
+    waited += 100;
+    if (wa || waited >= 2500) {
+      clearInterval(iv);
+      if (wa && !tg) { tg = wa; try { tg.ready(); tg.expand(); } catch (e) {} }
+      loadRecordsFromCloud();
+      loadCrocoRecordsFromCloud();
+      tbLoadRecordsFromCloud();
+      checkSubscription();
+    }
+  }, 100);
+}
+boot();
