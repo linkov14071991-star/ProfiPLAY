@@ -2048,3 +2048,57 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   font-weight: 700;
   margin-bottom: 12px;
 }
+
+/* ===== Громкий вопрос ===== */
+.gromko-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 10px 0 18px;
+}
+.gromko-badge {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid rgba(180, 242, 77, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.35;
+}
+.gromko-badge.warn-badge {
+  background: rgba(255, 77, 109, 0.14);
+  border-color: rgba(255, 77, 109, 0.5);
+  color: #FFC2CD;
+  margin: 6px 0 14px;
+}
+.gromko-answer-box {
+  background: linear-gradient(135deg, var(--brand-lime), var(--brand-lime-dark));
+  color: var(--text-on-light);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  text-align: center;
+}
+.gromko-answer-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  opacity: 0.75;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.gromko-answer {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.gromko-feedback {
+  text-align: center;
+  font-weight: 800;
+  font-size: 18px;
+  margin: 14px 0 10px;
+}
+.gromko-feedback.ok { color: var(--brand-lime); }
+.gromko-feedback.no { color: var(--danger); }
+.timer.timer-static { color: var(--text-muted); }

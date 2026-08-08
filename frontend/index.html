@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=13">
+<link rel="stylesheet" href="/style.css?v=14">
 </head>
 <body>
 
@@ -231,6 +231,14 @@
         <div class="desc">🤔 Угадай себя</div>
       </div>
     </div>
+    <div class="game-card" data-game="gromko">
+      <button class="game-info-btn" data-info="gromko" aria-label="Правила">ℹ️</button>
+      <div class="icon">🔊</div>
+      <div class="info">
+        <div class="title">Громкий вопрос</div>
+        <div class="desc">🎧 Объясни глухому</div>
+      </div>
+    </div>
   </div>
 
   <button class="btn btn-link btn-back" data-back="menu" style="margin-top:16px;">← На арену</button>
@@ -333,6 +341,118 @@
     </div>
     <button id="btn-croco-again" class="btn btn-primary btn-big">Играть ещё</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
+<!-- ==== Экран: настройка «Громкий вопрос» ==== -->
+<section id="screen-gromko-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🔊 Громкий вопрос</h1>
+    <p class="subtitle">Один игрок в наушниках — не слышит. Команда за минуту объясняет ему ответ жестами. Потом он выбирает вариант.</p>
+
+    <label class="field">Темы <span class="field-hint">— можно несколько</span></label>
+    <div class="pills pills-multi" id="gromko-topic">
+      <button class="pill active" data-value="informatika">💻 Информатика</button>
+      <button class="pill active" data-value="mathematics">📐 Математика</button>
+      <button class="pill active" data-value="physics">⚛️ Физика</button>
+    </div>
+
+    <label class="field">Сложность</label>
+    <div class="pills" id="gromko-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Просто</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средне</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложно</span></button>
+    </div>
+
+    <div class="record-hint" id="gromko-record-hint" style="display:none;">
+      🏆 Рекорд: <b id="gromko-record">0</b> угадано
+    </div>
+
+    <button id="btn-gromko-start" class="btn btn-primary btn-big">Начать игру</button>
+    <button class="btn btn-link btn-back" data-back="party">← Назад</button>
+  </div>
+</section>
+
+<!-- ==== Экран: объяснение (команда показывает «глухому») ==== -->
+<section id="screen-gromko-explain" class="screen">
+  <div class="game-header">
+    <div class="timer" id="gromko-timer">1:00</div>
+    <div class="score-mini">
+      <span class="ok">✅ <span class="gromko-correct">0</span></span>
+    </div>
+  </div>
+
+  <div class="gromko-stage">
+    <div class="gromko-badge">🎧 «Глухой» в наушниках — смотрит только на команду, не в экран</div>
+    <div class="q-card">
+      <div class="q-text" id="gromko-question">—</div>
+    </div>
+    <div class="gromko-answer-box">
+      <div class="gromko-answer-label">Объясните жестами этот ответ:</div>
+      <div class="gromko-answer" id="gromko-answer">—</div>
+    </div>
+  </div>
+
+  <div class="game-actions">
+    <button id="btn-gromko-toselect" class="btn btn-primary btn-big">К выбору ответа →</button>
+  </div>
+  <button id="btn-gromko-explain-stop" class="btn btn-link">Завершить игру</button>
+</section>
+
+<!-- ==== Экран: выбор ответа «глухим» ==== -->
+<section id="screen-gromko-select" class="screen">
+  <div class="game-header">
+    <div class="timer timer-static">🔇</div>
+    <div class="score-mini">
+      <span class="ok">✅ <span class="gromko-correct">0</span></span>
+    </div>
+  </div>
+
+  <div class="gromko-badge warn-badge">📵 Передай телефон отгадывающему. Команда молчит!</div>
+
+  <div class="q-card">
+    <div class="q-text" id="gromko-select-question">—</div>
+  </div>
+
+  <div class="answers" id="gromko-options"></div>
+
+  <div id="gromko-feedback" class="gromko-feedback" style="display:none;"></div>
+
+  <div id="gromko-next-wrap" style="display:none;">
+    <button id="btn-gromko-next" class="btn btn-primary btn-big">Следующий игрок →</button>
+    <button id="btn-gromko-finish" class="btn btn-secondary">Завершить игру</button>
+  </div>
+</section>
+
+<!-- ==== Экран: итоги «Громкий вопрос» ==== -->
+<section id="screen-gromko-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🏁 Игра окончена!</h1>
+    <div id="gromko-new-record" class="new-record-badge" style="display:none;">🎉 Новый рекорд!</div>
+    <div class="result-stats">
+      <div class="stat stat-ok">
+        <div class="stat-num" id="gromko-result-correct">0</div>
+        <div class="stat-label">Угадано</div>
+      </div>
+      <div class="stat stat-skip">
+        <div class="stat-num" id="gromko-result-rounds">0</div>
+        <div class="stat-label">Раундов</div>
+      </div>
+      <div class="stat stat-ok">
+        <div class="stat-num" id="gromko-result-record">0</div>
+        <div class="stat-label">🏆 Рекорд</div>
+      </div>
+    </div>
+    <button id="btn-gromko-again" class="btn btn-primary btn-big">Играть ещё</button>
+    <button class="btn btn-secondary btn-back" data-back="party">В меню</button>
   </div>
 </section>
 
@@ -1480,6 +1600,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=13"></script>
+<script src="/script.js?v=14"></script>
 </body>
 </html>
