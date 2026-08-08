@@ -1453,7 +1453,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "sections-v8"
+BUILD_TAG = "timebattl-v8"
 
 
 @app.get("/api/version")
