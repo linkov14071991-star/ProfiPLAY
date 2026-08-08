@@ -63,6 +63,9 @@ XP_DUEL_WIN = 50
 XP_DUEL_DRAW = 30
 XP_DUEL_LOSS = 20
 
+# Командные игры Тусовки — для пер-гейм ачивок (тег присылает фронтенд)
+PARTY_GAMES = {"croco", "gromko", "alias", "spy", "whoami", "timebank"}
+
 # ---------- Настройки ----------
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BOT_USERNAME = os.environ.get("BOT_USERNAME", "")  # без @, например 'profikarena_bot'
@@ -207,6 +210,21 @@ def _compute_user_stats(db, user_id: int) -> dict:
         (user_id,),
     ).fetchone()["c"]
     stats["duel_won"] = won
+    # Командные игры считаем по game_plays (party не пишет в rating_log)
+    gp = db.execute(
+        "SELECT game, cnt FROM game_plays WHERE user_id = ?", (user_id,)
+    ).fetchall()
+    party_total = 0
+    variety = 0
+    for r in gp:
+        stats[f"{r['game']}_played"] = r["cnt"]
+        party_total += r["cnt"]
+        if r["cnt"] > 0:
+            variety += 1
+    for g in ("croco", "gromko", "alias", "spy", "whoami", "timebank"):
+        stats.setdefault(f"{g}_played", 0)
+    stats["party_played"] = party_total
+    stats["party_variety"] = variety
     stats["games_played"] = (
         stats["sprint_played"] + stats["marathon_played"]
         + stats["party_played"] + stats["duel_played"]
@@ -647,6 +665,7 @@ async def add_training_points(
     correct: int = Body(None),       # число правильных ответов (или партий для party)
     difficulty: str = Body("easy"),
     lives: int = Body(None),         # только для марафона
+    game: str = Body(None),          # конкретная командная игра (croco/gromko/alias/spy/whoami/timebank)
 ):
     """
     Начисляем очки от тренировки с учётом множителей и дневного капа.
@@ -715,6 +734,17 @@ async def add_training_points(
         elif source == "party":
             update_quest_progress(db, user_id, "party_played", 1)
         update_quest_progress(db, user_id, "xp_earned", xp_amount)
+
+        # --- Учёт конкретной командной игры (для ачивок) ---
+        # Тусовка не пишет в rating_log (0 рейтинга), поэтому копим счётчик здесь.
+        if source == "party" and game in PARTY_GAMES:
+            db.execute(
+                """
+                INSERT INTO game_plays (user_id, game, cnt) VALUES (?, ?, 1)
+                ON CONFLICT(user_id, game) DO UPDATE SET cnt = cnt + 1
+                """,
+                (user_id, game),
+            )
 
         # Проверка ачивок после тренировки
         newly_ach = _check_and_grant_achievements(db, user_id)
@@ -1456,7 +1486,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "rules-detailed2-v22"
+BUILD_TAG = "party-achievements-v23"
 
 
 @app.get("/api/version")

@@ -137,6 +137,19 @@ def init_db():
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_ach_user ON user_achievements (user_id)")
 
+    # Счётчик партий по конкретным командным играм (для ачивок).
+    # Тусовка не пишет в rating_log (0 рейтинга), поэтому считаем отдельно здесь.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS game_plays (
+            user_id  INTEGER NOT NULL,
+            game     TEXT NOT NULL,
+            cnt      INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (user_id, game)
+        )
+        """
+    )
+
     conn.commit()
     conn.close()
 
@@ -188,6 +201,18 @@ ACHIEVEMENTS = [
     # Лига
     {"id": "rating_1600",   "title": "Восход к Звёздам",  "desc": "Достигни рейтинга 1600 (Стар)",   "icon": "⭐", "cond": "rating",          "target": 1600,"xp": 200, "cat": "rating"},
     {"id": "rating_1900",   "title": "Легенда лиги",      "desc": "Достигни рейтинга 1900",          "icon": "👑", "cond": "rating",          "target": 1900,"xp": 500, "cat": "rating"},
+
+    # Тусовка — командные игры (по каждой игре + общие)
+    {"id": "croco_15",      "title": "Мим",               "desc": "Сыграй 15 партий в Крокодила",    "icon": "🐊", "cond": "croco_played",    "target": 15,  "xp": 80,  "cat": "party"},
+    {"id": "alias_15",      "title": "Объясняка",         "desc": "Сыграй 15 партий в Alias",        "icon": "🗣", "cond": "alias_played",    "target": 15,  "xp": 80,  "cat": "party"},
+    {"id": "gromko_10",     "title": "По губам",          "desc": "Сыграй 10 Громких вопросов",      "icon": "🔊", "cond": "gromko_played",   "target": 10,  "xp": 80,  "cat": "party"},
+    {"id": "timebank_10",   "title": "Хранитель времени", "desc": "Сыграй 10 Тайм-баттлов",          "icon": "⏳", "cond": "timebank_played", "target": 10,  "xp": 80,  "cat": "party"},
+    {"id": "spy_10",        "title": "Двойной агент",     "desc": "Сыграй 10 партий в Шпиона",       "icon": "🕵", "cond": "spy_played",      "target": 10,  "xp": 80,  "cat": "party"},
+    {"id": "whoami_10",     "title": "Тайна личности",    "desc": "Сыграй 10 партий «Кто я?»",       "icon": "❓", "cond": "whoami_played",   "target": 10,  "xp": 80,  "cat": "party"},
+    {"id": "party_variety", "title": "Мастер тусовки",    "desc": "Попробуй все 6 командных игр",     "icon": "🎪", "cond": "party_variety",   "target": 6,   "xp": 250, "cat": "party"},
+    {"id": "party_50",      "title": "Душа компании",     "desc": "Сыграй 50 партий в Тусовке",      "icon": "🎊", "cond": "party_played",    "target": 50,  "xp": 300, "cat": "party"},
+    {"id": "party_150",     "title": "Король вечеринок",  "desc": "Сыграй 150 партий в Тусовке",     "icon": "🥳", "cond": "party_played",    "target": 150, "xp": 800, "cat": "party"},
+    {"id": "games_100",     "title": "Игроман",           "desc": "Сыграй 100 игр всего",            "icon": "🎮", "cond": "games_played",    "target": 100, "xp": 250, "cat": "misc"},
 ]
 
 

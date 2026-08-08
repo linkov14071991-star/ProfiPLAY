@@ -444,7 +444,7 @@ async function crocoFinish() {
   document.getElementById("croco-new-record").style.display = isRecord && croco.guessed > 0 ? "block" : "none";
   showScreen("result");
   hapticSuccess();
-  const res = await awardTraining("party", 5);
+  const res = await awardTraining("party", 5, { game: "croco" });
   showRatingToast(res);
 }
 
@@ -853,7 +853,7 @@ async function gromkoBlitzEnd(win) {
     ? `Успели объяснить все 3 слова! Осталось ${Math.max(0, gromko.timeLeft)} сек.`
     : `Объяснено ${gromko.blitzGuessed} из 3. В следующий раз копите больше времени!`;
   showScreen("gromkoResult");
-  const res = await awardTraining("party", 5);
+  const res = await awardTraining("party", 5, { game: "gromko" });
   showRatingToast(res);
 }
 
@@ -1173,7 +1173,7 @@ async function aliasStop() {
   document.getElementById("alias-r-total").textContent = total;
   showScreen("aliasResult");
   hapticSuccess();
-  const res = await awardTraining("party", 5);
+  const res = await awardTraining("party", 5, { game: "alias" });
   showRatingToast(res);
 }
 
@@ -1618,7 +1618,7 @@ function tbFinishFinal(guessed) {
   tbRenderRecords("tb-result-records");
   showScreen("tbResult");
   if (guessed) hapticSuccess(); else hapticError();
-  awardTraining("party", 5).then(showRatingToast);
+  awardTraining("party", 5, { game: "timebank" }).then(showRatingToast);
 }
 
 document.getElementById("tb-subjects").addEventListener("click", (e) => {
@@ -1830,7 +1830,7 @@ function spyShowResult(citizensWin, text) {
   document.getElementById("spy-result-spy").textContent = `Игрок ${spy.spyIndex + 1}`;
   showScreen("spyResult");
   if (citizensWin) hapticSuccess(); else hapticError();
-  awardTraining("party", 5).then(showRatingToast);
+  awardTraining("party", 5, { game: "spy" }).then(showRatingToast);
 }
 
 document.getElementById("btn-spy-start").addEventListener("click", spyStart);
@@ -1927,7 +1927,7 @@ function whoamiEndTurn() {
 }
 
 async function whoamiShowResult() {
-  awardTraining("party", 5).then(showRatingToast);
+  awardTraining("party", 5, { game: "whoami" }).then(showRatingToast);
   const wrap = document.getElementById("whoami-score-list");
   wrap.innerHTML = "";
   const maxScore = Math.max(...whoami.scores);
