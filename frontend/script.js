@@ -932,6 +932,8 @@ const tb = {
   step: 0,          // 0..3: 0=R1p1,1=R1p2,2=R2p1,3=R2p2
   bank: 0,          // накопленные секунды
   difficulty: "easy",
+  subject: "informatika",       // выбранный предмет текущей попытки
+  usedSubjectInRound: null,     // предмет 1-й попытки раунда (нельзя повторить во 2-й)
   items: [], idx: 0, cur: null,
   timer: null, timeLeft: 0, count: 0,
   attemptWords: [],   // угаданные слова текущей попытки (для страницы проверки)
@@ -967,6 +969,9 @@ function tbShowAttempt() {
   const s = TB_STEPS[tb.step];
   tb.difficulty = "easy";
   document.querySelectorAll("#tb-difficulty .pill").forEach((p, i) => p.classList.toggle("active", i === 0));
+  // выбор предмета: во 2-й попытке раунда нельзя повторить предмет 1-й попытки
+  const forbidden = s.attempt === 2 ? tb.usedSubjectInRound : null;
+  tbSetupSubjectPills(forbidden);
   document.getElementById("tb-attempt-round").textContent = `Раунд ${s.round} · ${tbRoundName(s.round)}`;
   document.getElementById("tb-attempt-title").textContent = `Попытка ${s.attempt} из 2`;
   document.getElementById("tb-attempt-leader").textContent = `Игрок ${s.attempt}`;
@@ -974,10 +979,23 @@ function tbShowAttempt() {
   showScreen("tbAttempt");
 }
 
+// Пилюли предмета: forbidden — предмет, который нельзя выбрать (уже был в этом раунде).
+function tbSetupSubjectPills(forbidden) {
+  const cont = document.getElementById("tb-subjects");
+  let firstEnabled = null;
+  cont.querySelectorAll(".pill").forEach((p) => {
+    const disabled = p.dataset.value === forbidden;
+    p.classList.toggle("disabled", disabled);
+    p.classList.remove("active");
+    if (!disabled && !firstEnabled) firstEnabled = p;
+  });
+  if (firstEnabled) { firstEnabled.classList.add("active"); tb.subject = firstEnabled.dataset.value; }
+}
+
 async function tbLoadItems(round, difficulty) {
   const url = round === 1
-    ? `/api/alias?difficulty=${difficulty}&subjects=${TB_SUBJECTS}`
-    : `/api/words?difficulty=${difficulty}&subjects=${TB_SUBJECTS}`;
+    ? `/api/alias?difficulty=${difficulty}&subjects=${tb.subject}`
+    : `/api/words?difficulty=${difficulty}&subjects=${tb.subject}`;
   const d = await (await fetch(url)).json();
   tb.items = d.items || [];
   tb.items.sort(() => Math.random() - 0.5);
@@ -987,6 +1005,7 @@ async function tbLoadItems(round, difficulty) {
 async function tbAttemptGo() {
   hapticMedium();
   const s = TB_STEPS[tb.step];
+  if (s.attempt === 1) tb.usedSubjectInRound = tb.subject;   // запрет повтора во 2-й попытке
   await tbLoadItems(s.round, tb.difficulty);
   tb.count = 0;
   tb.attemptWords = [];
@@ -1111,6 +1130,14 @@ function tbFinishFinal(guessed) {
   awardTraining("party", 5).then(showRatingToast);
 }
 
+document.getElementById("tb-subjects").addEventListener("click", (e) => {
+  const btn = e.target.closest(".pill");
+  if (!btn || btn.classList.contains("disabled")) return;
+  document.querySelectorAll("#tb-subjects .pill").forEach((p) => p.classList.remove("active"));
+  btn.classList.add("active");
+  tb.subject = btn.dataset.value;
+  hapticLight();
+});
 document.getElementById("btn-tb-attempt-go").addEventListener("click", tbAttemptGo);
 document.getElementById("btn-tb-ok").addEventListener("click", () => {
   const s = TB_STEPS[tb.step];

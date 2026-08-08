@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 </head>
 <body>
 
@@ -1073,9 +1073,17 @@
   <div class="card card-dark" style="margin:auto;">
     <div class="tb-round-badge" id="tb-attempt-round">Раунд 1 · Alias</div>
     <h1 style="text-align:center;" id="tb-attempt-title">Попытка 1</h1>
-    <p style="text-align:center;">Ведущий: <b id="tb-attempt-leader">Игрок 1</b>. Выбери сложность — рискни ради секунд!</p>
+    <p style="text-align:center;">Ведущий: <b id="tb-attempt-leader">Игрок 1</b>. Выбери предмет и сложность!</p>
 
-    <div class="pills" id="tb-difficulty" style="margin-top:16px;">
+    <label class="field" style="color:#fff; margin-top:10px;">Предмет</label>
+    <div class="pills" id="tb-subjects">
+      <button class="pill" data-value="informatika">💻 Инф</button>
+      <button class="pill" data-value="matematika">📐 Мат</button>
+      <button class="pill" data-value="fizika">⚛️ Физ</button>
+    </div>
+
+    <label class="field" style="color:#fff;">Сложность <span class="field-hint">— риск ради секунд</span></label>
+    <div class="pills" id="tb-difficulty">
       <button class="pill pill-diff active" data-value="easy"><span>Просто</span><span class="pill-hint">2 сек/слово</span></button>
       <button class="pill pill-diff" data-value="medium"><span>Средне</span><span class="pill-hint">4 сек/слово</span></button>
       <button class="pill pill-diff" data-value="hard"><span>Сложно</span><span class="pill-hint">6 сек/слово</span></button>
@@ -1437,6 +1445,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=5"></script>
+<script src="/script.js?v=6"></script>
 </body>
 </html>
