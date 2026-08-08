@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=17">
+<link rel="stylesheet" href="/style.css?v=18">
 </head>
 <body>
 
@@ -112,7 +112,7 @@
   <h3 style="padding-left:4px;" id="modes-anchor">🎮 Играй и учись</h3>
   <div class="games-grid">
     <div class="game-card" data-game="sprint">
-      <button class="game-info-btn" data-info="sprint" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="sprint" aria-label="Правила">?</button>
       <div class="icon">⚡</div>
       <div class="info">
         <div class="title">Спринт</div>
@@ -121,7 +121,7 @@
       </div>
     </div>
     <div class="game-card" data-game="marathon">
-      <button class="game-info-btn" data-info="marathon" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="marathon" aria-label="Правила">?</button>
       <div class="icon">🏆</div>
       <div class="info">
         <div class="title">Марафон</div>
@@ -130,7 +130,7 @@
       </div>
     </div>
     <div class="game-card" data-game="python">
-      <button class="game-info-btn" data-info="python" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="python" aria-label="Правила">?</button>
       <div class="icon" style="background:#B6A9D9;">🐍</div>
       <div class="info">
         <div class="title">Python <span class="by-profik">by Профик</span></div>
@@ -154,7 +154,7 @@
   <h3 style="padding-left:4px; margin-top:24px;">⚔ Соревнования</h3>
   <div class="games-grid">
     <div class="game-card" data-game="duel">
-      <button class="game-info-btn" data-info="duel" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="duel" aria-label="Правила">?</button>
       <div class="icon">⚡⚔</div>
       <div class="info">
         <div class="title">Блиц-дуэль</div>
@@ -192,7 +192,7 @@
 
   <div class="games-grid">
     <div class="game-card" data-game="crocodile">
-      <button class="game-info-btn" data-info="crocodile" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="crocodile" aria-label="Правила">?</button>
       <div class="icon">🐊</div>
       <div class="info">
         <div class="title">Крокодил</div>
@@ -200,7 +200,7 @@
       </div>
     </div>
     <div class="game-card" data-game="alias">
-      <button class="game-info-btn" data-info="alias" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="alias" aria-label="Правила">?</button>
       <div class="icon">🗣</div>
       <div class="info">
         <div class="title">Alias</div>
@@ -213,10 +213,10 @@
         <div class="title">Тайм-баттл <span class="by-profik">by Профик</span></div>
         <div class="desc">⏱ 3 раунда на скорость</div>
       </div>
-      <button class="game-info-btn" data-info="timebank" aria-label="Правила игры">ℹ️</button>
+      <button class="game-info-btn" data-info="timebank" aria-label="Правила игры">?</button>
     </div>
     <div class="game-card" data-game="spy">
-      <button class="game-info-btn" data-info="spy" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="spy" aria-label="Правила">?</button>
       <div class="icon">🕵</div>
       <div class="info">
         <div class="title">Шпион</div>
@@ -224,7 +224,7 @@
       </div>
     </div>
     <div class="game-card" data-game="whoami">
-      <button class="game-info-btn" data-info="whoami" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="whoami" aria-label="Правила">?</button>
       <div class="icon">❓</div>
       <div class="info">
         <div class="title">Кто я?</div>
@@ -232,11 +232,11 @@
       </div>
     </div>
     <div class="game-card" data-game="gromko">
-      <button class="game-info-btn" data-info="gromko" aria-label="Правила">ℹ️</button>
+      <button class="game-info-btn" data-info="gromko" aria-label="Правила">?</button>
       <div class="icon">🔊</div>
       <div class="info">
         <div class="title">Громкий вопрос</div>
-        <div class="desc">🎧 Объясни глухому</div>
+        <div class="desc">🎧 Объясни жестами</div>
       </div>
     </div>
   </div>
@@ -363,7 +363,7 @@
 
     <div class="rules-block" style="margin-top:12px;">
       <p>🕐 Верный ответ копит время: <b>простой +30с</b>, <b>средний +60с</b>, <b>сложный +90с</b>.</p>
-      <p>⚡ В супер-блице объясните «глухому» 3 слова за накопленное время.</p>
+      <p>⚡ В супер-блице объясните игроку в наушниках 3 слова за накопленное время.</p>
     </div>
 
     <div class="record-hint" id="gromko-record-hint" style="display:none;">
@@ -394,7 +394,7 @@
   <button id="btn-gromko-abort" class="btn btn-link">Выйти в меню</button>
 </section>
 
-<!-- ==== Экран: объяснение (команда показывает «глухому») ==== -->
+<!-- ==== Экран: объяснение (команда показывает игроку в наушниках) ==== -->
 <section id="screen-gromko-explain" class="screen">
   <div class="game-header">
     <div class="timer" id="gromko-explain-timer">0:10</div>
@@ -413,7 +413,7 @@
   </div>
 </section>
 
-<!-- ==== Экран: выбор ответа «глухим» ==== -->
+<!-- ==== Экран: выбор ответа игроком в наушниках ==== -->
 <section id="screen-gromko-select" class="screen">
   <div class="game-header">
     <div class="bank-chip">🏦 <span class="gromko-bank">0</span> сек</div>
@@ -447,7 +447,7 @@
     <div class="timer" id="gromko-blitz-timer">0:00</div>
     <div class="score-mini"><span class="ok">✅ <span id="gromko-blitz-done">0</span>/3</span></div>
   </div>
-  <div class="gromko-badge">🎧 Показывайте жестами — «глухой» угадывает вслух</div>
+  <div class="gromko-badge">🎧 Показывайте жестами — игрок в наушниках угадывает вслух</div>
   <div class="blitz-words" id="gromko-blitz-words"></div>
   <div class="game-actions">
     <button id="btn-gromko-blitz-guessed" class="btn btn-ok btn-big">Угадал! ✓</button>
@@ -1510,13 +1510,13 @@
       <p><b>Дневной кап рейтинга:</b> 100 очков в день от тренировок. XP не капается.</p>
     </details>
 
-    <details class="rules-block">
+    <details class="rules-block" id="rules-sprint">
       <summary>⚡ Спринт</summary>
       <p>За заданное время (30/60/90 сек) отвечай на максимум вопросов. 4 варианта, автопереход.</p>
       <p><b>Очки:</b> +1 рейтинг и +2 XP за правильный. Множитель по сложности: Простая ×1, Средняя ×1.5, Сложная ×2.</p>
     </details>
 
-    <details class="rules-block">
+    <details class="rules-block" id="rules-marathon">
       <summary>🏆 Марафон</summary>
       <p>Отвечай, пока не закончатся жизни. Каждая ошибка — минус жизнь. После ответа показывается правильный вариант.</p>
       <p><b>Очки:</b> +2 рейтинг и +3 XP за правильный.</p>
@@ -1527,18 +1527,71 @@
       <p>Плюс множитель сложности (×1 / ×1.5 / ×2). Итого при Сложной × 1 жизни — <b>×6</b> к очкам!</p>
     </details>
 
-    <details class="rules-block">
+    <details class="rules-block" id="rules-duel">
       <summary>⚔ Блиц-дуэль</summary>
       <p>1×1 асинхронно. Ты играешь 10 вопросов (15 сек на каждый), получаешь ссылку → отправляешь другу. Он играет те же вопросы. Автоматически сравниваются очки.</p>
       <p><b>Очки за вопрос:</b> 100 базы + до 100 бонуса за скорость. Мгновенный ответ = 200, на последней секунде = 100, ошибка/таймаут = 0. Максимум за партию: 2000.</p>
       <p><b>Рейтинг:</b> победа +8...+30 (ELO), поражение −4...−15 (вдвое меньше). Ничья ~0. XP: победа +50, ничья +30, поражение +20.</p>
     </details>
 
+    <details class="rules-block" id="rules-python">
+      <summary>🐍 Python by Профик</summary>
+      <p>Курс программирования на Python — от основ до задач ЕГЭ. Идёшь по темам последовательно.</p>
+      <p><b>Форматы уроков:</b> теория с примерами, тесты, «что выведет код», «найди ошибку», «собери код из блоков», мини-проекты и ежедневные задачи.</p>
+      <p>За первое прохождение уроков начисляется <b>рейтинг</b> в общий зачёт Арены. Прогресс сохраняется — можно продолжить с любого места.</p>
+    </details>
+
     <details class="rules-block">
       <summary>🎭 Тусовка (командные игры)</summary>
-      <p>Игры на одном устройстве — Крокодил, Alias, 5 секунд, Шпион, Кто я?. Игроки передают телефон друг другу.</p>
+      <p>Игры на одном устройстве — Крокодил, Alias, Громкий вопрос, Тайм-баттл, Шпион, Кто я?. Игроки передают телефон друг другу.</p>
       <p><b>Очки:</b> <b style="color:var(--danger);">Не начисляются</b> — эти игры основаны на честности игроков, поэтому за них нельзя набивать рейтинг.</p>
       <p>Но прогресс <b>квестов</b> и <b>ачивок</b> за партии в Тусовке засчитывается — так что играть весело всё равно выгодно.</p>
+    </details>
+
+    <details class="rules-block" id="rules-gromko">
+      <summary>🔊 Громкий вопрос</summary>
+      <p>Командная игра. Один игрок надевает наушники с громкой музыкой и <b>не слышит</b> команду — общаться с ним можно только жестами и по губам. В экран он не подглядывает.</p>
+      <p><b>3 раунда — банк времени.</b> Команда выбирает сложность вопроса и жмёт «Начать раунд». Даётся <b>10 секунд</b> прочитать вопрос и придумать ответ (сам игрок в наушниках ответа не знает). Затем включается таймер по уровню: простой — 30с, средний — 60с, сложный — 90с — всё это время команда объясняет верный ответ жестами.</p>
+      <p>По окончании команда <b>молчит</b>, телефон передаётся игроку в наушниках, и он, <b>не видя вопроса</b>, выбирает вариант из четырёх. Верно — в банк капает время: <b>+30 / +60 / +90 сек</b>, неверно — 0.</p>
+      <p><b>Супер-блиц (финал).</b> Команда выбирает того, кто лучше всех читает по губам — он садится в наушники. На экране 3 слова: <b>два простых и одно среднее</b>. За всё накопленное в банке время команда объясняет ему все три слова (кто-то жмёт «Угадал» на каждом). Успели до нуля — <b>победа</b>, время кончилось — поражение.</p>
+      <p>💡 На сложных вопросах в банк идёт больше времени, но и объяснить их труднее — рискуйте с умом.</p>
+    </details>
+
+    <details class="rules-block" id="rules-crocodile">
+      <summary>🐊 Крокодил</summary>
+      <p>Показывай загаданное слово <b>только жестами и мимикой</b> — без слов, звуков и губ. Остальные угадывают вслух. Кто угадал — берёт телефон и ходит следующим.</p>
+      <p><b>Настройки:</b> сложность слов и время на показ одного слова (1 мин / 2 мин / безлимит). Каждый ход выбираешь тему — Информатика, Математика или Физика.</p>
+      <p>Угадали — жми «Угадано!». Не получается — «Другое слово» (сбрасывает таймер). Счёт угаданных слов сохраняется в рекорды по времени и сложности.</p>
+    </details>
+
+    <details class="rules-block" id="rules-alias">
+      <summary>🗣 Alias</summary>
+      <p>Объясняй слово <b>другими словами</b>, не называя само слово и запретные слова к нему. Друзья угадывают.</p>
+      <p><b>Настройки:</b> предметы, сложность и длительность раунда. Галочкой включаются или выключаются запретные слова.</p>
+      <p>За раунд считаются угаданные слова, пропуски и штрафы — за произнесённое запретное слово или само загаданное слово.</p>
+    </details>
+
+    <details class="rules-block" id="rules-timebank">
+      <summary>⏳ Тайм-баттл <span class="by-profik">by Профик</span></summary>
+      <p>Командная игра на 3 раунда для компании.</p>
+      <p><b>Раунд 1 — Alias:</b> объясняй словами (без запретных). <b>Раунд 2 — Крокодил:</b> показывай жестами. По <b>2 попытки × 60 секунд</b>, перед каждой выбираешь сложность.</p>
+      <p>Каждое угаданное слово копит секунды в «банк времени»: просто <b>+2с</b>, средне <b>+4с</b>, сложно <b>+6с</b>. Рискуешь на сложных — копишь больше.</p>
+      <p>После попытки — экран проверки: снимаешь галочку, если слово засчитано по ошибке или названо запретное.</p>
+      <p><b>Финал — «Кто я»:</b> угадай <b>одно</b> слово за накопленное время (телефон ко лбу, друг подсказывает). Оставшиеся секунды × множитель сложности = очки. Результат идёт в таблицу рекордов.</p>
+    </details>
+
+    <details class="rules-block" id="rules-spy">
+      <summary>🕵 Шпион</summary>
+      <p>Всем показывают одно секретное слово — <b>кроме шпиона</b>. Телефон передаётся по кругу, каждый видит свою роль.</p>
+      <p><b>Обсуждение:</b> по очереди намекаете на слово, не называя его прямо. Шпион пытается понять, о чём речь, и не выдать себя.</p>
+      <p>Затем <b>голосование</b>: кто шпион. Поймали шпиона — он получает шанс угадать слово: угадал — победа шпиона, нет — победа мирных. Не поймали — победа шпиона.</p>
+    </details>
+
+    <details class="rules-block" id="rules-whoami">
+      <summary>❓ Кто я?</summary>
+      <p>Телефон ко лбу экраном к друзьям — <b>своё слово ты не видишь</b>. Задавай вопросы «да/нет», друзья тапают ответы за тебя.</p>
+      <p>Задача — угадать, кто ты (какое слово), за отведённое время. Выбираешь сложность и длительность хода.</p>
+      <p>Угадал — переходишь к следующему слову. Чем больше угадаешь за ход — тем лучше результат.</p>
     </details>
 
     <details class="rules-block">
@@ -1620,9 +1673,13 @@
     <button class="gim-close" aria-label="Закрыть">✕</button>
     <div class="gim-title" id="gim-title"></div>
     <div class="gim-body" id="gim-body"></div>
+    <div class="gim-foot">
+      <span class="gim-foot-note">Подробные правила — в разделе «Правила».</span>
+      <button class="btn btn-secondary gim-rules-btn" id="gim-rules-btn">📖 Открыть правила</button>
+    </div>
   </div>
 </div>
 
-<script src="/script.js?v=17"></script>
+<script src="/script.js?v=18"></script>
 </body>
 </html>

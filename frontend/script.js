@@ -259,7 +259,7 @@ const GAME_INFO = {
   gromko: {
     title: "🔊 Громкий вопрос",
     body: `<p>Командная игра: один игрок в наушниках с громкой музыкой <b>не слышит</b>, остальные объясняют ему жестами и по губам.</p>
-      <p><b>3 раунда — банк времени.</b> Команда выбирает сложность и жмёт «Начать раунд». Даётся 10 секунд прочитать вопрос и придумать ответ, затем включается таймер (простой 30с / средний 60с / сложный 90с) — команда объясняет ответ «глухому». Потом он, <b>не видя вопроса</b>, выбирает вариант. Верно — время в банк: +30 / +60 / +90с.</p>
+      <p><b>3 раунда — банк времени.</b> Команда выбирает сложность и жмёт «Начать раунд». Даётся 10 секунд прочитать вопрос и придумать ответ, затем включается таймер (простой 30с / средний 60с / сложный 90с) — команда объясняет ответ игроку в наушниках. Потом он, <b>не видя вопроса</b>, выбирает вариант. Верно — время в банк: +30 / +60 / +90с.</p>
       <p><b>Супер-блиц.</b> Выбираете лучшего «чтеца по губам». За накопленное время команда объясняет ему <b>3 слова</b> (два простых и одно среднее). Успели все три — победа, время кончилось — поражение.</p>`,
   },
   timebank: {
@@ -272,9 +272,11 @@ const GAME_INFO = {
       <p><b>Финал — Кто я:</b> угадай <b>одно</b> слово за накопленное время (телефон ко лбу, друг подсказывает). Осталось секунд × множитель сложности = очки. Результат идёт в таблицу рекордов.</p>`,
   },
 };
+let _gimKey = null;
 function openGameInfo(key) {
   const info = GAME_INFO[key];
   if (!info) return;
+  _gimKey = key;
   document.getElementById("gim-title").innerHTML = info.title;
   document.getElementById("gim-body").innerHTML = info.body;
   document.getElementById("game-info-modal").classList.remove("hidden");
@@ -285,6 +287,18 @@ document.querySelectorAll(".game-info-btn").forEach((btn) => {
 });
 document.querySelector("#game-info-modal .gim-close").addEventListener("click", closeGameInfo);
 document.querySelector("#game-info-modal .gim-backdrop").addEventListener("click", closeGameInfo);
+// «Открыть правила» — переход в раздел правил, раскрыть блок этой игры
+document.getElementById("gim-rules-btn").addEventListener("click", () => {
+  const key = _gimKey;
+  closeGameInfo();
+  showScreen("rules");
+  const el = key && document.getElementById("rules-" + key);
+  if (el) {
+    document.querySelectorAll("#screen-rules details.rules-block").forEach((d) => { if (d !== el) d.open = false; });
+    el.open = true;
+    setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }
+});
 
 // ==============================
 // ========= КРОКОДИЛ ===========
@@ -459,9 +473,9 @@ document.getElementById("btn-croco-theme-stop").addEventListener("click", crocoF
 // ==============================
 // Командная игра. Один игрок в наушниках с громкой музыкой не слышит команду.
 // 3 раунда «банка времени»: перед раундом игрок выбирает сложность вопроса; команда
-// объясняет «глухому» верный ответ, он выбирает вариант. Верно → в банк капает время
-// (простой +30с, средний +60с, сложный +90с). Затем СУПЕР-БЛИЦ: за накопленное время
-// команда должна объяснить «глухому» 3 слова (простое/среднее/сложное). Все три — победа.
+// объясняет игроку в наушниках верный ответ, он выбирает вариант. Верно → в банк капает
+// время (простой +30с, средний +60с, сложный +90с). Затем СУПЕР-БЛИЦ: за накопленное время
+// команда должна объяснить игроку в наушниках 3 слова (простое/среднее/сложное). Все три — победа.
 const GROMKO_BANK_SEC = { easy: 30, medium: 60, hard: 90 };
 const GROMKO_LEVEL_NAME = { easy: "Простой", medium: "Средний", hard: "Сложный" };
 // темы вопросов (инф/мат/физ) → ключи банка слов для блица
@@ -507,7 +521,7 @@ function updateGromkoBank() {
   document.querySelectorAll(".gromko-bank").forEach((el) => (el.textContent = gromko.bank));
 }
 
-// --- Громкая музыка в наушники «глухого» (WebAudio, зацикленный чиптюн) ---
+// --- Громкая музыка в наушники игрока (WebAudio, зацикленный чиптюн) ---
 let _gromkoMusic = null;
 function gromkoStartMusic() {
   gromkoStopMusic(); // на всякий случай не плодим параллельные циклы
@@ -641,7 +655,7 @@ function gromkoRenderExplainPhase() {
     badge.className = "gromko-badge phase-read";
     btn.textContent = "Объясняем! ▶";
   } else {
-    badge.textContent = "🖐 Объясняйте «глухому» жестами!";
+    badge.textContent = "🖐 Объясняйте жестами игроку в наушниках!";
     badge.className = "gromko-badge phase-explain";
     btn.textContent = "К выбору ответа →";
   }
@@ -691,7 +705,7 @@ function gromkoExplainAdvance() {
   else gromkoToSelect();
 }
 
-// Команда готова (или время вышло) → музыка стоп, «глухой» выбирает вариант (вопрос не показываем)
+// Команда готова (или время вышло) → музыка стоп, игрок в наушниках выбирает вариант (вопрос не показываем)
 function gromkoToSelect() {
   if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
   gromkoStopMusic();
