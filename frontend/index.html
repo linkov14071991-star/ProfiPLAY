@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=14">
+<link rel="stylesheet" href="/style.css?v=15">
 </head>
 <body>
 
@@ -352,7 +352,7 @@
   </div>
   <div class="card">
     <h1>🔊 Громкий вопрос</h1>
-    <p class="subtitle">Один игрок в наушниках — не слышит. Команда за минуту объясняет ему ответ жестами. Потом он выбирает вариант.</p>
+    <p class="subtitle">Один игрок в наушниках не слышит — команда объясняет ему жестами. 3 раунда копите время, потом супер-блиц.</p>
 
     <label class="field">Темы <span class="field-hint">— можно несколько</span></label>
     <div class="pills pills-multi" id="gromko-topic">
@@ -361,15 +361,13 @@
       <button class="pill active" data-value="physics">⚛️ Физика</button>
     </div>
 
-    <label class="field">Сложность</label>
-    <div class="pills" id="gromko-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Просто</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средне</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложно</span></button>
+    <div class="rules-block" style="margin-top:12px;">
+      <p>🕐 Верный ответ копит время: <b>простой +30с</b>, <b>средний +60с</b>, <b>сложный +90с</b>.</p>
+      <p>⚡ В супер-блице объясните «глухому» 3 слова за накопленное время.</p>
     </div>
 
     <div class="record-hint" id="gromko-record-hint" style="display:none;">
-      🏆 Рекорд: <b id="gromko-record">0</b> угадано
+      🏆 Лучший банк: <b id="gromko-record">0</b> сек
     </div>
 
     <button id="btn-gromko-start" class="btn btn-primary btn-big">Начать игру</button>
@@ -377,13 +375,29 @@
   </div>
 </section>
 
+<!-- ==== Экран: выбор сложности (перед каждым из 3 раундов) ==== -->
+<section id="screen-gromko-difficulty" class="screen">
+  <div class="game-header">
+    <div class="bank-chip">🏦 <span class="gromko-bank">0</span> сек</div>
+    <div class="round-chip">Раунд <span id="gromko-round">1</span>/3</div>
+  </div>
+  <div class="card" style="margin:auto; text-align:center;">
+    <h1 style="font-size:22px;">Выбери сложность</h1>
+    <p class="subtitle">Возьми телефон. За верный ответ — время в банк.</p>
+    <div class="gromko-diff-picker">
+      <button class="gromko-diff-btn lvl-easy" data-difficulty="easy"><span class="gdb-name">Простой</span><span class="gdb-sec">+30 сек</span></button>
+      <button class="gromko-diff-btn lvl-medium" data-difficulty="medium"><span class="gdb-name">Средний</span><span class="gdb-sec">+60 сек</span></button>
+      <button class="gromko-diff-btn lvl-hard" data-difficulty="hard"><span class="gdb-name">Сложный</span><span class="gdb-sec">+90 сек</span></button>
+    </div>
+  </div>
+  <button id="btn-gromko-abort" class="btn btn-link">Выйти в меню</button>
+</section>
+
 <!-- ==== Экран: объяснение (команда показывает «глухому») ==== -->
 <section id="screen-gromko-explain" class="screen">
   <div class="game-header">
-    <div class="timer" id="gromko-timer">1:00</div>
-    <div class="score-mini">
-      <span class="ok">✅ <span class="gromko-correct">0</span></span>
-    </div>
+    <div class="bank-chip">🏦 <span class="gromko-bank">0</span> сек</div>
+    <div class="gromko-level-badge" id="gromko-level-badge">Простой</div>
   </div>
 
   <div class="gromko-stage">
@@ -400,16 +414,13 @@
   <div class="game-actions">
     <button id="btn-gromko-toselect" class="btn btn-primary btn-big">К выбору ответа →</button>
   </div>
-  <button id="btn-gromko-explain-stop" class="btn btn-link">Завершить игру</button>
 </section>
 
 <!-- ==== Экран: выбор ответа «глухим» ==== -->
 <section id="screen-gromko-select" class="screen">
   <div class="game-header">
-    <div class="timer timer-static">🔇</div>
-    <div class="score-mini">
-      <span class="ok">✅ <span class="gromko-correct">0</span></span>
-    </div>
+    <div class="bank-chip">🏦 <span class="gromko-bank">0</span> сек</div>
+    <div class="gromko-level-badge" id="gromko-level-badge-sel">Простой</div>
   </div>
 
   <div class="gromko-badge warn-badge">📵 Передай телефон отгадывающему. Команда молчит!</div>
@@ -423,8 +434,30 @@
   <div id="gromko-feedback" class="gromko-feedback" style="display:none;"></div>
 
   <div id="gromko-next-wrap" style="display:none;">
-    <button id="btn-gromko-next" class="btn btn-primary btn-big">Следующий игрок →</button>
-    <button id="btn-gromko-finish" class="btn btn-secondary">Завершить игру</button>
+    <button id="btn-gromko-next" class="btn btn-primary btn-big">Дальше →</button>
+  </div>
+</section>
+
+<!-- ==== Экран: интро супер-блица ==== -->
+<section id="screen-gromko-blitz-intro" class="screen">
+  <div class="card" style="margin:auto; text-align:center;">
+    <div class="blitz-flash">⚡ СУПЕР-БЛИЦ</div>
+    <h1>В банке <span id="gromko-blitz-bank">0</span> сек</h1>
+    <p class="subtitle">Выберите, кто лучше всех читает по губам — он садится в наушники. За накопленное время команда объясняет ему <b>3 слова</b>: простое, среднее, сложное. Не успели — поражение.</p>
+    <button id="btn-gromko-blitz-start" class="btn btn-primary btn-big">Поехали! ⚡</button>
+  </div>
+</section>
+
+<!-- ==== Экран: супер-блиц (3 слова на время банка) ==== -->
+<section id="screen-gromko-blitz" class="screen">
+  <div class="game-header">
+    <div class="timer" id="gromko-blitz-timer">0:00</div>
+    <div class="score-mini"><span class="ok">✅ <span id="gromko-blitz-done">0</span>/3</span></div>
+  </div>
+  <div class="gromko-badge">🎧 Показывайте жестами — «глухой» угадывает вслух</div>
+  <div class="blitz-words" id="gromko-blitz-words"></div>
+  <div class="game-actions">
+    <button id="btn-gromko-blitz-guessed" class="btn btn-ok btn-big">Угадал! ✓</button>
   </div>
 </section>
 
@@ -435,22 +468,19 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1>🏁 Игра окончена!</h1>
-    <div id="gromko-new-record" class="new-record-badge" style="display:none;">🎉 Новый рекорд!</div>
+    <h1 id="gromko-result-title">🏁 Игра окончена!</h1>
+    <div id="gromko-new-record" class="new-record-badge" style="display:none;">🎉 Новый рекорд банка!</div>
     <div class="result-stats">
       <div class="stat stat-ok">
-        <div class="stat-num" id="gromko-result-correct">0</div>
-        <div class="stat-label">Угадано</div>
-      </div>
-      <div class="stat stat-skip">
-        <div class="stat-num" id="gromko-result-rounds">0</div>
-        <div class="stat-label">Раундов</div>
+        <div class="stat-num" id="gromko-result-bank">0</div>
+        <div class="stat-label">Банк, сек</div>
       </div>
       <div class="stat stat-ok">
-        <div class="stat-num" id="gromko-result-record">0</div>
-        <div class="stat-label">🏆 Рекорд</div>
+        <div class="stat-num" id="gromko-result-words">0</div>
+        <div class="stat-label">Слов в блице</div>
       </div>
     </div>
+    <p id="gromko-result-msg" style="text-align:center; opacity:0.85; margin:10px 0;"></p>
     <button id="btn-gromko-again" class="btn btn-primary btn-big">Играть ещё</button>
     <button class="btn btn-secondary btn-back" data-back="party">В меню</button>
   </div>
@@ -1600,6 +1630,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=14"></script>
+<script src="/script.js?v=15"></script>
 </body>
 </html>

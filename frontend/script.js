@@ -28,8 +28,11 @@ const SCREENS = {
   game: "screen-game",           // игра Крокодил
   result: "screen-result",       // итоги Крокодила
   gromkoSetup: "screen-gromko-setup",
+  gromkoDifficulty: "screen-gromko-difficulty",
   gromkoExplain: "screen-gromko-explain",
   gromkoSelect: "screen-gromko-select",
+  gromkoBlitzIntro: "screen-gromko-blitz-intro",
+  gromkoBlitz: "screen-gromko-blitz",
   gromkoResult: "screen-gromko-result",
   sprintSetup: "screen-sprint-setup",
   sprint: "screen-sprint",
@@ -255,9 +258,9 @@ const GAME_INFO = {
   },
   gromko: {
     title: "🔊 Громкий вопрос",
-    body: `<p>Один игрок надевает наушники с громкой музыкой и <b>ничего не слышит</b>. На экране — вопрос и правильный ответ, но их видит только команда.</p>
-      <p>За <b>1 минуту</b> команда объясняет ответ жестами и по губам — кричать бесполезно, «глухой» не слышит. Сам он в экран не подглядывает, смотрит только на команду.</p>
-      <p>Время вышло — команда <b>молчит</b>, телефон переходит отгадывающему: он выбирает из вариантов тот ответ, что ему показывали. Угадал — <b>+1</b>. Потом наушники берёт следующий.</p>`,
+    body: `<p>Командная игра: один игрок в наушниках с громкой музыкой <b>не слышит</b>, остальные объясняют ему жестами и по губам.</p>
+      <p><b>3 раунда — банк времени.</b> Перед раундом выбираете сложность вопроса. Команда объясняет «глухому» правильный ответ, он выбирает вариант. Верно — капает время: простой <b>+30с</b>, средний <b>+60с</b>, сложный <b>+90с</b>.</p>
+      <p><b>Супер-блиц.</b> Выбираете лучшего «чтеца по губам». За всё накопленное время команда объясняет ему <b>3 слова</b> (простое, среднее, сложное). Успели все три — победа, время кончилось — поражение.</p>`,
   },
   timebank: {
     title: "⏳ Тайм-баттл <span class='by-profik'>by Профик</span>",
@@ -454,52 +457,53 @@ document.getElementById("btn-croco-theme-stop").addEventListener("click", crocoF
 // ==============================
 // ====== ГРОМКИЙ ВОПРОС ========
 // ==============================
-// Перевёртыш Крокодила: один игрок в наушниках с громкой музыкой не слышит команду.
-// Команда видит вопрос + верный ответ и за 60 сек объясняет его жестами. Затем
-// «глухой» выбирает ответ из вариантов. Угадал — +1. Наушники переходят следующему.
+// Командная игра. Один игрок в наушниках с громкой музыкой не слышит команду.
+// 3 раунда «банка времени»: перед раундом игрок выбирает сложность вопроса; команда
+// объясняет «глухому» верный ответ, он выбирает вариант. Верно → в банк капает время
+// (простой +30с, средний +60с, сложный +90с). Затем СУПЕР-БЛИЦ: за накопленное время
+// команда должна объяснить «глухому» 3 слова (простое/среднее/сложное). Все три — победа.
+const GROMKO_BANK_SEC = { easy: 30, medium: 60, hard: 90 };
+const GROMKO_LEVEL_NAME = { easy: "Простой", medium: "Средний", hard: "Сложный" };
+// темы вопросов (инф/мат/физ) → ключи банка слов для блица
+const GROMKO_WORD_SUBJ = { informatika: "informatika", mathematics: "matematika", physics: "fizika" };
+
 const gromko = {
-  difficulty: "easy",
   topics: ["informatika", "mathematics", "physics"],
-  roundTime: 60,
-  questions: [], qIndex: 0,
-  timer: null, timeLeft: 0,
-  correct: 0, rounds: 0,
+  pools: { easy: [], medium: [], hard: [] }, idx: { easy: 0, medium: 0, hard: 0 },
+  wordPools: { easy: [], medium: [], hard: [] },
+  round: 0, totalRounds: 3,
+  bank: 0,                 // накопленные секунды
+  curDifficulty: "easy",
   current: null, locked: false,
+  blitzWords: [], blitzIdx: 0, blitzGuessed: 0,
+  timer: null, timeLeft: 0,
 };
 
-setupPills("gromko-difficulty", (v) => { gromko.difficulty = v; renderGromkoRecord(); });
 setupPillsMulti("gromko-topic", (arr) => (gromko.topics = arr));
 
-// --- Рекорды (по сложности) ---
-const gromkoRecords = {};
-function gromkoRecordKey() { return `gromko_${gromko.difficulty}`; }
-function getGromkoRecord() { return gromkoRecords[gromkoRecordKey()] || 0; }
-function saveGromkoRecord(score) {
-  const key = gromkoRecordKey();
-  if (score > (gromkoRecords[key] || 0)) {
-    gromkoRecords[key] = score;
-    tg?.CloudStorage?.setItem?.(key, String(score), () => {});
+// --- Рекорд: максимальный накопленный банк (сек) ---
+const gromkoRecords = { bank: 0 };
+function saveGromkoBank(sec) {
+  if (sec > gromkoRecords.bank) {
+    gromkoRecords.bank = sec;
+    tg?.CloudStorage?.setItem?.("gromko_bank", String(sec), () => {});
     return true;
   }
   return false;
 }
 function loadGromkoRecordsFromCloud() {
   if (!tg?.CloudStorage) return;
-  const keys = ["easy", "medium", "hard"].map((d) => `gromko_${d}`);
-  tg.CloudStorage.getItems(keys, (err, values) => {
-    if (err || !values) return;
-    Object.entries(values).forEach(([k, v]) => { if (v) gromkoRecords[k] = parseInt(v, 10) || 0; });
-    renderGromkoRecord();
+  tg.CloudStorage.getItem("gromko_bank", (err, val) => {
+    if (!err && val) { gromkoRecords.bank = parseInt(val, 10) || 0; renderGromkoRecord(); }
   });
 }
 function renderGromkoRecord() {
-  const rec = getGromkoRecord();
   const hint = document.getElementById("gromko-record-hint");
-  if (rec > 0) { document.getElementById("gromko-record").textContent = rec; hint.style.display = "block"; }
+  if (gromkoRecords.bank > 0) { document.getElementById("gromko-record").textContent = gromkoRecords.bank; hint.style.display = "block"; }
   else { hint.style.display = "none"; }
 }
-function updateGromkoScore() {
-  document.querySelectorAll(".gromko-correct").forEach((el) => (el.textContent = gromko.correct));
+function updateGromkoBank() {
+  document.querySelectorAll(".gromko-bank").forEach((el) => (el.textContent = gromko.bank));
 }
 
 // --- Громкая музыка в наушники «глухого» (WebAudio, зацикленный чиптюн) ---
@@ -547,63 +551,77 @@ function gromkoStopMusic() {
   _gromkoMusic = null;
 }
 
-async function gromkoLoadQuestions() {
-  const r = await fetch(`/api/questions?difficulty=${gromko.difficulty}&limit=50&topics=${(gromko.topics || []).join(",")}`);
-  const data = await r.json();
-  gromko.questions = data.questions || [];
-  gromko.qIndex = 0;
+function gromkoShuffle(a) { a.sort(() => Math.random() - 0.5); return a; }
+
+// Предзагрузка: вопросы по всем трём уровням + слова для блица по всем уровням
+async function gromkoLoad() {
+  const topics = (gromko.topics || []).join(",");
+  const [qe, qm, qh] = await Promise.all(
+    ["easy", "medium", "hard"].map((d) =>
+      fetch(`/api/questions?difficulty=${d}&limit=20&topics=${topics}`).then((r) => r.json()))
+  );
+  gromko.pools = { easy: qe.questions || [], medium: qm.questions || [], hard: qh.questions || [] };
+  gromko.idx = { easy: 0, medium: 0, hard: 0 };
+
+  const subj = (gromko.topics || []).map((t) => GROMKO_WORD_SUBJ[t]).filter(Boolean).join(",") || "informatika";
+  const [we, wm, wh] = await Promise.all(
+    ["easy", "medium", "hard"].map((d) =>
+      fetch(`/api/words?difficulty=${d}&subjects=${subj}`).then((r) => r.json()))
+  );
+  gromko.wordPools = {
+    easy: gromkoShuffle(we.items || []),
+    medium: gromkoShuffle(wm.items || []),
+    hard: gromkoShuffle(wh.items || []),
+  };
 }
 
 async function gromkoStart() {
   hapticMedium();
-  await gromkoLoadQuestions();
-  if (!gromko.questions.length) return;
-  gromko.correct = 0;
-  gromko.rounds = 0;
+  await gromkoLoad();
+  gromko.round = 0;
+  gromko.bank = 0;
+  gromko.blitzGuessed = 0;
+  updateGromkoBank();
   gromkoNextRound();
 }
 
-// Новый раунд: выдаём вопрос и запускаем фазу объяснения
+// Следующий раунд банка или переход к блицу
 function gromkoNextRound() {
-  if (gromko.qIndex >= gromko.questions.length) {
-    gromko.questions.sort(() => Math.random() - 0.5);
-    gromko.qIndex = 0;
-  }
-  gromko.current = gromko.questions[gromko.qIndex++];
+  gromkoStopMusic();
+  if (gromko.round >= gromko.totalRounds) { gromkoBlitzIntro(); return; }
+  gromko.round++;
+  document.getElementById("gromko-round").textContent = gromko.round;
+  updateGromkoBank();
+  showScreen("gromkoDifficulty");
+}
+
+function gromkoSetLevelBadge(id, d) {
+  const el = document.getElementById(id);
+  el.textContent = `${GROMKO_LEVEL_NAME[d]} · +${GROMKO_BANK_SEC[d]}с`;
+  el.className = "gromko-level-badge lvl-" + d;
+}
+
+// Игрок выбрал сложность → показываем вопрос команде и включаем музыку
+function gromkoPickDifficulty(d) {
+  const pool = gromko.pools[d] || [];
+  if (!pool.length) return;
+  if (gromko.idx[d] >= pool.length) { gromkoShuffle(pool); gromko.idx[d] = 0; }
+  gromko.curDifficulty = d;
+  gromko.current = pool[gromko.idx[d]++];
   gromko.locked = false;
   document.getElementById("gromko-question").textContent = gromko.current.q;
   document.getElementById("gromko-answer").textContent = gromko.current.options[gromko.current.correct];
-  updateGromkoScore();
+  gromkoSetLevelBadge("gromko-level-badge", d);
+  updateGromkoBank();
   showScreen("gromkoExplain");
-  gromkoStartTimer();
   gromkoStartMusic();
 }
 
-function gromkoUpdateTimer() {
-  const el = document.getElementById("gromko-timer");
-  el.textContent = fmtTime(Math.max(0, gromko.timeLeft));
-  el.classList.remove("warn", "danger");
-  if (gromko.timeLeft <= 5) el.classList.add("danger");
-  else if (gromko.timeLeft <= 15) el.classList.add("warn");
-}
-
-function gromkoStartTimer() {
-  if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
-  gromko.timeLeft = gromko.roundTime;
-  gromkoUpdateTimer();
-  gromko.timer = setInterval(() => {
-    gromko.timeLeft--;
-    gromkoUpdateTimer();
-    if (gromko.timeLeft <= 0) { clearInterval(gromko.timer); gromko.timer = null; gromkoToSelect(); }
-  }, 1000);
-}
-
-// Время вышло (или команда готова) → музыка стоп, «глухой» выбирает ответ
+// Команда готова → музыка стоп, «глухой» выбирает вариант
 function gromkoToSelect() {
-  if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
   gromkoStopMusic();
-  playTimeUpSound();
   hapticMedium();
+  gromkoSetLevelBadge("gromko-level-badge-sel", gromko.curDifficulty);
   document.getElementById("gromko-select-question").textContent = gromko.current.q;
   const wrap = document.getElementById("gromko-options");
   wrap.innerHTML = "";
@@ -623,11 +641,11 @@ function gromkoToSelect() {
 function gromkoChoose(chosen, btnEl) {
   if (gromko.locked) return;
   gromko.locked = true;
-  gromko.rounds++;
   const correctIdx = gromko.current.correct;
   const isCorrect = chosen === correctIdx;
+  const sec = GROMKO_BANK_SEC[gromko.curDifficulty];
   if (isCorrect) {
-    gromko.correct++;
+    gromko.bank += sec;
     btnEl.classList.add("correct");
     hapticSuccess();
   } else {
@@ -636,34 +654,127 @@ function gromkoChoose(chosen, btnEl) {
     hapticError();
   }
   document.querySelectorAll("#gromko-options .answer-btn").forEach((b) => (b.disabled = true));
-  updateGromkoScore();
+  updateGromkoBank();
   const fb = document.getElementById("gromko-feedback");
-  fb.textContent = isCorrect ? "✅ Верно! Наушники — следующему." : "❌ Мимо. Наушники — следующему.";
+  fb.textContent = isCorrect ? `✅ Верно! +${sec}с в банк` : "❌ Мимо. 0 секунд";
   fb.className = "gromko-feedback " + (isCorrect ? "ok" : "no");
   fb.style.display = "block";
+  document.getElementById("btn-gromko-next").textContent =
+    gromko.round >= gromko.totalRounds ? "К супер-блицу ⚡" : "Дальше →";
   document.getElementById("gromko-next-wrap").style.display = "";
 }
 
-async function gromkoFinish() {
+// --- Супер-блиц ---
+function gromkoPickWord(d) {
+  const p = gromko.wordPools[d] || [];
+  if (!p.length) return { word: "—", emoji: "" };
+  return p[Math.floor(Math.random() * p.length)];
+}
+
+function gromkoBlitzIntro() {
+  gromkoStopMusic();
+  gromko.blitzWords = ["easy", "medium", "hard"].map((d) => {
+    const w = gromkoPickWord(d);
+    return { word: w.word, emoji: w.emoji || "", level: d };
+  });
+  gromko.blitzIdx = 0;
+  gromko.blitzGuessed = 0;
+  document.getElementById("gromko-blitz-bank").textContent = gromko.bank;
+  showScreen("gromkoBlitzIntro");
+}
+
+function gromkoRenderBlitzWords() {
+  const wrap = document.getElementById("gromko-blitz-words");
+  wrap.innerHTML = "";
+  gromko.blitzWords.forEach((w, i) => {
+    const row = document.createElement("div");
+    row.className = "blitz-word" + (i < gromko.blitzIdx ? " done" : (i === gromko.blitzIdx ? " current" : ""));
+    const st = document.createElement("span");
+    st.className = "bw-status";
+    st.textContent = i < gromko.blitzIdx ? "✅" : (i === gromko.blitzIdx ? "👉" : "•");
+    const wd = document.createElement("span");
+    wd.className = "bw-word";
+    wd.textContent = w.word;
+    const lv = document.createElement("span");
+    lv.className = "bw-level lvl-" + w.level;
+    lv.textContent = GROMKO_LEVEL_NAME[w.level];
+    row.append(st, wd, lv);
+    wrap.appendChild(row);
+  });
+}
+
+function gromkoUpdateBlitzTimer() {
+  const el = document.getElementById("gromko-blitz-timer");
+  el.textContent = fmtTime(Math.max(0, gromko.timeLeft));
+  el.classList.remove("warn", "danger");
+  if (gromko.timeLeft <= 10) el.classList.add("danger");
+  else if (gromko.timeLeft <= 20) el.classList.add("warn");
+}
+
+function gromkoBlitzStart() {
+  gromko.timeLeft = gromko.bank;
+  if (gromko.timeLeft <= 0) { gromkoBlitzEnd(false); return; }
+  gromko.blitzIdx = 0;
+  gromko.blitzGuessed = 0;
+  gromkoRenderBlitzWords();
+  document.getElementById("gromko-blitz-done").textContent = 0;
+  gromkoUpdateBlitzTimer();
+  showScreen("gromkoBlitz");
+  gromkoStartMusic();
+  hapticMedium();
+  gromko.timer = setInterval(() => {
+    gromko.timeLeft--;
+    gromkoUpdateBlitzTimer();
+    if (gromko.timeLeft <= 0) { clearInterval(gromko.timer); gromko.timer = null; gromkoBlitzEnd(false); }
+  }, 1000);
+}
+
+function gromkoBlitzGuessed() {
+  if (gromko.blitzIdx >= gromko.blitzWords.length) return;
+  gromko.blitzIdx++;
+  gromko.blitzGuessed = gromko.blitzIdx;
+  document.getElementById("gromko-blitz-done").textContent = gromko.blitzGuessed;
+  hapticSuccess();
+  if (gromko.blitzIdx >= gromko.blitzWords.length) {
+    if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
+    gromkoBlitzEnd(true);
+  } else {
+    gromkoRenderBlitzWords();
+  }
+}
+
+async function gromkoBlitzEnd(win) {
   if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
   gromkoStopMusic();
-  const isRecord = saveGromkoRecord(gromko.correct);
-  document.getElementById("gromko-result-correct").textContent = gromko.correct;
-  document.getElementById("gromko-result-rounds").textContent = gromko.rounds;
-  document.getElementById("gromko-result-record").textContent = getGromkoRecord();
-  document.getElementById("gromko-new-record").style.display = isRecord && gromko.correct > 0 ? "block" : "none";
+  if (win) { hapticSuccess(); } else { hapticError(); playTimeUpSound(); }
+  const isRecord = saveGromkoBank(gromko.bank);
+  document.getElementById("gromko-result-title").textContent = win ? "🏆 Победа!" : "⌛ Время вышло";
+  document.getElementById("gromko-result-bank").textContent = gromko.bank;
+  document.getElementById("gromko-result-words").textContent = gromko.blitzGuessed;
+  document.getElementById("gromko-new-record").style.display = isRecord && gromko.bank > 0 ? "block" : "none";
+  document.getElementById("gromko-result-msg").textContent = win
+    ? `Успели объяснить все 3 слова! Осталось ${Math.max(0, gromko.timeLeft)} сек.`
+    : `Объяснено ${gromko.blitzGuessed} из 3. В следующий раз копите больше времени!`;
   showScreen("gromkoResult");
-  hapticSuccess();
   const res = await awardTraining("party", 5);
   showRatingToast(res);
 }
 
+function gromkoAbort() {
+  if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
+  gromkoStopMusic();
+  showScreen("party");
+}
+
 document.getElementById("btn-gromko-start").addEventListener("click", gromkoStart);
 document.getElementById("btn-gromko-again").addEventListener("click", gromkoStart);
+document.querySelectorAll("#screen-gromko-difficulty .gromko-diff-btn").forEach((b) =>
+  b.addEventListener("click", () => { hapticLight(); gromkoPickDifficulty(b.dataset.difficulty); }));
 document.getElementById("btn-gromko-toselect").addEventListener("click", gromkoToSelect);
-document.getElementById("btn-gromko-explain-stop").addEventListener("click", gromkoFinish);
 document.getElementById("btn-gromko-next").addEventListener("click", gromkoNextRound);
-document.getElementById("btn-gromko-finish").addEventListener("click", gromkoFinish);
+document.getElementById("btn-gromko-abort").addEventListener("click", gromkoAbort);
+document.getElementById("btn-gromko-blitz-start").addEventListener("click", gromkoBlitzStart);
+document.getElementById("btn-gromko-blitz-guessed").addEventListener("click", gromkoBlitzGuessed);
 
 // ==============================
 // ========== СПРИНТ ============

@@ -2102,3 +2102,101 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .gromko-feedback.ok { color: var(--brand-lime); }
 .gromko-feedback.no { color: var(--danger); }
 .timer.timer-static { color: var(--text-muted); }
+
+/* Банк времени и раунд в шапке */
+.bank-chip, .round-chip {
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--brand-lime);
+}
+.round-chip { color: var(--text-muted); font-weight: 700; }
+
+/* Бейдж уровня сложности на карточке вопроса */
+.gromko-level-badge {
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--text-on-light);
+  background: var(--brand-lime);
+}
+.gromko-level-badge.lvl-easy   { background: #7ED957; }
+.gromko-level-badge.lvl-medium { background: #FFC93C; }
+.gromko-level-badge.lvl-hard   { background: #FF6B6B; color: #fff; }
+
+/* Пикер сложности перед раундом */
+.gromko-diff-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.gromko-diff-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-on-light);
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+.gromko-diff-btn:active { transform: scale(0.97); }
+.gromko-diff-btn .gdb-name { font-size: 18px; font-weight: 800; }
+.gromko-diff-btn .gdb-sec  { font-size: 16px; font-weight: 800; opacity: 0.85; }
+.gromko-diff-btn.lvl-easy   { background: #7ED957; }
+.gromko-diff-btn.lvl-medium { background: #FFC93C; }
+.gromko-diff-btn.lvl-hard   { background: #FF6B6B; color: #fff; }
+
+/* Супер-блиц */
+.blitz-flash {
+  display: inline-block;
+  background: linear-gradient(135deg, #FFC93C, #FF6B6B);
+  color: #2A1B4A;
+  font-weight: 900;
+  letter-spacing: 1px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+.blitz-words {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+.blitz-word {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  color: var(--text-on-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  opacity: 0.55;
+  border: 2px solid transparent;
+}
+.blitz-word.current {
+  opacity: 1;
+  border-color: var(--brand-lime);
+  box-shadow: 0 4px 16px rgba(180, 242, 77, 0.3);
+}
+.blitz-word.done { opacity: 0.8; }
+.blitz-word .bw-status { font-size: 18px; }
+.blitz-word .bw-word { flex: 1; font-size: 20px; font-weight: 800; }
+.blitz-word.done .bw-word { text-decoration: line-through; opacity: 0.7; }
+.blitz-word .bw-level {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: #2A1B4A;
+}
+.bw-level.lvl-easy   { background: #7ED957; }
+.bw-level.lvl-medium { background: #FFC93C; }
+.bw-level.lvl-hard   { background: #FF6B6B; color: #fff; }
