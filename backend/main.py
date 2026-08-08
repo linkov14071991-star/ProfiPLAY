@@ -1434,7 +1434,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "tb-subjects-v6"
+BUILD_TAG = "python-badge-v7"
 
 
 @app.get("/api/version")
