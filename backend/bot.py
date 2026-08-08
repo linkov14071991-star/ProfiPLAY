@@ -13,6 +13,7 @@ from aiogram.filters import CommandObject, CommandStart
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    MenuButtonWebApp,
     Message,
     WebAppInfo,
 )
@@ -84,6 +85,19 @@ async def start(message: Message, command: CommandObject):
         reply_markup=kb,
         parse_mode="HTML",
     )
+
+
+@dp.startup()
+async def _on_startup():
+    """При каждом запуске бота (то есть на каждый деплой) прописываем постоянную
+    кнопку-меню со свежей версией — чтобы Telegram не открывал старый кэш."""
+    try:
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(text="🎮 Играть", web_app=WebAppInfo(url=_bust(WEBAPP_URL)))
+        )
+        print(f"Кнопка-меню обновлена (v={APP_VER})")
+    except Exception as e:
+        print("Не удалось обновить кнопку-меню:", e)
 
 
 async def main():
