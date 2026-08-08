@@ -988,16 +988,19 @@ QUIZ_TOPICS = list(QUESTIONS.keys())
 
 
 def _pool_for(difficulty: str, topic: str = "") -> list:
-    """Пул вопросов. Если задана тема (одна из дисциплин) — только из неё,
-    иначе микс всех тем. topic='mix'/'' → микс."""
+    """Пул вопросов заданной сложности. topic — одна или несколько тем через запятую
+    (informatika/mathematics/physics/programming). Пусто/мусор → микс всех тем."""
     if difficulty not in ("easy", "medium", "hard"):
         raise HTTPException(status_code=400, detail="Bad difficulty")
-    if topic and topic in QUESTIONS:
-        pool = list(QUESTIONS[topic].get(difficulty, []))
-        if not pool:
-            raise HTTPException(status_code=500, detail="Empty question pool")
-        return pool
-    return _pool_for_difficulty(difficulty)
+    picked = [t.strip() for t in (topic or "").split(",") if t.strip() in QUESTIONS]
+    if not picked:
+        return _pool_for_difficulty(difficulty)
+    pool = []
+    for t in picked:
+        pool.extend(QUESTIONS[t].get(difficulty, []))
+    if not pool:
+        raise HTTPException(status_code=500, detail="Empty question pool")
+    return pool
 
 
 def _score_answers(questions: list, answers: list) -> int:
@@ -1453,7 +1456,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "no-video-v9"
+BUILD_TAG = "duel-physics-v10"
 
 
 @app.get("/api/version")

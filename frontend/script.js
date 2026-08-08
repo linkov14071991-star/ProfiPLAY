@@ -2303,7 +2303,7 @@ window.openAchievements = openAchievements;
 // ==============================
 const duel = {
   difficulty: "medium",
-  topic: "mix",
+  topics: ["informatika", "mathematics", "physics", "programming"],
   duelId: null,
   role: null,          // 'creator' | 'opponent'
   questions: [],
@@ -2318,12 +2318,12 @@ const duel = {
 };
 
 setupPills("duel-difficulty", (v) => (duel.difficulty = v));
-setupPills("duel-topic", (v) => (duel.topic = v));
+setupPillsMulti("duel-topic", (arr) => (duel.topics = arr));
 
 async function duelStartCreate() {
   hapticMedium();
   const res = await apiPost("/api/duel/create", {
-    init_data: INIT_DATA, difficulty: duel.difficulty, topic: duel.topic === "mix" ? "" : duel.topic,
+    init_data: INIT_DATA, difficulty: duel.difficulty, topic: duel.topics.join(","),
   });
   if (!res || !res.duel_id) {
     alert("Не удалось создать дуэль. Попробуй ещё раз.");

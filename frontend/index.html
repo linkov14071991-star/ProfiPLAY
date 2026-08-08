@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=9">
+<link rel="stylesheet" href="/style.css?v=10">
 </head>
 <body>
 
@@ -659,12 +659,12 @@
       <div class="profik-chip-msg" data-profik-context="duel_start"></div>
     </div>
 
-    <label class="field">Тема вопросов</label>
-    <div class="pills" id="duel-topic">
-      <button class="pill active" data-value="mix">🎲 Микс</button>
-      <button class="pill" data-value="informatika">💻 Информатика</button>
-      <button class="pill" data-value="mathematics">📐 Математика</button>
-      <button class="pill" data-value="programming">🐍 Программирование</button>
+    <label class="field">Темы вопросов <span class="field-hint">— можно несколько</span></label>
+    <div class="pills pills-multi" id="duel-topic">
+      <button class="pill active" data-value="informatika">💻 Информатика</button>
+      <button class="pill active" data-value="mathematics">📐 Математика</button>
+      <button class="pill active" data-value="physics">⚛️ Физика</button>
+      <button class="pill active" data-value="programming">🐍 Программирование</button>
     </div>
 
     <label class="field">Сложность вопросов</label>
@@ -1452,6 +1452,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=9"></script>
+<script src="/script.js?v=10"></script>
 </body>
 </html>
