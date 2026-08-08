@@ -1486,7 +1486,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "timebank-rework-v24"
+BUILD_TAG = "tb-final6-v25"
 
 
 @app.get("/api/version")

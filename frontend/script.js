@@ -262,7 +262,7 @@ const GAME_INFO = {
       <p><b>Р1 — Угадай число:</b> отгадайте число по подсказкам «больше/меньше». Простой +15с, средний +20с, сложный +30с.</p>
       <p><b>Р2 — Alias:</b> 60 сек, объясняйте слова словами. Каждое угаданное — +2/+4/+6с по сложности, потом проверка.</p>
       <p><b>Р3 — Крокодил:</b> покажите <b>одно</b> слово жестами. Простое 30с/+30, среднее 45с/+45, сложное 60с/+60.</p>
-      <p><b>Р4 — Финал:</b> супер-блиц. Игрок в наушниках, 3 слова (2 простых + 1 среднее), объясняете за весь накопленный банк, в любом порядке. Успели все три — победа! Рекорд — по секундам в банке.</p>`,
+      <p><b>Р4 — Финал:</b> супер-блиц. Игрок в наушниках, 6 слов (2 простых, 2 средних, 2 сложных), объясняете за весь накопленный банк, в любом порядке. Очки: слово 10/20/30 + бонус +2 за секунду. Итог — в таблицу рекордов.</p>`,
   },
 };
 let _gimKey = null;
@@ -1415,6 +1415,8 @@ const TB_NUM = {
   medium: { max: 100,  time: 20, bank: 20 },
   hard:   { max: 1000, time: 30, bank: 30 },
 };
+const TB_WORD_PTS = { easy: 10, medium: 20, hard: 30 };  // финал: очки за угаданное слово
+const TB_TIME_BONUS = 2;                                  // очков за каждую оставшуюся секунду
 
 const tb = {
   guest: "",
@@ -1629,18 +1631,24 @@ function tbCrocoEnd(win) {
 
 // ---------- Р4: Финал — супер-блиц (как в Громком вопросе) ----------
 async function tbBlitzIntro() {
-  const [we, wm] = await Promise.all([
+  const [we, wm, wh] = await Promise.all([
     fetch(`/api/words?difficulty=easy&subjects=${TB_SUBJECTS}`).then((r) => r.json()),
     fetch(`/api/words?difficulty=medium&subjects=${TB_SUBJECTS}`).then((r) => r.json()),
+    fetch(`/api/words?difficulty=hard&subjects=${TB_SUBJECTS}`).then((r) => r.json()),
   ]);
-  const easy = (we.items || []).slice().sort(() => Math.random() - 0.5);
-  const med = wm.items || [];
-  const e1 = easy[0] || { word: "—" }, e2 = easy[1] || easy[0] || { word: "—" };
-  const m1 = med.length ? med[Math.floor(Math.random() * med.length)] : { word: "—" };
+  // по 2 разных слова каждого уровня → всего 6
+  const pick2 = (data) => {
+    const a = (data.items || []).slice().sort(() => Math.random() - 0.5);
+    return [a[0] || { word: "—" }, a[1] || a[0] || { word: "—" }];
+  };
+  const [e1, e2] = pick2(we), [m1, m2] = pick2(wm), [h1, h2] = pick2(wh);
   tb.blitzWords = [
     { word: e1.word, level: "easy", done: false },
     { word: e2.word, level: "easy", done: false },
     { word: m1.word, level: "medium", done: false },
+    { word: m2.word, level: "medium", done: false },
+    { word: h1.word, level: "hard", done: false },
+    { word: h2.word, level: "hard", done: false },
   ];
   tb.blitzGuessed = 0;
   document.getElementById("tb-blitz-bank").textContent = tb.bank;
@@ -1696,13 +1704,17 @@ async function tbBlitzEnd(win) {
   if (tb.timer) { clearInterval(tb.timer); tb.timer = null; }
   gromkoStopMusic();
   if (win) hapticSuccess(); else { hapticError(); playTimeUpSound(); }
-  tb.score = tb.bank;
+  // Итоговый рейтинг: очки за угаданные слова (10/20/30) + бонус за оставшееся время
+  const leftover = Math.max(0, tb.timeLeft);
+  const wordPts = tb.blitzWords.filter((w) => w.done).reduce((s, w) => s + TB_WORD_PTS[w.level], 0);
+  const timeBonus = leftover * TB_TIME_BONUS;
+  tb.score = wordPts + timeBonus;
   const isRecord = tbSaveRecord(tb.guest, tb.score);
   document.getElementById("tb-result-title").textContent = win ? "🏆 Победа!" : "⌛ Не успели";
   document.getElementById("tb-result-score").textContent = tb.score;
   document.getElementById("tb-result-sub").textContent = win
-    ? "секунд в банке · объяснили все 3 слова"
-    : `секунд в банке · объяснено ${tb.blitzGuessed} из 3`;
+    ? `очков · все 6 слов + ${timeBonus} за ${leftover}с`
+    : `очков · угадано ${tb.blitzGuessed} из 6 (${wordPts} за слова)`;
   document.getElementById("tb-result-newrecord").style.display = (isRecord && tb.score > 0) ? "block" : "none";
   tbRenderRecords("tb-result-records");
   showScreen("tbResult");

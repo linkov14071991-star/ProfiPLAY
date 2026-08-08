@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=22">
+<link rel="stylesheet" href="/style.css?v=23">
 </head>
 <body>
 
@@ -1141,7 +1141,7 @@
         <li><b>Р1 — Угадай число:</b> отгадайте число по подсказкам «больше/меньше». Простой +15с, средний +20с, сложный +30с.</li>
         <li><b>Р2 — Alias:</b> 60 сек, объясняйте слова словами. Каждое угаданное — +2/+4/+6 сек по сложности.</li>
         <li><b>Р3 — Крокодил:</b> покажите <b>одно</b> слово жестами. Простое 30с/+30, среднее 45с/+45, сложное 60с/+60.</li>
-        <li><b>Р4 — Финал:</b> супер-блиц. Игрок в наушниках, 3 слова, объясняете за весь накопленный банк. Успели все три — победа!</li>
+        <li><b>Р4 — Финал:</b> супер-блиц. Игрок в наушниках, 6 слов (2 простых, 2 средних, 2 сложных), объясняете за весь накопленный банк. Очки за слова + бонус за оставшееся время.</li>
       </ol>
     </div>
 
@@ -1289,7 +1289,8 @@
     <h1>⚡ Супер-блиц</h1>
     <p>Вы накопили банк времени:</p>
     <div class="tb-bank-big"><span id="tb-blitz-bank">0</span> сек</div>
-    <p>Один игрок в наушниках не слышит. За это время команда объясняет ему <b>3 слова</b> (2 простых + 1 среднее) жестами, в любом порядке. Успели все три — победа!</p>
+    <p>Один игрок в наушниках не слышит. За это время команда объясняет ему <b>6 слов</b> (2 простых, 2 средних, 2 сложных) жестами, в любом порядке.</p>
+    <p style="font-size:13px; opacity:0.85;">Очки: слово — простое 10 / среднее 20 / сложное 30, плюс +2 за каждую оставшуюся секунду.</p>
     <button id="btn-tb-blitz-go" class="btn btn-lime btn-big">Поехали! ⚡</button>
   </div>
 </section>
@@ -1298,7 +1299,7 @@
 <section id="screen-tb-blitz" class="screen">
   <div class="game-header">
     <div class="timer" id="tb-blitz-timer">0:00</div>
-    <div class="score-mini"><span class="ok">✅ <span id="tb-blitz-done">0</span>/3</span></div>
+    <div class="score-mini"><span class="ok">✅ <span id="tb-blitz-done">0</span>/6</span></div>
   </div>
   <div class="gromko-badge">🎧 Объясняйте слова в любом порядке — тапните угаданное</div>
   <div class="blitz-words" id="tb-blitz-words"></div>
@@ -1314,7 +1315,7 @@
     <h1 id="tb-result-title">🏁 Итог</h1>
     <div id="tb-result-newrecord" class="new-record-badge" style="display:none;">🎉 Новый рекорд банка!</div>
     <div class="tb-score-big" id="tb-result-score">0</div>
-    <p style="text-align:center; color:var(--text-muted); margin-top:-6px;" id="tb-result-sub">секунд в банке</p>
+    <p style="text-align:center; color:var(--text-muted); margin-top:-6px;" id="tb-result-sub">очков</p>
     <div id="tb-result-records" class="tb-records"></div>
     <button id="btn-tb-again" class="btn btn-primary btn-big">Играть ещё</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
@@ -1595,7 +1596,8 @@
         <li><b>Р3 — Крокодил:</b> покажите <b>одно</b> слово жестами. Простое за 30с — <b>+30с</b>, среднее за 45с — <b>+45с</b>, сложное за 60с — <b>+60с</b>. Одна попытка.</li>
       </ol>
       <div class="r-head">Раунд 4 — финал (супер-блиц)</div>
-      <p>Выберите чтеца по губам — он в наушниках. За <b>весь накопленный банк</b> команда объясняет ему <b>3 слова</b> (2 простых + 1 среднее) жестами, в любом порядке. Успели все три до нуля — <b>победа</b>. Рекорд — по количеству секунд в банке.</p>
+      <p>Выберите чтеца по губам — он в наушниках. За <b>весь накопленный банк</b> команда объясняет ему <b>6 слов</b> (2 простых, 2 средних, 2 сложных) жестами, в любом порядке.</p>
+      <p><b>Очки:</b> за угаданное слово — простое 10, среднее 20, сложное 30; плюс <b>+2 очка за каждую оставшуюся секунду</b>. Итог идёт в таблицу рекордов.</p>
     </details>
 
     <details class="rules-block" id="rules-numguess">
@@ -1708,6 +1710,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=22"></script>
+<script src="/script.js?v=23"></script>
 </body>
 </html>
