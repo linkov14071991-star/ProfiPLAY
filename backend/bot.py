@@ -1,5 +1,5 @@
 """
-Профик Арена - Telegram-бот
+Профик Arena - Telegram-бот
 Роль:
 1. По команде /start — открывает мини-приложение.
 2. По /start duel_XXX — показывает кнопку 'Принять вызов' на конкретную дуэль.
@@ -43,7 +43,7 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 
-def _kb_open_app(url: str, label: str = "🎮 Играть в Профик Арена") -> InlineKeyboardMarkup:
+def _kb_open_app(url: str, label: str = "🎮 Играть в Профик Arena") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=label, web_app=WebAppInfo(url=_bust(url)))],
@@ -80,7 +80,7 @@ async def start(message: Message, command: CommandObject):
     kb = _kb_open_app(WEBAPP_URL)
     await message.answer(
         f"Привет, {message.from_user.first_name}! 👋\n\n"
-        f"Это <b>Профик Арена</b> — играй, учись, побеждай.\n\n"
+        f"Это <b>Профик Arena</b> — играй, учись, побеждай.\n\n"
         f"⚠️ Для игры нужна подписка на канал {CHANNEL_USERNAME}.",
         reply_markup=kb,
         parse_mode="HTML",

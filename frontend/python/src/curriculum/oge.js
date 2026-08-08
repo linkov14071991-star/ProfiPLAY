@@ -8,7 +8,7 @@ export const OGE_UNITS = [
   // ── Юнит 1 ────────────────────────────────
   {
     id: 'oge_print',
-    level: 'ОГЭ',
+    level: 'Основы',
     icon: '🖥️',
     color: '#4ade80',
     title: 'Первые шаги',
@@ -66,7 +66,7 @@ export const OGE_UNITS = [
   // ── Юнит 2 ────────────────────────────────
   {
     id: 'oge_vars',
-    level: 'ОГЭ',
+    level: 'Основы',
     icon: '📦',
     color: '#4ade80',
     title: 'Переменные',
@@ -124,7 +124,7 @@ export const OGE_UNITS = [
   // ── Юнит 3 ────────────────────────────────
   {
     id: 'oge_input',
-    level: 'ОГЭ',
+    level: 'Основы',
     icon: '⌨️',
     color: '#4ade80',
     title: 'Ввод данных',
@@ -161,7 +161,7 @@ export const OGE_UNITS = [
   // ── Юнит 4 ────────────────────────────────
   {
     id: 'oge_math',
-    level: 'ОГЭ',
+    level: 'Основы',
     icon: '➗',
     color: '#4ade80',
     title: 'Арифметика',
@@ -195,7 +195,7 @@ export const OGE_UNITS = [
   // ── Юнит 5 ────────────────────────────────
   {
     id: 'oge_if',
-    level: 'ОГЭ',
+    level: 'Основы',
     icon: '🔀',
     color: '#22d3ee',
     title: 'Условия',
@@ -254,7 +254,7 @@ export const OGE_UNITS = [
   // ── Юнит 6 ────────────────────────────────
   {
     id: 'oge_while',
-    level: 'ОГЭ',
+    level: 'Основы',
     icon: '🔁',
     color: '#22d3ee',
     title: 'Цикл while',
@@ -288,7 +288,7 @@ export const OGE_UNITS = [
   // ── Юнит 7 ────────────────────────────────
   {
     id: 'oge_for',
-    level: 'ОГЭ',
+    level: 'Основы',
     icon: '🔂',
     color: '#22d3ee',
     title: 'Цикл for и range',
@@ -347,7 +347,7 @@ export const OGE_UNITS = [
   // ── Юнит 8 ────────────────────────────────
   {
     id: 'oge_str',
-    level: 'ОГЭ',
+    level: 'Основы',
     icon: '🔤',
     color: '#a78bfa',
     title: 'Строки',

@@ -198,6 +198,32 @@ document.querySelectorAll(".btn-back").forEach((btn) => {
   btn.addEventListener("click", () => showScreen(btn.dataset.back));
 });
 
+// ==== Инфо-модалка с правилами игры ====
+const GAME_INFO = {
+  timebank: {
+    title: "⏳ Банк времени <span class='by-profik'>by Профик</span>",
+    body: `
+      <p>Командное мини-шоу на 3 раунда — идеально записывать на видео.</p>
+      <p><b>Раунд 1 — Alias:</b> объясняй слова словами (без запретных). <b>Раунд 2 — Крокодил:</b> показывай жестами. По 2 попытки × 60 секунд; перед каждой выбираешь сложность.</p>
+      <p>Каждое угаданное слово копит секунды в «банк времени»: просто — 2 сек, средне — 4, сложно — 6. Хочешь больше секунд — рискни на сложных словах.</p>
+      <p>После каждой попытки — страница проверки: сними галочку, если слово засчитано по ошибке или было названо запретное.</p>
+      <p><b>Финал — Кто я:</b> угадай <b>одно</b> слово за накопленное время (телефон ко лбу, друг подсказывает). Осталось секунд × множитель сложности = очки. Результат идёт в таблицу рекордов.</p>`,
+  },
+};
+function openGameInfo(key) {
+  const info = GAME_INFO[key];
+  if (!info) return;
+  document.getElementById("gim-title").innerHTML = info.title;
+  document.getElementById("gim-body").innerHTML = info.body;
+  document.getElementById("game-info-modal").classList.remove("hidden");
+}
+function closeGameInfo() { document.getElementById("game-info-modal").classList.add("hidden"); }
+document.querySelectorAll(".game-info-btn").forEach((btn) => {
+  btn.addEventListener("click", (e) => { e.stopPropagation(); hapticLight(); openGameInfo(btn.dataset.info); });
+});
+document.querySelector("#game-info-modal .gim-close").addEventListener("click", closeGameInfo);
+document.querySelector("#game-info-modal .gim-backdrop").addEventListener("click", closeGameInfo);
+
 // ==============================
 // ========= КРОКОДИЛ ===========
 // ==============================
@@ -929,7 +955,7 @@ setupPills("tb-final-difficulty", (v) => { tb.finalDifficulty = v; tb.finalMult 
 function tbStart() {
   hapticMedium();
   const name = document.getElementById("tb-guest-name").value.trim();
-  tb.guest = name || "Гость";
+  tb.guest = name || "Команда";
   tb.bank = 0;
   tb.step = 0;
   tb.score = 0;

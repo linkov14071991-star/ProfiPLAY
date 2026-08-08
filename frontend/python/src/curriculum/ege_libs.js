@@ -5,7 +5,7 @@ export const EGE_LIB_UNITS = [
   // ── math расширенный (задачи 7, 11, 14, 16) ──
   {
     id: 'ege_math_full',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '📐',
     color: '#8b5cf6',
     title: 'math для ЕГЭ',
@@ -61,7 +61,7 @@ export const EGE_LIB_UNITS = [
   // ── itertools (задачи 8, 15) ──
   {
     id: 'ege_itertools',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🔀',
     color: '#8b5cf6',
     title: 'itertools (задачи 8, 15)',
@@ -98,7 +98,7 @@ export const EGE_LIB_UNITS = [
   // ── functools / рекурсия (задача 16) ──
   {
     id: 'ege_recursion',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🔁',
     color: '#8b5cf6',
     title: 'Рекурсия и кэш (задача 16)',
@@ -131,7 +131,7 @@ export const EGE_LIB_UNITS = [
   // ── re регулярки (задача 24) ──
   {
     id: 'ege_re',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🔎',
     color: '#ec4899',
     title: 'Регулярки re (задача 24)',
@@ -168,7 +168,7 @@ export const EGE_LIB_UNITS = [
   // ── fnmatch маски (задача 25) ──
   {
     id: 'ege_fnmatch',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🎭',
     color: '#ec4899',
     title: 'Маски fnmatch (задача 25)',

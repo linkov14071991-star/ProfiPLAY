@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Профик Арена</title>
+<title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=4">
+<link rel="stylesheet" href="/style.css?v=5">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
       <img src="/profik.svg" alt="Профик" class="profik profik-lg">
     </div>
     <h1 style="text-align:center;">📢 Подпишитесь на канал</h1>
-    <p>Профик пускает на <b>Профик Арена</b> только подписчиков канала <b>@profimatika_inf</b>. Присоединяйся!</p>
+    <p>Профик пускает на <b>Профик Arena</b> только подписчиков канала <b>@profimatika_inf</b>. Присоединяйся!</p>
     <a href="https://t.me/profimatika_inf" target="_blank" class="btn btn-primary">Подписаться</a>
     <button id="btn-recheck" class="btn btn-secondary">Я подписался, проверить</button>
   </div>
@@ -185,7 +185,7 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <h1 style="text-align:center; margin-bottom:6px;">🎉 Тусовка</h1>
-  <p class="subtitle" style="text-align:center;">Игры для компании 2+ человек</p>
+  <p class="subtitle" style="text-align:center;">Игры для компании</p>
 
   <div class="games-grid">
     <div class="game-card" data-game="crocodile">
@@ -205,9 +205,10 @@
     <div class="game-card" data-game="timebank">
       <div class="icon">⏳</div>
       <div class="info">
-        <div class="title">Банк времени</div>
-        <div class="desc">🎬 3 раунда · шоу для видео с друзьями</div>
+        <div class="title">Банк времени <span class="by-profik">by Профик</span></div>
+        <div class="desc">🎬 3 раунда · шоу для видео</div>
       </div>
+      <button class="game-info-btn" data-info="timebank" aria-label="Правила игры">ℹ️</button>
     </div>
     <div class="game-card" data-game="spy">
       <div class="icon">🕵</div>
@@ -1046,11 +1047,19 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1>⏳ Банк времени</h1>
-    <p class="subtitle">3 раунда на двоих-троих. Копи время в Alias и Крокодиле — трать в финале «Кто я».</p>
+    <h1>⏳ Банк времени <span class="by-profik">by Профик</span></h1>
 
-    <label class="field">Имя гостя (для таблицы рекордов)</label>
-    <input type="text" id="tb-guest-name" class="text-input" placeholder="Например: Аня" maxlength="20">
+    <div class="tb-rules">
+      <div class="tb-rules-head">Как играть</div>
+      <ol class="tb-rules-list">
+        <li><b>Раунд 1 — Alias</b> и <b>Раунд 2 — Крокодил</b>: по 2 попытки × 60 сек. Каждое угаданное слово копит секунды в банк (сложнее уровень — больше секунд).</li>
+        <li>После каждой попытки — проверка: снимите галочку с ошибочного слова.</li>
+        <li><b>Финал — Кто я</b>: угадайте одно слово за накопленное время. Осталось секунд × множитель = очки.</li>
+      </ol>
+    </div>
+
+    <label class="field">Имена игроков или название команды</label>
+    <input type="text" id="tb-guest-name" class="text-input" placeholder="Например: Аня и Макс, или Питон-тим" maxlength="24">
 
     <button id="btn-tb-start" class="btn btn-primary btn-big">Начать игру</button>
     <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
@@ -1418,6 +1427,16 @@
   </div>
 </div>
 
-<script src="/script.js?v=4"></script>
+<!-- ==== Модалка с правилами игры ==== -->
+<div id="game-info-modal" class="game-info-modal hidden">
+  <div class="gim-backdrop"></div>
+  <div class="gim-card">
+    <button class="gim-close" aria-label="Закрыть">✕</button>
+    <div class="gim-title" id="gim-title"></div>
+    <div class="gim-body" id="gim-body"></div>
+  </div>
+</div>
+
+<script src="/script.js?v=5"></script>
 </body>
 </html>

@@ -8,13 +8,13 @@ import { EGE_TASK_UNITS } from './ege_tasks.js';
 import { DEEP_TASK_LESSONS } from './ege_tasks_deep.js';
 import { EXTRA_LESSONS } from './practice.js';
 import { EXTRA_LESSONS_2 } from './practice2.js';
-import { BUG_LESSONS } from './bugs.js';
+import { BUG_LESSONS, BUG_LESSONS_2 } from './bugs.js';
 
 // Собираем юниты и дополняем практическими уроками и уроками «найди ошибку»
 export const CURRICULUM = [...OGE_UNITS, ...EGE_UNITS, ...EGE_LIB_UNITS, ...EGE_LIB_UNITS_2, ...EGE_TASK_UNITS].map(unit => {
   const extra = EXTRA_LESSONS[unit.id] || [];
   const extra2 = EXTRA_LESSONS_2[unit.id] || [];
-  const bugs = BUG_LESSONS[unit.id] || [];
+  const bugs = [...(BUG_LESSONS[unit.id] || []), ...(BUG_LESSONS_2[unit.id] || [])];
   const deep = DEEP_TASK_LESSONS[unit.id] || [];
   return { ...unit, lessons: [...unit.lessons, ...extra, ...extra2, ...bugs, ...deep] };
 });
@@ -43,7 +43,7 @@ export function findLesson(lessonId) {
 }
 
 // Индекс юнита, с которого начинается ЕГЭ (для рекомендации уровня)
-export const FIRST_EGE_UNIT_INDEX = CURRICULUM.findIndex(u => u.level === 'ЕГЭ');
+export const FIRST_EGE_UNIT_INDEX = CURRICULUM.findIndex(u => u.level === 'Продвинутый');
 
 export function unitStats() {
   return CURRICULUM.map(u => ({

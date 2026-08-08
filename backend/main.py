@@ -113,7 +113,7 @@ with open(CATEGORIES_FILE, "r", encoding="utf-8") as f:
     CATEGORIES = json.load(f)
 
 # ---------- Приложение ----------
-app = FastAPI(title="Профик Арена API")
+app = FastAPI(title="Профик Arena API")
 init_db()
 
 app.add_middleware(
@@ -1434,7 +1434,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "review-tick-v4"
+BUILD_TAG = "profik-arena-v5"
 
 
 @app.get("/api/version")

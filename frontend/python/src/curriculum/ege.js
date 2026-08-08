@@ -4,7 +4,7 @@ export const EGE_UNITS = [
   // ── Юнит 9 ────────────────────────────────
   {
     id: 'ege_lists',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '📚',
     color: '#f59e0b',
     title: 'Списки',
@@ -68,7 +68,7 @@ export const EGE_UNITS = [
   // ── Юнит 10 ───────────────────────────────
   {
     id: 'ege_nested',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🔳',
     color: '#f59e0b',
     title: 'Вложенные циклы',
@@ -99,7 +99,7 @@ export const EGE_UNITS = [
   // ── Юнит 11 ───────────────────────────────
   {
     id: 'ege_func',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '⚙️',
     color: '#f59e0b',
     title: 'Функции',
@@ -137,7 +137,7 @@ export const EGE_UNITS = [
   // ── Юнит 12 ───────────────────────────────
   {
     id: 'ege_str2',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '✂️',
     color: '#ec4899',
     title: 'Строки продвинуто',
@@ -176,7 +176,7 @@ export const EGE_UNITS = [
   // ── Юнит 13 ───────────────────────────────
   {
     id: 'ege_dict',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🗂️',
     color: '#ec4899',
     title: 'Словари и множества',
@@ -211,7 +211,7 @@ export const EGE_UNITS = [
   // ── Юнит 14 ───────────────────────────────
   {
     id: 'ege_lib',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '📦',
     color: '#8b5cf6',
     title: 'Библиотеки',
@@ -249,7 +249,7 @@ export const EGE_UNITS = [
   // ── Юнит 15 ───────────────────────────────
   {
     id: 'ege_algo',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🎯',
     color: '#8b5cf6',
     title: 'Задачи ЕГЭ',

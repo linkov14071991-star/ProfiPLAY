@@ -5,7 +5,7 @@ export const EGE_LIB_UNITS_2 = [
   // ── f-строки и файлы (задачи 9, 13, 17, 24, 27) ──
   {
     id: 'ege_files',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '📄',
     color: '#f59e0b',
     title: 'Файлы и f-строки',
@@ -59,7 +59,7 @@ export const EGE_LIB_UNITS_2 = [
   // ── ipaddress (задача 13) ──
   {
     id: 'ege_ipaddress',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🌐',
     color: '#f59e0b',
     title: 'Сети ipaddress (задача 13)',
@@ -93,7 +93,7 @@ export const EGE_LIB_UNITS_2 = [
   // ── геометрия / расстояния (задача 27) ──
   {
     id: 'ege_geometry',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '📏',
     color: '#ec4899',
     title: 'Геометрия (задача 27)',
@@ -127,7 +127,7 @@ export const EGE_LIB_UNITS_2 = [
   // ── turtle (задача 6) — только концептуально ──
   {
     id: 'ege_turtle',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🐢',
     color: '#4ade80',
     title: 'Черепаха turtle (задача 6)',

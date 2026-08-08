@@ -6,7 +6,7 @@ export const EGE_TASK_UNITS = [
   // ── Задача №8: комбинаторика (product) ──
   {
     id: 'ege_task8',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🎲',
     color: '#7c3aed',
     title: 'Задача №8: комбинаторика',
@@ -42,7 +42,7 @@ export const EGE_TASK_UNITS = [
   // ── Задача №24: обработка строки (re) ──
   {
     id: 'ege_task24',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '📜',
     color: '#7c3aed',
     title: 'Задача №24: обработка строки',
@@ -83,7 +83,7 @@ export const EGE_TASK_UNITS = [
   // ── Задача №25: маски и делители (fnmatch) ──
   {
     id: 'ege_task25',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '🔢',
     color: '#7c3aed',
     title: 'Задача №25: маски и делители',
@@ -121,7 +121,7 @@ export const EGE_TASK_UNITS = [
   // ── Задача №27: обработка данных (dist) ──
   {
     id: 'ege_task27',
-    level: 'ЕГЭ',
+    level: 'Продвинутый',
     icon: '⭐',
     color: '#7c3aed',
     title: 'Задача №27: обработка данных',
