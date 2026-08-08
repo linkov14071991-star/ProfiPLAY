@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=21">
+<link rel="stylesheet" href="/style.css?v=22">
 </head>
 <body>
 
@@ -221,14 +221,6 @@
       <div class="info">
         <div class="title">Шпион</div>
         <div class="desc">🕵 Найди предателя</div>
-      </div>
-    </div>
-    <div class="game-card" data-game="whoami">
-      <button class="game-info-btn" data-info="whoami" aria-label="Правила">?</button>
-      <div class="icon">❓</div>
-      <div class="info">
-        <div class="title">Кто я?</div>
-        <div class="desc">🤔 Угадай себя</div>
       </div>
     </div>
     <div class="game-card" data-game="gromko">
@@ -1134,87 +1126,6 @@
 </section>
 
 <!-- ==== Экраны: Кто я? ==== -->
-<section id="screen-whoami-setup" class="screen">
-  <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
-    <span class="brand-badge">профиматика</span>
-  </div>
-  <div class="card">
-    <h1>❓ Кто я?</h1>
-    <p class="subtitle">Экран ко лбу · задавай «да/нет»</p>
-
-    <label class="field">Игроков</label>
-    <div class="pills" id="whoami-players">
-      <button class="pill" data-value="2">2</button>
-      <button class="pill active" data-value="3">3</button>
-      <button class="pill" data-value="4">4</button>
-      <button class="pill" data-value="5">5+</button>
-    </div>
-
-    <label class="field">Сложность</label>
-    <div class="pills" id="whoami-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
-    </div>
-
-    <label class="field">Длительность хода</label>
-    <div class="pills" id="whoami-duration">
-      <button class="pill" data-value="60">60 сек</button>
-      <button class="pill active" data-value="90">90 сек</button>
-      <button class="pill" data-value="120">120 сек</button>
-    </div>
-
-    <button id="btn-whoami-start" class="btn btn-primary btn-big">Начать</button>
-    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
-  </div>
-</section>
-
-<section id="screen-whoami-turn" class="screen">
-  <div class="card card-dark" style="margin:auto;">
-    <h1 style="text-align:center;">Ход игрока</h1>
-    <div style="text-align:center; font-size:64px; font-weight:800; color:var(--brand-lime); margin:16px 0;" id="whoami-turn-num">1</div>
-    <p style="text-align:center;">Возьми телефон, поверни экраном к друзьям и <b>не смотри сам</b>. Друзья тапают кнопки за тебя.</p>
-    <button id="btn-whoami-ready" class="btn btn-lime btn-big">Готов, начать!</button>
-    <button class="btn btn-link btn-back" data-back="whoamiSetup">← Назад к настройкам</button>
-  </div>
-</section>
-
-<section id="screen-whoami-play" class="screen">
-  <div class="game-header">
-    <div class="timer" id="whoami-timer">90</div>
-    <div class="score-mini">
-      <span class="ok">✅ <span id="whoami-score-ok">0</span></span>
-      <span class="skip">⏭ <span id="whoami-score-skip">0</span></span>
-    </div>
-  </div>
-
-  <div class="word-box">
-    <div class="word" id="whoami-word">—</div>
-  </div>
-
-  <div class="game-actions">
-    <button id="btn-whoami-skip" class="btn btn-skip btn-big">Пропустить</button>
-    <button id="btn-whoami-ok" class="btn btn-ok btn-big">Угадал!</button>
-  </div>
-
-  <button id="btn-whoami-stop" class="btn btn-link">Завершить ход</button>
-</section>
-
-<section id="screen-whoami-result" class="screen">
-  <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
-    <span class="brand-badge">профиматика</span>
-  </div>
-  <div class="card">
-    <h1>🏁 Итоги</h1>
-    <div id="whoami-score-list"></div>
-    <p style="text-align:center; margin-top:16px;" id="whoami-winner-note"></p>
-    <button id="btn-whoami-again" class="btn btn-primary btn-big">Ещё раз</button>
-    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
-  </div>
-</section>
-
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
@@ -1225,11 +1136,12 @@
     <h1>⏳ Тайм-баттл <span class="by-profik">by Профик</span></h1>
 
     <div class="tb-rules">
-      <div class="tb-rules-head">Как играть</div>
+      <div class="tb-rules-head">Как играть — 4 раунда, копим банк времени</div>
       <ol class="tb-rules-list">
-        <li><b>Раунд 1 — Alias</b> и <b>Раунд 2 — Крокодил</b>: по 2 попытки × 60 сек. Каждое угаданное слово копит секунды в банк (сложнее уровень — больше секунд).</li>
-        <li>После каждой попытки — проверка: снимите галочку с ошибочного слова.</li>
-        <li><b>Финал — Кто я</b>: угадайте одно слово за накопленное время. Осталось секунд × множитель = очки.</li>
+        <li><b>Р1 — Угадай число:</b> отгадайте число по подсказкам «больше/меньше». Простой +15с, средний +20с, сложный +30с.</li>
+        <li><b>Р2 — Alias:</b> 60 сек, объясняйте слова словами. Каждое угаданное — +2/+4/+6 сек по сложности.</li>
+        <li><b>Р3 — Крокодил:</b> покажите <b>одно</b> слово жестами. Простое 30с/+30, среднее 45с/+45, сложное 60с/+60.</li>
+        <li><b>Р4 — Финал:</b> супер-блиц. Игрок в наушниках, 3 слова, объясняете за весь накопленный банк. Успели все три — победа!</li>
       </ol>
     </div>
 
@@ -1243,12 +1155,44 @@
   </div>
 </section>
 
-<!-- Экран перед попыткой: раунд, ведущий, выбор сложности -->
+<!-- Р1: Угадай число — выбор сложности -->
+<section id="screen-tb-num-setup" class="screen">
+  <div class="card card-dark" style="margin:auto;">
+    <div class="tb-round-badge">Раунд 1 · Угадай число</div>
+    <h1 style="text-align:center;">🔢 Угадай число</h1>
+    <p style="text-align:center;">Приложение загадает число. Вводите догадки — оно подскажет «больше» или «меньше».</p>
+    <label class="field" style="color:#fff;">Сложность</label>
+    <div class="pills pills-col" id="tb-num-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Просто</span><span class="pill-hint">1–10 · 15 сек · +15</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средне</span><span class="pill-hint">1–100 · 20 сек · +20</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложно</span><span class="pill-hint">1–1000 · 30 сек · +30</span></button>
+    </div>
+    <div class="tb-bank-line">🏦 В банке: <b class="tb-bank">0</b> сек</div>
+    <button id="btn-tb-num-go" class="btn btn-lime btn-big">Старт</button>
+    <button class="btn btn-link btn-back" data-back="tbSetup">← Назад к настройкам</button>
+  </div>
+</section>
+
+<!-- Р1: Угадай число — игра -->
+<section id="screen-tb-num-play" class="screen">
+  <div class="game-header">
+    <div class="timer" id="tb-num-timer">15</div>
+    <div class="score-mini"><span class="skip">🏦 <span class="tb-bank">0</span>с</span></div>
+  </div>
+  <div class="card" style="margin:auto; text-align:center;">
+    <p class="tb-num-hint">Загадано число <b id="tb-num-range">от 1 до 10</b></p>
+    <div class="tb-num-feedback" id="tb-num-feedback">Введите догадку</div>
+    <input type="number" id="tb-num-input" class="tb-num-input" inputmode="numeric" placeholder="?">
+    <button id="btn-tb-num-guess" class="btn btn-primary btn-big">Проверить</button>
+  </div>
+</section>
+
+<!-- Р2: Alias — выбор предмета и сложности -->
 <section id="screen-tb-attempt" class="screen">
   <div class="card card-dark" style="margin:auto;">
-    <div class="tb-round-badge" id="tb-attempt-round">Раунд 1 · Alias</div>
-    <h1 style="text-align:center;" id="tb-attempt-title">Попытка 1</h1>
-    <p style="text-align:center;">Ведущий: <b id="tb-attempt-leader">Игрок 1</b>. Выбери предмет и сложность!</p>
+    <div class="tb-round-badge" id="tb-attempt-round">Раунд 2 · Alias</div>
+    <h1 style="text-align:center;" id="tb-attempt-title">Объясняй словами</h1>
+    <p style="text-align:center;">Выбери предмет и сложность!</p>
 
     <label class="field" style="color:#fff; margin-top:10px;">Предмет</label>
     <div class="pills" id="tb-subjects">
@@ -1264,9 +1208,9 @@
       <button class="pill pill-diff" data-value="hard"><span>Сложно</span><span class="pill-hint">6 сек/слово</span></button>
     </div>
 
-    <div class="tb-bank-line">🏦 В банке: <b id="tb-attempt-bank">0</b> сек</div>
+    <div class="tb-bank-line">🏦 В банке: <b class="tb-bank">0</b> сек</div>
     <button id="btn-tb-attempt-go" class="btn btn-lime btn-big">Старт · 60 секунд</button>
-    <button class="btn btn-link btn-back" data-back="tbSetup">← Назад к настройкам</button>
+    <button class="btn btn-link btn-back" data-back="tbNumSetup">← Назад</button>
   </div>
 </section>
 
@@ -1305,38 +1249,59 @@
   </div>
 </section>
 
-<!-- Экран перед финалом: банк + выбор сложности финального слова -->
-<section id="screen-tb-final-intro" class="screen">
-  <div class="card card-dark" style="margin:auto; text-align:center;">
-    <div class="tb-round-badge">Раунд 3 · Кто я</div>
-    <h1>Финал!</h1>
-    <p>Вы накопили банк времени:</p>
-    <div class="tb-bank-big" id="tb-final-bank">0:00</div>
-    <p>Угадай <b>одно</b> слово за это время. Один держит телефон ко лбу — другой подсказывает.</p>
-    <label class="field" style="color:#fff;">Сложность финального слова</label>
-    <div class="pills" id="tb-final-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Просто</span><span class="pill-hint">×1</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средне</span><span class="pill-hint">×1.5</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложно</span><span class="pill-hint">×2</span></button>
+<!-- Р3: Крокодил — выбор сложности одного слова -->
+<section id="screen-tb-croco-setup" class="screen">
+  <div class="card card-dark" style="margin:auto;">
+    <div class="tb-round-badge">Раунд 3 · Крокодил</div>
+    <h1 style="text-align:center;">🐊 Крокодил</h1>
+    <p style="text-align:center;">Один игрок показывает <b>одно слово</b> жестами — команда угадывает. Успели — секунды в банк.</p>
+    <label class="field" style="color:#fff;">Сложность слова</label>
+    <div class="pills pills-col" id="tb-croco-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Просто</span><span class="pill-hint">30 сек · +30</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средне</span><span class="pill-hint">45 сек · +45</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложно</span><span class="pill-hint">60 сек · +60</span></button>
     </div>
-    <button id="btn-tb-final-go" class="btn btn-lime btn-big">Поехали!</button>
+    <div class="tb-bank-line">🏦 В банке: <b class="tb-bank">0</b> сек</div>
+    <button id="btn-tb-croco-go" class="btn btn-lime btn-big">Показать слово</button>
   </div>
 </section>
 
-<!-- Финальная игра: одно слово, таймер вниз от банка -->
-<section id="screen-tb-final" class="screen">
+<!-- Р3: Крокодил — показ одного слова -->
+<section id="screen-tb-croco-play" class="screen">
   <div class="game-header">
-    <div class="timer" id="tb-final-timer">0:00</div>
-    <div class="score-mini"><span class="ok" id="tb-final-mult">×1</span></div>
+    <div class="timer" id="tb-croco-timer">0:30</div>
+    <div class="score-mini"><span class="skip">🏦 <span class="tb-bank">0</span>с</span></div>
   </div>
   <div class="word-box">
-    <div class="tb-final-hint">Держи ко лбу — не подглядывай! Друг подсказывает.</div>
-    <div class="word-emoji" id="tb-final-emoji"></div>
-    <div class="word" id="tb-final-word">—</div>
+    <div class="tb-final-hint">Показывай жестами — без слов и звуков!</div>
+    <div class="word-emoji" id="tb-croco-emoji"></div>
+    <div class="word" id="tb-croco-word">—</div>
   </div>
   <div class="game-actions" style="grid-template-columns:1fr;">
-    <button id="btn-tb-final-ok" class="btn btn-ok btn-big">Угадал!</button>
+    <button id="btn-tb-croco-ok" class="btn btn-ok btn-big">Угадали!</button>
   </div>
+</section>
+
+<!-- Р4: Финал — интро супер-блица -->
+<section id="screen-tb-blitz-intro" class="screen">
+  <div class="card card-dark" style="margin:auto; text-align:center;">
+    <div class="tb-round-badge">Раунд 4 · Финал</div>
+    <h1>⚡ Супер-блиц</h1>
+    <p>Вы накопили банк времени:</p>
+    <div class="tb-bank-big"><span id="tb-blitz-bank">0</span> сек</div>
+    <p>Один игрок в наушниках не слышит. За это время команда объясняет ему <b>3 слова</b> (2 простых + 1 среднее) жестами, в любом порядке. Успели все три — победа!</p>
+    <button id="btn-tb-blitz-go" class="btn btn-lime btn-big">Поехали! ⚡</button>
+  </div>
+</section>
+
+<!-- Р4: Финал — супер-блиц -->
+<section id="screen-tb-blitz" class="screen">
+  <div class="game-header">
+    <div class="timer" id="tb-blitz-timer">0:00</div>
+    <div class="score-mini"><span class="ok">✅ <span id="tb-blitz-done">0</span>/3</span></div>
+  </div>
+  <div class="gromko-badge">🎧 Объясняйте слова в любом порядке — тапните угаданное</div>
+  <div class="blitz-words" id="tb-blitz-words"></div>
 </section>
 
 <!-- Итоги -->
@@ -1347,9 +1312,9 @@
   </div>
   <div class="card">
     <h1 id="tb-result-title">🏁 Итог</h1>
-    <div id="tb-result-newrecord" class="new-record-badge" style="display:none;">🎉 Новый рекорд!</div>
+    <div id="tb-result-newrecord" class="new-record-badge" style="display:none;">🎉 Новый рекорд банка!</div>
     <div class="tb-score-big" id="tb-result-score">0</div>
-    <p style="text-align:center; color:var(--text-muted); margin-top:-6px;" id="tb-result-sub">очков</p>
+    <p style="text-align:center; color:var(--text-muted); margin-top:-6px;" id="tb-result-sub">секунд в банке</p>
     <div id="tb-result-records" class="tb-records"></div>
     <button id="btn-tb-again" class="btn btn-primary btn-big">Играть ещё</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
@@ -1567,7 +1532,7 @@
     <details class="rules-block">
       <summary>🎭 Тусовка (командные игры)</summary>
       <p class="r-lead"><b>Суть:</b> игры для компании на одном телефоне — его передают друг другу.</p>
-      <p>Сюда входят: Крокодил, Alias, Громкий вопрос, Тайм-баттл, Шпион, Кто я?.</p>
+      <p>Сюда входят: Крокодил, Alias, Громкий вопрос, Тайм-баттл, Шпион.</p>
       <p><b>Рейтинг за них <span style="color:var(--danger);">не начисляется</span></b> — эти игры на честности, накрутить слишком легко. Но прогресс <b>квестов</b> и <b>ачивок</b> засчитывается, так что играть выгодно.</p>
     </details>
 
@@ -1622,17 +1587,26 @@
 
     <details class="rules-block" id="rules-timebank">
       <summary>⏳ Тайм-баттл <span class="by-profik">by Профик</span></summary>
-      <p class="r-lead"><b>Суть:</b> командная игра на 3 раунда — копите «банк времени», а в финале тратите его на одно слово.</p>
+      <p class="r-lead"><b>Суть:</b> командная игра на 4 раунда — три раунда копите «банк времени», а в финале тратите его на супер-блиц.</p>
+      <div class="r-head">Раунды 1–3 (копим банк)</div>
+      <ol class="r-steps">
+        <li><b>Р1 — Угадай число:</b> приложение загадывает число, вы вводите догадки, оно подсказывает «больше/меньше». Простой (1–10, 15с) <b>+15с</b>, средний (1–100, 20с) <b>+20с</b>, сложный (1–1000, 30с) <b>+30с</b>.</li>
+        <li><b>Р2 — Alias:</b> 60 секунд, объясняйте слова словами (без запретных). Каждое угаданное — <b>+2/+4/+6с</b> по сложности. Потом проверка: снимите галочку с ошибочного.</li>
+        <li><b>Р3 — Крокодил:</b> покажите <b>одно</b> слово жестами. Простое за 30с — <b>+30с</b>, среднее за 45с — <b>+45с</b>, сложное за 60с — <b>+60с</b>. Одна попытка.</li>
+      </ol>
+      <div class="r-head">Раунд 4 — финал (супер-блиц)</div>
+      <p>Выберите чтеца по губам — он в наушниках. За <b>весь накопленный банк</b> команда объясняет ему <b>3 слова</b> (2 простых + 1 среднее) жестами, в любом порядке. Успели все три до нуля — <b>победа</b>. Рекорд — по количеству секунд в банке.</p>
+    </details>
+
+    <details class="rules-block" id="rules-numguess">
+      <summary>🔢 Угадай число (в Тайм-баттле)</summary>
+      <p class="r-lead"><b>Суть:</b> угадать загаданное число по подсказкам «больше/меньше».</p>
       <div class="r-head">Как играть</div>
       <ol class="r-steps">
-        <li><b>Раунд 1 — Alias:</b> объясняй слова словами (без запретных).</li>
-        <li><b>Раунд 2 — Крокодил:</b> показывай слова жестами.</li>
-        <li>В каждом раунде — <b>2 попытки по 60 секунд</b>, перед каждой выбираешь сложность.</li>
-        <li>Каждое угаданное слово копит секунды: просто <b>+2с</b>, средне <b>+4с</b>, сложно <b>+6с</b>. Хочешь больше — рискуй на сложных.</li>
-        <li>После попытки — экран проверки: сними галочку, если слово засчиталось по ошибке или было названо запретное.</li>
+        <li>Выберите сложность: простой (1–10, 15 сек), средний (1–100, 20 сек), сложный (1–1000, 30 сек).</li>
+        <li>Вводите число и жмите «Проверить». Приложение подскажет «📈 Больше!» или «📉 Меньше!» и сузит диапазон.</li>
+        <li>Угадали до конца времени — секунды идут в банк: +15 / +20 / +30.</li>
       </ol>
-      <div class="r-head">Финал — «Кто я»</div>
-      <p>Телефон ко лбу, угадай <b>одно</b> слово за всё накопленное время (друг подсказывает). Осталось секунд × множитель сложности = очки. Результат идёт в таблицу рекордов.</p>
     </details>
 
     <details class="rules-block" id="rules-spy">
@@ -1646,20 +1620,6 @@
       </ol>
       <div class="r-head">Кто победил</div>
       <p>Поймали шпиона голосованием — он получает шанс угадать слово: угадал — победа шпиона, нет — победа мирных. Не поймали — победа шпиона.</p>
-    </details>
-
-    <details class="rules-block" id="rules-whoami">
-      <summary>❓ Кто я?</summary>
-      <p class="r-lead"><b>Суть:</b> угадай слово, которое видят все, кроме тебя.</p>
-      <div class="r-head">Как играть</div>
-      <ol class="r-steps">
-        <li>Выбери сложность и длительность хода.</li>
-        <li>Держи телефон экраном ко лбу (к друзьям) — своё слово ты не видишь.</li>
-        <li>Задавай вопросы «да / нет» — друзья тапают ответ за тебя.</li>
-        <li>Угадал — переходишь к следующему слову.</li>
-      </ol>
-      <div class="r-head">Результат</div>
-      <p>Чем больше слов угадаешь за ход — тем лучше.</p>
     </details>
 
     <details class="rules-block">
@@ -1684,7 +1644,7 @@
 
     <details class="rules-block">
       <summary>🏅 Ачивки</summary>
-      <p>37 достижений в 9 категориях (первые шаги, спринт, марафон, дуэли, уровни, стрик, тусовка, разное, лига). Открываются автоматически при выполнении условий, дают бонус XP.</p>
+      <p>36 достижений в 9 категориях (первые шаги, спринт, марафон, дуэли, уровни, стрик, тусовка, разное, лига). Открываются автоматически при выполнении условий, дают бонус XP.</p>
       <p>Экран ачивок наверху показывает «Следующая цель» — самая близкая к получению.</p>
     </details>
 
@@ -1748,6 +1708,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=21"></script>
+<script src="/script.js?v=22"></script>
 </body>
 </html>

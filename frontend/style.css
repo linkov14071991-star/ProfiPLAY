@@ -2240,3 +2240,20 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .bw-level.lvl-easy   { background: #7ED957; }
 .bw-level.lvl-medium { background: #FFC93C; }
 .bw-level.lvl-hard   { background: #FF6B6B; color: #fff; }
+
+/* Тайм-баттл: Угадай число */
+.pills-col { flex-direction: column; }
+.pills-col .pill { width: 100%; }
+.tb-num-hint { font-size: 15px; color: var(--text-on-light); margin: 6px 0 12px; }
+.tb-num-hint b { color: var(--brand-purple); }
+.tb-num-feedback { font-size: 22px; font-weight: 800; min-height: 30px; margin: 8px 0 12px; color: var(--text-on-light); }
+.tb-num-feedback.up { color: #E8890C; }
+.tb-num-feedback.down { color: var(--brand-purple); }
+.tb-num-feedback.win { color: var(--brand-lime-dark); }
+.tb-num-input {
+  width: 100%; text-align: center; font-size: 34px; font-weight: 800;
+  padding: 12px; border-radius: var(--radius-sm); border: 2px solid var(--card-alt);
+  background: var(--card); color: var(--text-on-light); margin-bottom: 12px;
+  -moz-appearance: textfield;
+}
+.tb-num-input::-webkit-outer-spin-button, .tb-num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

@@ -44,11 +44,15 @@ const SCREENS = {
   marathon: "screen-marathon",
   marathonResult: "screen-marathon-result",
   tbSetup: "screen-tb-setup",
+  tbNumSetup: "screen-tb-num-setup",
+  tbNumPlay: "screen-tb-num-play",
   tbAttempt: "screen-tb-attempt",
   tbPlay: "screen-tb-play",
   tbReview: "screen-tb-review",
-  tbFinalIntro: "screen-tb-final-intro",
-  tbFinal: "screen-tb-final",
+  tbCrocoSetup: "screen-tb-croco-setup",
+  tbCrocoPlay: "screen-tb-croco-play",
+  tbBlitzIntro: "screen-tb-blitz-intro",
+  tbBlitz: "screen-tb-blitz",
   tbResult: "screen-tb-result",
   spySetup: "screen-spy-setup",
   spyPass: "screen-spy-pass",
@@ -57,10 +61,6 @@ const SCREENS = {
   spyVote: "screen-spy-vote",
   spyGuess: "screen-spy-guess",
   spyResult: "screen-spy-result",
-  whoamiSetup: "screen-whoami-setup",
-  whoamiTurn: "screen-whoami-turn",
-  whoamiPlay: "screen-whoami-play",
-  whoamiResult: "screen-whoami-result",
 };
 
 function showScreen(name) {
@@ -195,7 +195,6 @@ document.body.addEventListener("click", (e) => {
   if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); }
   if (game === "spy") showScreen("spySetup");
-  if (game === "whoami") showScreen("whoamiSetup");
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); }
   if (game === "duel") showScreen("duelSetup");
   if (game === "python") window.location.href = "python/index.html";
@@ -250,12 +249,6 @@ const GAME_INFO = {
       <p>Потом обсуждение: по очереди намекаете на слово, <b>не называя его прямо</b>. Шпион пытается понять, о чём речь.</p>
       <p>После обсуждения голосуете, кто шпион. Поймали шпиона — он пытается угадать слово. Угадал — победа шпиона, нет — победа мирных.</p>`,
   },
-  whoami: {
-    title: "❓ Кто я?",
-    body: `<p>Телефон ко лбу экраном к друзьям — сам ты слово не видишь. Задавай вопросы «да/нет», друзья тапают кнопки за тебя.</p>
-      <p>Твоя задача — угадать, кто ты (какое слово), за отведённое время. Выбираешь сложность и длительность хода.</p>
-      <p>Чем больше угадаешь за ход — тем лучше результат.</p>`,
-  },
   gromko: {
     title: "🔊 Громкий вопрос",
     body: `<p>Командная игра: один игрок в наушниках с громкой музыкой <b>не слышит</b>, остальные объясняют ему жестами и по губам.</p>
@@ -265,11 +258,11 @@ const GAME_INFO = {
   timebank: {
     title: "⏳ Тайм-баттл <span class='by-profik'>by Профик</span>",
     body: `
-      <p>Командная игра на 3 раунда для компании.</p>
-      <p><b>Раунд 1 — Alias:</b> объясняй слова словами (без запретных). <b>Раунд 2 — Крокодил:</b> показывай жестами. По 2 попытки × 60 секунд; перед каждой выбираешь сложность.</p>
-      <p>Каждое угаданное слово копит секунды в «банк времени»: просто — 2 сек, средне — 4, сложно — 6. Хочешь больше секунд — рискни на сложных словах.</p>
-      <p>После каждой попытки — страница проверки: сними галочку, если слово засчитано по ошибке или было названо запретное.</p>
-      <p><b>Финал — Кто я:</b> угадай <b>одно</b> слово за накопленное время (телефон ко лбу, друг подсказывает). Осталось секунд × множитель сложности = очки. Результат идёт в таблицу рекордов.</p>`,
+      <p>Командная игра на 4 раунда: три раунда копите «банк времени», в финале тратите его на супер-блиц.</p>
+      <p><b>Р1 — Угадай число:</b> отгадайте число по подсказкам «больше/меньше». Простой +15с, средний +20с, сложный +30с.</p>
+      <p><b>Р2 — Alias:</b> 60 сек, объясняйте слова словами. Каждое угаданное — +2/+4/+6с по сложности, потом проверка.</p>
+      <p><b>Р3 — Крокодил:</b> покажите <b>одно</b> слово жестами. Простое 30с/+30, среднее 45с/+45, сложное 60с/+60.</p>
+      <p><b>Р4 — Финал:</b> супер-блиц. Игрок в наушниках, 3 слова (2 простых + 1 среднее), объясняете за весь накопленный банк, в любом порядке. Успели все три — победа! Рекорд — по секундам в банке.</p>`,
   },
 };
 let _gimKey = null;
@@ -1414,63 +1407,107 @@ document.getElementById("btn-marathon-stop").addEventListener("click", () => mar
 // 3 раунда: Alias (2 попытки) → Крокодил (2 попытки) копят банк секунд,
 // финал «Кто я» (1 слово) тратит банк. Очки = остаток × множитель.
 const TB_SUBJECTS = "informatika,matematika,fizika";
-const TB_SEC_PER_WORD = { easy: 2, medium: 4, hard: 6 };
-const TB_FINAL_MULT = { easy: 1, medium: 1.5, hard: 2 };
-const TB_ATTEMPT_TIME = 60;
+const TB_SEC_PER_WORD = { easy: 2, medium: 4, hard: 6 };   // Alias: секунд в банк за слово
+const TB_ALIAS_TIME = 60;
+const TB_CROCO = { easy: 30, medium: 45, hard: 60 };        // Крокодил: сек на слово = сек в банк
+const TB_NUM = {
+  easy:   { max: 10,   time: 15, bank: 15 },
+  medium: { max: 100,  time: 20, bank: 20 },
+  hard:   { max: 1000, time: 30, bank: 30 },
+};
 
 const tb = {
   guest: "",
-  step: 0,          // 0..3: 0=R1p1,1=R1p2,2=R2p1,3=R2p2
-  bank: 0,          // накопленные секунды
-  difficulty: "easy",
-  subject: "informatika",       // выбранный предмет текущей попытки
-  usedSubjectInRound: null,     // предмет 1-й попытки раунда (нельзя повторить во 2-й)
-  items: [], idx: 0, cur: null,
-  timer: null, timeLeft: 0, count: 0,
-  attemptWords: [],   // угаданные слова текущей попытки (для страницы проверки)
-  finalDifficulty: "easy", finalMult: 1,
-  finalTimer: null, finalLeft: 0, finalWord: null,
+  bank: 0,
+  timer: null, timeLeft: 0,
+  numLevel: "easy", numTarget: 0, numLo: 1, numHi: 10,
+  aliasDifficulty: "easy", subject: "informatika",
+  items: [], idx: 0, cur: null, count: 0, attemptWords: [],
+  crocoDifficulty: "easy", crocoWord: null,
+  blitzWords: [], blitzGuessed: 0,
   score: 0,
 };
 
-// шаги: раунд (1=Alias,2=Крокодил), попытка (1/2), ведущий (по попытке)
-const TB_STEPS = [
-  { round: 1, attempt: 1 }, { round: 1, attempt: 2 },
-  { round: 2, attempt: 1 }, { round: 2, attempt: 2 },
-];
-function tbRoundName(r) { return r === 1 ? "Alias" : "Крокодил"; }
+function tbRenderBank() { document.querySelectorAll(".tb-bank").forEach((el) => (el.textContent = tb.bank)); }
+function tbActivateFirst(id) { document.querySelectorAll(`#${id} .pill`).forEach((p, i) => p.classList.toggle("active", i === 0)); }
+
+setupPills("tb-num-difficulty", (v) => (tb.numLevel = v));
+setupPills("tb-difficulty", (v) => (tb.aliasDifficulty = v));
+setupPills("tb-croco-difficulty", (v) => (tb.crocoDifficulty = v));
 
 document.getElementById("btn-tb-start").addEventListener("click", tbStart);
 document.getElementById("btn-tb-again").addEventListener("click", () => { tbRenderRecords(); showScreen("tbSetup"); });
-setupPills("tb-difficulty", (v) => (tb.difficulty = v));
-setupPills("tb-final-difficulty", (v) => { tb.finalDifficulty = v; tb.finalMult = TB_FINAL_MULT[v]; });
 
 function tbStart() {
   hapticMedium();
   const name = document.getElementById("tb-guest-name").value.trim();
   tb.guest = name || "Команда";
   tb.bank = 0;
-  tb.step = 0;
-  tb.score = 0;
-  tbShowAttempt();
+  tbRenderBank();
+  tbNumSetup();
 }
 
-// Экран перед попыткой
-function tbShowAttempt() {
-  const s = TB_STEPS[tb.step];
-  tb.difficulty = "easy";
-  document.querySelectorAll("#tb-difficulty .pill").forEach((p, i) => p.classList.toggle("active", i === 0));
-  // выбор предмета: во 2-й попытке раунда нельзя повторить предмет 1-й попытки
-  const forbidden = s.attempt === 2 ? tb.usedSubjectInRound : null;
-  tbSetupSubjectPills(forbidden);
-  document.getElementById("tb-attempt-round").textContent = `Раунд ${s.round} · ${tbRoundName(s.round)}`;
-  document.getElementById("tb-attempt-title").textContent = `Попытка ${s.attempt} из 2`;
-  document.getElementById("tb-attempt-leader").textContent = `Игрок ${s.attempt}`;
-  document.getElementById("tb-attempt-bank").textContent = tb.bank;
-  showScreen("tbAttempt");
+// ---------- Р1: Угадай число ----------
+function tbNumSetup() {
+  tb.numLevel = "easy";
+  tbActivateFirst("tb-num-difficulty");
+  tbRenderBank();
+  showScreen("tbNumSetup");
+}
+function tbNumStart() {
+  hapticMedium();
+  const cfg = TB_NUM[tb.numLevel];
+  tb.numTarget = 1 + Math.floor(Math.random() * cfg.max);
+  tb.numLo = 1; tb.numHi = cfg.max;
+  tb.timeLeft = cfg.time;
+  document.getElementById("tb-num-range").textContent = `от ${tb.numLo} до ${tb.numHi}`;
+  const fb = document.getElementById("tb-num-feedback");
+  fb.textContent = "Введите догадку"; fb.className = "tb-num-feedback";
+  const inp = document.getElementById("tb-num-input");
+  inp.value = ""; inp.disabled = false;
+  document.getElementById("btn-tb-num-guess").disabled = false;
+  tbRenderBank();
+  tbNumUpdateTimer();
+  showScreen("tbNumPlay");
+  try { inp.focus(); } catch (e) {}
+  tb.timer = setInterval(() => {
+    tb.timeLeft--; tbNumUpdateTimer();
+    if (tb.timeLeft <= 0) { clearInterval(tb.timer); tb.timer = null; playTimeUpSound(); tbNumEnd(false); }
+    else playTick(tb.timeLeft);
+  }, 1000);
+}
+function tbNumUpdateTimer() {
+  const el = document.getElementById("tb-num-timer");
+  el.textContent = tb.timeLeft;
+  el.classList.toggle("danger", tb.timeLeft <= 5);
+  el.classList.toggle("warn", tb.timeLeft > 5 && tb.timeLeft <= 10);
+}
+function tbNumGuess() {
+  const inp = document.getElementById("tb-num-input");
+  const g = parseInt(inp.value, 10);
+  const fb = document.getElementById("tb-num-feedback");
+  if (isNaN(g)) { fb.textContent = "Введите число"; fb.className = "tb-num-feedback"; return; }
+  if (g === tb.numTarget) { tbNumEnd(true); return; }
+  if (g < tb.numTarget) { tb.numLo = Math.max(tb.numLo, g + 1); fb.textContent = "📈 Больше!"; fb.className = "tb-num-feedback up"; }
+  else { tb.numHi = Math.min(tb.numHi, g - 1); fb.textContent = "📉 Меньше!"; fb.className = "tb-num-feedback down"; }
+  hapticLight();
+  document.getElementById("tb-num-range").textContent = `от ${tb.numLo} до ${tb.numHi}`;
+  inp.value = ""; try { inp.focus(); } catch (e) {}
+}
+function tbNumEnd(win) {
+  if (tb.timer) { clearInterval(tb.timer); tb.timer = null; }
+  const cfg = TB_NUM[tb.numLevel];
+  const fb = document.getElementById("tb-num-feedback");
+  document.getElementById("tb-num-input").disabled = true;
+  document.getElementById("btn-tb-num-guess").disabled = true;
+  if (win) { tb.bank += cfg.bank; hapticSuccess(); fb.textContent = `✅ Это ${tb.numTarget}! +${cfg.bank} сек`; fb.className = "tb-num-feedback win"; }
+  else { hapticError(); fb.textContent = `⌛ Время вышло. Было ${tb.numTarget}`; fb.className = "tb-num-feedback down"; }
+  tbRenderBank();
+  setTimeout(tbAliasSetup, 1400);
 }
 
-// Пилюли предмета: forbidden — предмет, который нельзя выбрать (уже был в этом раунде).
+// ---------- Р2: Alias ----------
+// Пилюли предмета: forbidden — предмет, который нельзя выбрать.
 function tbSetupSubjectPills(forbidden) {
   const cont = document.getElementById("tb-subjects");
   let firstEnabled = null;
@@ -1482,70 +1519,53 @@ function tbSetupSubjectPills(forbidden) {
   });
   if (firstEnabled) { firstEnabled.classList.add("active"); tb.subject = firstEnabled.dataset.value; }
 }
-
-async function tbLoadItems(round, difficulty) {
-  const url = round === 1
-    ? `/api/alias?difficulty=${difficulty}&subjects=${tb.subject}`
-    : `/api/words?difficulty=${difficulty}&subjects=${tb.subject}`;
-  const d = await (await fetch(url)).json();
-  tb.items = d.items || [];
-  tb.items.sort(() => Math.random() - 0.5);
-  tb.idx = 0;
+function tbAliasSetup() {
+  tb.aliasDifficulty = "easy";
+  tbActivateFirst("tb-difficulty");
+  tbSetupSubjectPills(null);
+  tbRenderBank();
+  showScreen("tbAttempt");
 }
-
-async function tbAttemptGo() {
+async function tbAliasGo() {
   hapticMedium();
-  const s = TB_STEPS[tb.step];
-  if (s.attempt === 1) tb.usedSubjectInRound = tb.subject;   // запрет повтора во 2-й попытке
-  await tbLoadItems(s.round, tb.difficulty);
-  tb.count = 0;
-  tb.attemptWords = [];
-  tb.timeLeft = TB_ATTEMPT_TIME;
-  tbNextWord(s.round);
-  tbRenderPlay();
-  showScreen("tbPlay");
+  const d = await (await fetch(`/api/alias?difficulty=${tb.aliasDifficulty}&subjects=${tb.subject}`)).json();
+  tb.items = (d.items || []); tb.items.sort(() => Math.random() - 0.5); tb.idx = 0;
+  tb.count = 0; tb.attemptWords = []; tb.timeLeft = TB_ALIAS_TIME;
+  tbAliasNextWord(); tbAliasRenderPlay(); showScreen("tbPlay");
   tb.timer = setInterval(() => {
-    tb.timeLeft--;
-    tbRenderPlay();
-    if (tb.timeLeft <= 0) { playTimeUpSound(); tbShowReview(); }
+    tb.timeLeft--; tbAliasRenderPlay();
+    if (tb.timeLeft <= 0) { playTimeUpSound(); tbAliasReview(); }
     else playTick(tb.timeLeft);
   }, 1000);
 }
-
-function tbNextWord(round) {
+function tbAliasNextWord() {
   if (tb.idx >= tb.items.length) { tb.items.sort(() => Math.random() - 0.5); tb.idx = 0; }
-  const it = tb.items[tb.idx++];
+  const it = tb.items[tb.idx++] || { word: "—", emoji: "", banned: [] };
   tb.cur = it;
   document.getElementById("tb-play-word").textContent = it.word;
   document.getElementById("tb-play-emoji").textContent = it.emoji || "";
   const bannedEl = document.getElementById("tb-play-banned");
-  if (round === 1 && (it.banned || []).length) {
-    bannedEl.innerHTML = "Нельзя: " + it.banned.map((w) => `<span>${w}</span>`).join(", ");
+  if ((it.banned || []).length) {
+    bannedEl.innerHTML = "Нельзя: " + it.banned.map((w) => `<span>${escapeTb(w)}</span>`).join(", ");
     bannedEl.style.display = "";
   } else {
     bannedEl.style.display = "none";
   }
 }
-
-function tbRenderPlay() {
+function tbAliasRenderPlay() {
   const el = document.getElementById("tb-play-timer");
   el.textContent = tb.timeLeft;
   el.classList.toggle("danger", tb.timeLeft <= 5);
   el.classList.toggle("warn", tb.timeLeft > 5 && tb.timeLeft <= 15);
   document.getElementById("tb-play-count").textContent = tb.count;
-  document.getElementById("tb-play-bank").textContent = tb.bank + tb.count * TB_SEC_PER_WORD[tb.difficulty];
+  document.getElementById("tb-play-bank").textContent = tb.bank + tb.count * TB_SEC_PER_WORD[tb.aliasDifficulty];
 }
-
-// Страница проверки: показываем угаданные слова, можно снять галочку с ошибочного
-// или запретного слова. Банк считается по отмеченным.
-function tbShowReview() {
-  clearInterval(tb.timer);
-  tb.timer = null;
-  const s = TB_STEPS[tb.step];
-  document.getElementById("tb-review-title").textContent = `Проверка · Раунд ${s.round} · Попытка ${s.attempt}`;
+function tbAliasReview() {
+  clearInterval(tb.timer); tb.timer = null;
+  document.getElementById("tb-review-title").textContent = "Проверка · Alias";
   const list = document.getElementById("tb-review-list");
   if (!tb.attemptWords.length) {
-    list.innerHTML = `<div class="tb-review-empty">Слов не угадано за эту попытку.</div>`;
+    list.innerHTML = `<div class="tb-review-empty">Слов не угадано.</div>`;
   } else {
     list.innerHTML = tb.attemptWords.map((it, i) => `
       <label class="tb-review-row">
@@ -1558,69 +1578,141 @@ function tbShowReview() {
   tbReviewRecount();
   showScreen("tbReview");
 }
-
 function tbReviewRecount() {
   const checked = document.querySelectorAll("#tb-review-list .tb-review-cb:checked").length;
   document.getElementById("tb-review-count").textContent = checked;
-  document.getElementById("tb-review-sec").textContent = checked * TB_SEC_PER_WORD[tb.difficulty];
+  document.getElementById("tb-review-sec").textContent = checked * TB_SEC_PER_WORD[tb.aliasDifficulty];
 }
-
-function tbApplyReview() {
+function tbAliasApplyReview() {
   const checked = document.querySelectorAll("#tb-review-list .tb-review-cb:checked").length;
-  tb.bank += checked * TB_SEC_PER_WORD[tb.difficulty];
-  tb.step++;
-  if (tb.step >= TB_STEPS.length) tbShowFinalIntro();
-  else tbShowAttempt();
+  tb.bank += checked * TB_SEC_PER_WORD[tb.aliasDifficulty];
+  tbRenderBank();
+  tbCrocoSetup();
 }
 
-// ── Финал ──
-function tbShowFinalIntro() {
-  tb.finalDifficulty = "easy";
-  tb.finalMult = 1;
-  document.querySelectorAll("#tb-final-difficulty .pill").forEach((p, i) => p.classList.toggle("active", i === 0));
-  document.getElementById("tb-final-bank").textContent = fmtTime(tb.bank);
-  showScreen("tbFinalIntro");
+// ---------- Р3: Крокодил (одно слово) ----------
+function tbCrocoSetup() {
+  tb.crocoDifficulty = "easy";
+  tbActivateFirst("tb-croco-difficulty");
+  tbRenderBank();
+  showScreen("tbCrocoSetup");
 }
-
-async function tbFinalGo() {
+async function tbCrocoGo() {
   hapticMedium();
-  const d = await (await fetch(`/api/words?difficulty=${tb.finalDifficulty}&subjects=${TB_SUBJECTS}`)).json();
+  const d = await (await fetch(`/api/words?difficulty=${tb.crocoDifficulty}&subjects=${TB_SUBJECTS}`)).json();
   const items = d.items || [];
-  tb.finalWord = items[Math.floor(Math.random() * items.length)] || { word: "—", emoji: "" };
-  document.getElementById("tb-final-word").textContent = tb.finalWord.word;
-  document.getElementById("tb-final-emoji").textContent = tb.finalWord.emoji || "";
-  document.getElementById("tb-final-mult").textContent = "×" + tb.finalMult;
-  tb.finalLeft = tb.bank;
-  tbRenderFinalTimer();
-  showScreen("tbFinal");
-  tb.finalTimer = setInterval(() => {
-    tb.finalLeft--;
-    tbRenderFinalTimer();
-    if (tb.finalLeft <= 0) { playTimeUpSound(); tbFinishFinal(false); }
-    else playTick(tb.finalLeft);
+  tb.crocoWord = items[Math.floor(Math.random() * items.length)] || { word: "—", emoji: "" };
+  document.getElementById("tb-croco-word").textContent = tb.crocoWord.word;
+  document.getElementById("tb-croco-emoji").textContent = tb.crocoWord.emoji || "";
+  tb.timeLeft = TB_CROCO[tb.crocoDifficulty];
+  tbCrocoUpdateTimer();
+  tbRenderBank();
+  showScreen("tbCrocoPlay");
+  tb.timer = setInterval(() => {
+    tb.timeLeft--; tbCrocoUpdateTimer();
+    if (tb.timeLeft <= 0) { clearInterval(tb.timer); tb.timer = null; playTimeUpSound(); tbCrocoEnd(false); }
+    else playTick(tb.timeLeft);
   }, 1000);
 }
-
-function tbRenderFinalTimer() {
-  const el = document.getElementById("tb-final-timer");
-  el.textContent = fmtTime(Math.max(0, tb.finalLeft));
-  el.classList.toggle("danger", tb.finalLeft <= 5);
-  el.classList.toggle("warn", tb.finalLeft > 5 && tb.finalLeft <= 15);
+function tbCrocoUpdateTimer() {
+  const el = document.getElementById("tb-croco-timer");
+  el.textContent = fmtTime(Math.max(0, tb.timeLeft));
+  el.classList.toggle("danger", tb.timeLeft <= 5);
+  el.classList.toggle("warn", tb.timeLeft > 5 && tb.timeLeft <= 15);
+}
+function tbCrocoEnd(win) {
+  if (tb.timer) { clearInterval(tb.timer); tb.timer = null; }
+  if (win) { tb.bank += TB_CROCO[tb.crocoDifficulty]; hapticSuccess(); } else hapticError();
+  tbRenderBank();
+  tbBlitzIntro();
 }
 
-function tbFinishFinal(guessed) {
-  if (tb.finalTimer) { clearInterval(tb.finalTimer); tb.finalTimer = null; }
-  tb.score = guessed ? Math.round(Math.max(0, tb.finalLeft) * tb.finalMult) : 0;
+// ---------- Р4: Финал — супер-блиц (как в Громком вопросе) ----------
+async function tbBlitzIntro() {
+  const [we, wm] = await Promise.all([
+    fetch(`/api/words?difficulty=easy&subjects=${TB_SUBJECTS}`).then((r) => r.json()),
+    fetch(`/api/words?difficulty=medium&subjects=${TB_SUBJECTS}`).then((r) => r.json()),
+  ]);
+  const easy = (we.items || []).slice().sort(() => Math.random() - 0.5);
+  const med = wm.items || [];
+  const e1 = easy[0] || { word: "—" }, e2 = easy[1] || easy[0] || { word: "—" };
+  const m1 = med.length ? med[Math.floor(Math.random() * med.length)] : { word: "—" };
+  tb.blitzWords = [
+    { word: e1.word, level: "easy", done: false },
+    { word: e2.word, level: "easy", done: false },
+    { word: m1.word, level: "medium", done: false },
+  ];
+  tb.blitzGuessed = 0;
+  document.getElementById("tb-blitz-bank").textContent = tb.bank;
+  showScreen("tbBlitzIntro");
+}
+function tbBlitzRender() {
+  const wrap = document.getElementById("tb-blitz-words");
+  wrap.innerHTML = "";
+  tb.blitzWords.forEach((w, i) => {
+    const row = document.createElement("div");
+    row.className = "blitz-word" + (w.done ? " done" : " tap");
+    const st = document.createElement("span"); st.className = "bw-status"; st.textContent = w.done ? "✅" : "◯";
+    const wd = document.createElement("span"); wd.className = "bw-word"; wd.textContent = w.word;
+    const lv = document.createElement("span"); lv.className = "bw-level lvl-" + w.level; lv.textContent = GROMKO_LEVEL_NAME[w.level];
+    row.append(st, wd, lv);
+    if (!w.done) row.addEventListener("click", () => tbBlitzGuess(i));
+    wrap.appendChild(row);
+  });
+}
+function tbBlitzUpdateTimer() {
+  const el = document.getElementById("tb-blitz-timer");
+  el.textContent = fmtTime(Math.max(0, tb.timeLeft));
+  el.classList.remove("warn", "danger");
+  if (tb.timeLeft <= 10) el.classList.add("danger");
+  else if (tb.timeLeft <= 20) el.classList.add("warn");
+}
+function tbBlitzStart() {
+  tb.timeLeft = tb.bank;
+  if (tb.timeLeft <= 0) { tbBlitzEnd(false); return; }
+  tb.blitzWords.forEach((w) => (w.done = false));
+  tb.blitzGuessed = 0;
+  tbBlitzRender();
+  document.getElementById("tb-blitz-done").textContent = 0;
+  tbBlitzUpdateTimer();
+  showScreen("tbBlitz");
+  gromkoStartMusic();
+  hapticMedium();
+  tb.timer = setInterval(() => {
+    tb.timeLeft--; tbBlitzUpdateTimer();
+    if (tb.timeLeft <= 0) { clearInterval(tb.timer); tb.timer = null; tbBlitzEnd(false); }
+  }, 1000);
+}
+function tbBlitzGuess(i) {
+  const w = tb.blitzWords[i];
+  if (!w || w.done) return;
+  w.done = true; tb.blitzGuessed = tb.blitzWords.filter((x) => x.done).length;
+  document.getElementById("tb-blitz-done").textContent = tb.blitzGuessed;
+  hapticSuccess();
+  if (tb.blitzWords.every((x) => x.done)) { if (tb.timer) { clearInterval(tb.timer); tb.timer = null; } tbBlitzEnd(true); }
+  else tbBlitzRender();
+}
+async function tbBlitzEnd(win) {
+  if (tb.timer) { clearInterval(tb.timer); tb.timer = null; }
+  gromkoStopMusic();
+  if (win) hapticSuccess(); else { hapticError(); playTimeUpSound(); }
+  tb.score = tb.bank;
   const isRecord = tbSaveRecord(tb.guest, tb.score);
-  document.getElementById("tb-result-title").textContent = guessed ? "🏁 Угадали!" : "😿 Не успели";
+  document.getElementById("tb-result-title").textContent = win ? "🏆 Победа!" : "⌛ Не успели";
   document.getElementById("tb-result-score").textContent = tb.score;
+  document.getElementById("tb-result-sub").textContent = win
+    ? "секунд в банке · объяснили все 3 слова"
+    : `секунд в банке · объяснено ${tb.blitzGuessed} из 3`;
   document.getElementById("tb-result-newrecord").style.display = (isRecord && tb.score > 0) ? "block" : "none";
   tbRenderRecords("tb-result-records");
   showScreen("tbResult");
-  if (guessed) hapticSuccess(); else hapticError();
   awardTraining("party", 5, { game: "timebank" }).then(showRatingToast);
 }
 
+// ── Кнопки ──
+document.getElementById("btn-tb-num-go").addEventListener("click", tbNumStart);
+document.getElementById("btn-tb-num-guess").addEventListener("click", tbNumGuess);
+document.getElementById("tb-num-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); tbNumGuess(); } });
 document.getElementById("tb-subjects").addEventListener("click", (e) => {
   const btn = e.target.closest(".pill");
   if (!btn || btn.classList.contains("disabled")) return;
@@ -1629,23 +1721,18 @@ document.getElementById("tb-subjects").addEventListener("click", (e) => {
   tb.subject = btn.dataset.value;
   hapticLight();
 });
-document.getElementById("btn-tb-attempt-go").addEventListener("click", tbAttemptGo);
+document.getElementById("btn-tb-attempt-go").addEventListener("click", tbAliasGo);
 document.getElementById("btn-tb-ok").addEventListener("click", () => {
-  const s = TB_STEPS[tb.step];
-  if (tb.cur) tb.attemptWords.push(tb.cur);   // запоминаем для страницы проверки
+  if (tb.cur) tb.attemptWords.push(tb.cur);
   tb.count = tb.attemptWords.length;
   hapticLight();
-  tbNextWord(s.round);
-  tbRenderPlay();
+  tbAliasNextWord(); tbAliasRenderPlay();
 });
-document.getElementById("btn-tb-review-done").addEventListener("click", tbApplyReview);
-document.getElementById("btn-tb-skip").addEventListener("click", () => {
-  const s = TB_STEPS[tb.step];
-  hapticLight();
-  tbNextWord(s.round);
-});
-document.getElementById("btn-tb-final-go").addEventListener("click", tbFinalGo);
-document.getElementById("btn-tb-final-ok").addEventListener("click", () => tbFinishFinal(true));
+document.getElementById("btn-tb-review-done").addEventListener("click", tbAliasApplyReview);
+document.getElementById("btn-tb-skip").addEventListener("click", () => { hapticLight(); tbAliasNextWord(); });
+document.getElementById("btn-tb-croco-go").addEventListener("click", tbCrocoGo);
+document.getElementById("btn-tb-croco-ok").addEventListener("click", () => tbCrocoEnd(true));
+document.getElementById("btn-tb-blitz-go").addEventListener("click", tbBlitzStart);
 
 // ── Рекорды (имя + очки + дата) ──
 let tbRecords = [];
@@ -1838,135 +1925,6 @@ document.getElementById("btn-spy-again").addEventListener("click", spyStart);
 document.getElementById("btn-spy-reveal").addEventListener("click", spyShowRole);
 document.getElementById("btn-spy-next-player").addEventListener("click", spyNextPlayer);
 document.getElementById("btn-spy-to-vote").addEventListener("click", spyShowVote);
-
-// ==============================
-// ========= КТО Я? =============
-// ==============================
-const whoami = {
-  players: 3,
-  difficulty: "easy",
-  duration: 90,
-  words: [],
-  wIdx: 0,
-  currentPlayer: 1,
-  scores: [],
-  ok: 0,
-  skip: 0,
-  timer: null,
-  timeLeft: 0,
-};
-
-setupPills("whoami-players", (v) => (whoami.players = v), (v) => parseInt(v, 10));
-setupPills("whoami-difficulty", (v) => (whoami.difficulty = v));
-setupPills("whoami-duration", (v) => (whoami.duration = v), (v) => parseInt(v, 10));
-
-async function whoamiLoad() {
-  const r = await fetch(`/api/words?difficulty=${whoami.difficulty}`);
-  const d = await r.json();
-  whoami.words = d.words;
-  whoami.wIdx = 0;
-}
-
-async function whoamiStart() {
-  hapticMedium();
-  await whoamiLoad();
-  whoami.scores = new Array(whoami.players).fill(0);
-  whoami.currentPlayer = 1;
-  whoamiShowTurn();
-}
-
-function whoamiShowTurn() {
-  if (whoami.currentPlayer > whoami.players) {
-    whoamiShowResult();
-    return;
-  }
-  document.getElementById("whoami-turn-num").textContent = `Игрок ${whoami.currentPlayer}`;
-  showScreen("whoamiTurn");
-}
-
-function whoamiNextWord() {
-  if (whoami.wIdx >= whoami.words.length) {
-    whoami.words.sort(() => Math.random() - 0.5);
-    whoami.wIdx = 0;
-  }
-  document.getElementById("whoami-word").textContent = whoami.words[whoami.wIdx++];
-}
-
-function whoamiUpdateTimer() {
-  const el = document.getElementById("whoami-timer");
-  el.textContent = whoami.timeLeft;
-  el.classList.remove("warn", "danger");
-  if (whoami.timeLeft <= 5) el.classList.add("danger");
-  else if (whoami.timeLeft <= 15) el.classList.add("warn");
-}
-
-function whoamiPlay() {
-  whoami.ok = 0;
-  whoami.skip = 0;
-  document.getElementById("whoami-score-ok").textContent = 0;
-  document.getElementById("whoami-score-skip").textContent = 0;
-  showScreen("whoamiPlay");
-  whoamiNextWord();
-  whoami.timeLeft = whoami.duration;
-  whoamiUpdateTimer();
-  whoami.timer = setInterval(() => {
-    whoami.timeLeft--;
-    whoamiUpdateTimer();
-    if (whoami.timeLeft <= 0) whoamiEndTurn();
-    else playTick(whoami.timeLeft);
-  }, 1000);
-}
-
-function whoamiEndTurn() {
-  clearInterval(whoami.timer);
-  whoami.timer = null;
-  whoami.scores[whoami.currentPlayer - 1] = whoami.ok;
-  whoami.currentPlayer++;
-  hapticSuccess();
-  whoamiShowTurn();
-}
-
-async function whoamiShowResult() {
-  awardTraining("party", 5, { game: "whoami" }).then(showRatingToast);
-  const wrap = document.getElementById("whoami-score-list");
-  wrap.innerHTML = "";
-  const maxScore = Math.max(...whoami.scores);
-  const list = document.createElement("div");
-  list.className = "five-scores";
-  whoami.scores.forEach((s, i) => {
-    const row = document.createElement("div");
-    row.className = "five-score-row";
-    if (s === maxScore && maxScore > 0) row.classList.add("win");
-    row.innerHTML = `<span>Игрок ${i + 1}</span><span>${s} ✅</span>`;
-    list.appendChild(row);
-  });
-  wrap.appendChild(list);
-  const winners = whoami.scores
-    .map((s, i) => [s, i + 1])
-    .filter(([s]) => s === maxScore && maxScore > 0)
-    .map(([, i]) => `Игрок ${i}`);
-  document.getElementById("whoami-winner-note").textContent =
-    winners.length ? `🏆 Победитель: ${winners.join(", ")}` : "Никто не угадал";
-  showScreen("whoamiResult");
-  hapticSuccess();
-}
-
-document.getElementById("btn-whoami-start").addEventListener("click", whoamiStart);
-document.getElementById("btn-whoami-again").addEventListener("click", whoamiStart);
-document.getElementById("btn-whoami-ready").addEventListener("click", whoamiPlay);
-document.getElementById("btn-whoami-ok").addEventListener("click", () => {
-  whoami.ok++;
-  document.getElementById("whoami-score-ok").textContent = whoami.ok;
-  hapticLight();
-  whoamiNextWord();
-});
-document.getElementById("btn-whoami-skip").addEventListener("click", () => {
-  whoami.skip++;
-  document.getElementById("whoami-score-skip").textContent = whoami.skip;
-  hapticLight();
-  whoamiNextWord();
-});
-document.getElementById("btn-whoami-stop").addEventListener("click", whoamiEndTurn);
 
 // ==============================
 // ==== ФУНДАМЕНТ РЕЙТИНГА ======
