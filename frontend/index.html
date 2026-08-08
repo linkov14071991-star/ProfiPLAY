@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=16">
+<link rel="stylesheet" href="/style.css?v=17">
 </head>
 <body>
 
@@ -397,23 +397,19 @@
 <!-- ==== Экран: объяснение (команда показывает «глухому») ==== -->
 <section id="screen-gromko-explain" class="screen">
   <div class="game-header">
-    <div class="timer" id="gromko-explain-timer">0:30</div>
+    <div class="timer" id="gromko-explain-timer">0:10</div>
     <div class="gromko-level-badge" id="gromko-level-badge">Простой</div>
   </div>
 
   <div class="gromko-stage">
-    <div class="gromko-badge">🎧 «Глухой» в наушниках — смотрит только на команду, не в экран</div>
+    <div class="gromko-badge" id="gromko-phase-badge">🤔 Читаем вопрос и думаем над ответом</div>
     <div class="q-card">
       <div class="q-text" id="gromko-question">—</div>
-    </div>
-    <div class="gromko-answer-box">
-      <div class="gromko-answer-label">Объясните жестами этот ответ:</div>
-      <div class="gromko-answer" id="gromko-answer">—</div>
     </div>
   </div>
 
   <div class="game-actions">
-    <button id="btn-gromko-toselect" class="btn btn-primary btn-big">К выбору ответа →</button>
+    <button id="btn-gromko-toselect" class="btn btn-primary btn-big">Объясняем! ▶</button>
   </div>
 </section>
 
@@ -424,11 +420,7 @@
     <div class="gromko-level-badge" id="gromko-level-badge-sel">Простой</div>
   </div>
 
-  <div class="gromko-badge warn-badge">📵 Передай телефон отгадывающему. Команда молчит!</div>
-
-  <div class="q-card">
-    <div class="q-text" id="gromko-select-question">—</div>
-  </div>
+  <div class="gromko-badge warn-badge">📵 Команда молчит! Выбери ответ, который тебе объясняли.</div>
 
   <div class="answers" id="gromko-options"></div>
 
@@ -444,7 +436,7 @@
   <div class="card" style="margin:auto; text-align:center;">
     <div class="blitz-flash">⚡ СУПЕР-БЛИЦ</div>
     <h1>В банке <span id="gromko-blitz-bank">0</span> сек</h1>
-    <p class="subtitle">Выберите, кто лучше всех читает по губам — он садится в наушники. За накопленное время команда объясняет ему <b>3 слова</b>: простое, среднее, сложное. Не успели — поражение.</p>
+    <p class="subtitle">Выберите, кто лучше всех читает по губам — он садится в наушники. За накопленное время команда объясняет ему <b>3 слова</b>: два простых и одно среднее. Не успели — поражение.</p>
     <button id="btn-gromko-blitz-start" class="btn btn-primary btn-big">Поехали! ⚡</button>
   </div>
 </section>
@@ -1631,6 +1623,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=16"></script>
+<script src="/script.js?v=17"></script>
 </body>
 </html>

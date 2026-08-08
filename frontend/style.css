@@ -2159,6 +2159,15 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   opacity: 0.4;
   pointer-events: none;
 }
+.gromko-badge.phase-read {
+  border-color: rgba(182, 169, 217, 0.4);
+}
+.gromko-badge.phase-explain {
+  background: rgba(180, 242, 77, 0.16);
+  border-color: var(--brand-lime);
+  color: var(--brand-lime);
+  font-size: 15px;
+}
 
 /* Супер-блиц */
 .blitz-flash {
