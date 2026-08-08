@@ -1456,7 +1456,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "words-inf-reclass-v18"
+BUILD_TAG = "inf-easy-questions-v19"
 
 
 @app.get("/api/version")
