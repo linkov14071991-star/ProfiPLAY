@@ -75,6 +75,30 @@ function showScreen(name) {
 }
 window.showScreen = showScreen;  // для onclick в HTML
 
+// ===== Релиз: ручное открытие игр =====
+// null = все игры открыты. Чтобы открывать постепенно — впиши массив ключей игр,
+// например:  const UNLOCKED_GAMES = ["python", "sprint"];
+// Остальные карточки станут «🔒 Скоро» и некликабельны. Ключи = data-game на карточке
+// (sprint, marathon, python, duel, party, crocodile, alias, timebank, spy, gromko).
+const UNLOCKED_GAMES = null;
+function applyUnlocks() {
+  if (!Array.isArray(UNLOCKED_GAMES)) return;
+  document.querySelectorAll(".game-card[data-game]").forEach((card) => {
+    if (card.classList.contains("locked")) return;
+    if (!UNLOCKED_GAMES.includes(card.dataset.game)) {
+      card.classList.add("locked");
+      if (!card.querySelector(".badge-soon")) {
+        const b = document.createElement("div");
+        b.className = "badge-soon";
+        b.textContent = "🔒 Скоро";
+        card.appendChild(b);
+      }
+    }
+  });
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyUnlocks);
+else applyUnlocks();
+
 // ==== Проверка подписки ====
 async function checkSubscription() {
   const userId = tg?.initDataUnsafe?.user?.id;
@@ -1195,12 +1219,16 @@ document.getElementById("btn-alias-fail").addEventListener("click", () => {
 // ==============================
 // ========= МАРАФОН ============
 // ==============================
+// Жизни зависят от сложности; серия правильных подряд восполняет жизнь (макс 3).
+const MARATHON_LIVES = { easy: 1, medium: 2, hard: 3 };
+const MARATHON_LIFE_STREAK = { easy: 30, medium: 20, hard: 10 };
+const MARATHON_MAX_LIVES = 3;
+
 const marathon = {
   difficulty: "easy",
-  lives: 5,   // 1 / 3 / 5 (см. HTML)
   questions: [],
   qIndex: 0,
-  livesLeft: 5,
+  livesLeft: 1,
   correct: 0,
   streak: 0,
   bestStreak: 0,
@@ -1210,19 +1238,24 @@ const marathon = {
 marathon.topics = ["informatika", "mathematics", "physics"];
 setupPills("marathon-difficulty", (v) => { marathon.difficulty = v; updateMarathonMult(); });
 setupPillsMulti("marathon-topic", (arr) => (marathon.topics = arr));
-setupPills("marathon-lives", (v) => { marathon.lives = v; updateMarathonMult(); }, (v) => parseInt(v, 10));
 
 function updateMarathonMult() {
   const dm = {easy: 1, medium: 1.5, hard: 2}[marathon.difficulty] || 1;
-  const lm = {1: 3, 3: 2, 5: 1}[marathon.lives] || 1;
-  const total = dm * lm;
   const el = document.getElementById("marathon-mult");
-  if (el) el.textContent = "×" + (Number.isInteger(total) ? total : total.toFixed(1));
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
 }
 updateMarathonMult();
 
 function marathonRecordKey() {
-  return `marathon_${marathon.difficulty}_${marathon.lives}`;
+  return `marathon_${marathon.difficulty}`;
+}
+function showLifeToast() {
+  const t = document.createElement("div");
+  t.className = "rating-toast ok show";
+  t.innerHTML = "❤️ <b>+1 жизнь</b> за серию!";
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 1500);
+  if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred("success");
 }
 function getMarathonRecord() { return records[marathonRecordKey()] || 0; }
 function saveMarathonRecord(score) {
@@ -1248,7 +1281,7 @@ function renderMarathonRecord() {
 function marathonRenderLives() {
   const wrap = document.getElementById("marathon-lives-view");
   wrap.innerHTML = "";
-  for (let i = 0; i < marathon.lives; i++) {
+  for (let i = 0; i < MARATHON_MAX_LIVES; i++) {
     const span = document.createElement("span");
     span.textContent = "❤️";
     if (i >= marathon.livesLeft) span.classList.add("lost");
@@ -1306,6 +1339,12 @@ function marathonAnswer(chosen, btnEl) {
     marathon.correct++;
     marathon.streak++;
     if (marathon.streak > marathon.bestStreak) marathon.bestStreak = marathon.streak;
+    // Восполнение жизни за серию правильных подряд (до максимума)
+    const need = MARATHON_LIFE_STREAK[marathon.difficulty] || 20;
+    if (marathon.livesLeft < MARATHON_MAX_LIVES && marathon.streak % need === 0) {
+      marathon.livesLeft++;
+      showLifeToast();
+    }
     hapticSuccess();
   } else {
     btnEl.classList.add("wrong");
@@ -1334,7 +1373,7 @@ function marathonAnswer(chosen, btnEl) {
 async function marathonStart() {
   hapticMedium();
   await marathonLoad();
-  marathon.livesLeft = marathon.lives;
+  marathon.livesLeft = MARATHON_LIVES[marathon.difficulty] || 1;
   marathon.correct = 0;
   marathon.streak = 0;
   marathon.bestStreak = 0;
@@ -1363,7 +1402,7 @@ async function marathonFinish(userQuit) {
 
   const res = marathon.correct > 0
     ? await awardTraining("marathon", marathon.correct * 2, {
-        correct: marathon.correct, difficulty: marathon.difficulty, lives: marathon.lives
+        correct: marathon.correct, difficulty: marathon.difficulty
       })
     : {delta_awarded: 0, xp_awarded: 0};
 
@@ -1389,10 +1428,7 @@ document.getElementById("btn-marathon-stop").addEventListener("click", () => mar
 // ==== Загрузка рекордов Марафона из облака ====
 (function preloadMarathonRecords() {
   if (!tg?.CloudStorage) return;
-  const keys = [];
-  for (const d of ["medium", "hard", "mixed"]) {
-    for (const l of [3, 5, 7]) keys.push(`marathon_${d}_${l}`);
-  }
+  const keys = ["easy", "medium", "hard"].map((d) => `marathon_${d}`);
   tg.CloudStorage.getItems(keys, (err, values) => {
     if (err || !values) return;
     Object.entries(values).forEach(([k, v]) => {

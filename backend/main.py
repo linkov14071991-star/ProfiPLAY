@@ -14,6 +14,7 @@ import hmac
 import json
 import os
 import random
+import re
 import secrets
 import string
 from pathlib import Path
@@ -529,8 +530,7 @@ async def get_alias_words(difficulty: str = Query("easy"), subjects: str = Query
 @app.get("/api/questions")
 async def get_questions(difficulty: str = Query("easy"), limit: int = Query(50), topics: str = Query("")):
     """Список вопросов для Спринта. topics — темы через запятую, пусто = микс всех."""
-    questions = _pool_for(difficulty, topics).copy()
-    random.shuffle(questions)
+    questions = _spread_questions(_pool_for(difficulty, topics))
     # Перемешиваем варианты внутри каждого вопроса, чтобы правильный не был всегда первым
     return {"questions": [shuffle_question(q) for q in questions[:limit]]}
 
@@ -570,8 +570,7 @@ async def get_spy(difficulty: str = Query("easy"), subjects: str = Query("inform
 @app.get("/api/marathon")
 async def get_marathon(difficulty: str = Query("easy"), limit: int = Query(200), topics: str = Query("")):
     """Для Марафона: пул вопросов выбранной сложности. topics — темы через запятую."""
-    pool = _pool_for(difficulty, topics).copy()
-    random.shuffle(pool)
+    pool = _spread_questions(_pool_for(difficulty, topics))
     return {"questions": [shuffle_question(q) for q in pool[:limit]]}
 
 
@@ -980,6 +979,43 @@ def _gen_duel_id() -> str:
     """Короткий URL-безопасный ID (8 символов)."""
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+def _question_sig(q: dict) -> str:
+    """Сигнатура «подтипа»: текст вопроса без чисел (шаблон)."""
+    s = re.sub(r"\d+", "#", q["q"].lower())
+    s = re.sub(r"\s+", " ", s).strip()
+    return s[:40]
+
+
+def _spread_questions(questions: list) -> list:
+    """Раскладывает вопросы так, чтобы одинаковые подтипы не шли подряд.
+    Жадно берём самую крупную группу, отличную от предыдущей (классический
+    алгоритм «reorganize»). Если ни одна группа не больше половины — соседних
+    одинаковых не будет вовсе."""
+    import heapq
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for q in questions:
+        groups[_question_sig(q)].append(q)
+    for g in groups.values():
+        random.shuffle(g)
+    heap = [(-len(v), k) for k, v in groups.items()]
+    heapq.heapify(heap)
+    result = []
+    prev = None
+    while heap:
+        item = heapq.heappop(heap)
+        if item[1] == prev and heap:
+            alt = heapq.heappop(heap)
+            heapq.heappush(heap, item)
+            item = alt
+        cnt, key = item
+        result.append(groups[key].pop())
+        prev = key
+        if cnt + 1 < 0:
+            heapq.heappush(heap, (cnt + 1, key))
+    return result
 
 
 def shuffle_question(q: dict) -> dict:
@@ -1486,7 +1522,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "tb-final6-v25"
+BUILD_TAG = "prep-fixes-v26"
 
 
 @app.get("/api/version")

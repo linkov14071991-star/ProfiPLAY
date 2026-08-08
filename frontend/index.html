@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=23">
+<link rel="stylesheet" href="/style.css?v=24">
 </head>
 <body>
 
@@ -125,7 +125,7 @@
       <div class="icon">🏆</div>
       <div class="info">
         <div class="title">Марафон</div>
-        <div class="desc">Пройди как можно дальше с 3 жизнями.</div>
+        <div class="desc">Отвечай без ошибок. Жизни по сложности, серия их восполняет.</div>
         <div class="card-stat" id="card-marathon-stat"></div>
       </div>
     </div>
@@ -613,16 +613,17 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="marathon-difficulty">
-      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
-      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">1 ❤️ · ×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">2 ❤️ · ×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">3 ❤️ · ×2</span></button>
     </div>
 
-    <label class="field">Жизни (риск = награда)</label>
-    <div class="pills" id="marathon-lives">
-      <button class="pill pill-diff" data-value="1"><span>1 ❤️</span><span class="pill-hint">×3 очки</span></button>
-      <button class="pill pill-diff" data-value="3"><span>3 ❤️</span><span class="pill-hint">×2 очки</span></button>
-      <button class="pill pill-diff active" data-value="5"><span>5 ❤️</span><span class="pill-hint">×1 очко</span></button>
+    <div class="tb-rules" style="margin-top:12px;">
+      <div class="tb-rules-head">❤️ Жизни зависят от сложности</div>
+      <ol class="tb-rules-list">
+        <li>Простая — 1 жизнь, средняя — 2, сложная — 3. Максимум — 3.</li>
+        <li>Серия правильных подряд восполняет жизнь: простая — 30, средняя — 20, сложная — 10.</li>
+      </ol>
     </div>
 
     <div id="marathon-record-hint" style="display:none;">
@@ -1492,14 +1493,13 @@
       <p class="r-lead"><b>Суть:</b> отвечай без ошибок как можно дольше — на кону жизни.</p>
       <div class="r-head">Как играть</div>
       <ol class="r-steps">
-        <li>Выбери темы, сложность и число жизней: 1, 3 или 5.</li>
+        <li>Выбери темы и сложность. От сложности зависят жизни: простая — <b>1 ❤️</b>, средняя — <b>2 ❤️</b>, сложная — <b>3 ❤️</b> (максимум 3).</li>
         <li>Отвечай на вопросы подряд. За правильный — идём дальше.</li>
-        <li>Ошибка — минус одна жизнь (правильный вариант подсветится).</li>
-        <li>Кончились жизни — игра завершена.</li>
+        <li>Ошибка — минус одна жизнь (правильный вариант подсветится). Кончились жизни — игра завершена.</li>
+        <li><b>Восполнение:</b> серия правильных подряд даёт +1 жизнь (до 3): простая — 30, средняя — 20, сложная — 10.</li>
       </ol>
       <div class="r-head">Очки</div>
-      <p>За правильный: <b>+2 рейтинг</b> и <b>+3 XP</b>.</p>
-      <p><b>Риск = награда</b> (меньше жизней — больше очков): 1 жизнь ×3, 3 жизни ×2, 5 жизней ×1. Плюс множитель сложности (×1 / ×1.5 / ×2). Максимум: сложная × 1 жизнь = <b>×6</b> к очкам.</p>
+      <p>За правильный: <b>+2 рейтинг</b> и <b>+3 XP</b>, умноженные на множитель сложности (×1 / ×1.5 / ×2).</p>
     </details>
 
     <details class="rules-block" id="rules-duel">
@@ -1710,6 +1710,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=23"></script>
+<script src="/script.js?v=24"></script>
 </body>
 </html>
