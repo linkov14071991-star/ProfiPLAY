@@ -2209,6 +2209,12 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   border-color: var(--brand-lime);
   box-shadow: 0 4px 16px rgba(180, 242, 77, 0.3);
 }
+.blitz-word.tap {
+  opacity: 1;
+  cursor: pointer;
+  border-color: rgba(180, 242, 77, 0.45);
+}
+.blitz-word.tap:active { transform: scale(0.98); }
 .blitz-word.done { opacity: 0.8; }
 .blitz-word .bw-status { font-size: 18px; }
 .blitz-word .bw-word { flex: 1; font-size: 20px; font-weight: 800; }

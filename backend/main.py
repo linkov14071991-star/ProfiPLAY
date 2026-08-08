@@ -1456,7 +1456,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "rules-detailed-v20"
+BUILD_TAG = "blitz-any-order-v21"
 
 
 @app.get("/api/version")

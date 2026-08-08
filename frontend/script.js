@@ -260,7 +260,7 @@ const GAME_INFO = {
     title: "🔊 Громкий вопрос",
     body: `<p>Командная игра: один игрок в наушниках с громкой музыкой <b>не слышит</b>, остальные объясняют ему жестами и по губам.</p>
       <p><b>3 раунда — банк времени.</b> Команда выбирает сложность и жмёт «Начать раунд». Даётся 10 секунд прочитать вопрос и придумать ответ, затем включается таймер (простой 30с / средний 60с / сложный 90с) — команда объясняет ответ игроку в наушниках. Потом он, <b>не видя вопроса</b>, выбирает вариант. Верно — время в банк: +30 / +60 / +90с.</p>
-      <p><b>Супер-блиц.</b> Выбираете лучшего «чтеца по губам». За накопленное время команда объясняет ему <b>3 слова</b> (два простых и одно среднее). Успели все три — победа, время кончилось — поражение.</p>`,
+      <p><b>Супер-блиц.</b> Выбираете лучшего «чтеца по губам». За накопленное время команда объясняет ему <b>3 слова</b> (два простых и одно среднее) в любом порядке. Успели все три — победа, время кончилось — поражение.</p>`,
   },
   timebank: {
     title: "⏳ Тайм-баттл <span class='by-profik'>by Профик</span>",
@@ -768,25 +768,25 @@ function gromkoBlitzIntro() {
   const e2 = easy[1] || easy[0] || { word: "—" };
   const m1 = med.length ? med[Math.floor(Math.random() * med.length)] : { word: "—" };
   gromko.blitzWords = [
-    { word: e1.word, emoji: e1.emoji || "", level: "easy" },
-    { word: e2.word, emoji: e2.emoji || "", level: "easy" },
-    { word: m1.word, emoji: m1.emoji || "", level: "medium" },
+    { word: e1.word, emoji: e1.emoji || "", level: "easy", done: false },
+    { word: e2.word, emoji: e2.emoji || "", level: "easy", done: false },
+    { word: m1.word, emoji: m1.emoji || "", level: "medium", done: false },
   ];
-  gromko.blitzIdx = 0;
   gromko.blitzGuessed = 0;
   document.getElementById("gromko-blitz-bank").textContent = gromko.bank;
   showScreen("gromkoBlitzIntro");
 }
 
+// Слова можно объяснять в ЛЮБОМ порядке: тапнул угаданное — оно отмечается
 function gromkoRenderBlitzWords() {
   const wrap = document.getElementById("gromko-blitz-words");
   wrap.innerHTML = "";
   gromko.blitzWords.forEach((w, i) => {
     const row = document.createElement("div");
-    row.className = "blitz-word" + (i < gromko.blitzIdx ? " done" : (i === gromko.blitzIdx ? " current" : ""));
+    row.className = "blitz-word" + (w.done ? " done" : " tap");
     const st = document.createElement("span");
     st.className = "bw-status";
-    st.textContent = i < gromko.blitzIdx ? "✅" : (i === gromko.blitzIdx ? "👉" : "•");
+    st.textContent = w.done ? "✅" : "◯";
     const wd = document.createElement("span");
     wd.className = "bw-word";
     wd.textContent = w.word;
@@ -794,6 +794,7 @@ function gromkoRenderBlitzWords() {
     lv.className = "bw-level lvl-" + w.level;
     lv.textContent = GROMKO_LEVEL_NAME[w.level];
     row.append(st, wd, lv);
+    if (!w.done) row.addEventListener("click", () => gromkoBlitzGuess(i));
     wrap.appendChild(row);
   });
 }
@@ -809,7 +810,7 @@ function gromkoUpdateBlitzTimer() {
 function gromkoBlitzStart() {
   gromko.timeLeft = gromko.bank;
   if (gromko.timeLeft <= 0) { gromkoBlitzEnd(false); return; }
-  gromko.blitzIdx = 0;
+  gromko.blitzWords.forEach((w) => (w.done = false));
   gromko.blitzGuessed = 0;
   gromkoRenderBlitzWords();
   document.getElementById("gromko-blitz-done").textContent = 0;
@@ -824,13 +825,14 @@ function gromkoBlitzStart() {
   }, 1000);
 }
 
-function gromkoBlitzGuessed() {
-  if (gromko.blitzIdx >= gromko.blitzWords.length) return;
-  gromko.blitzIdx++;
-  gromko.blitzGuessed = gromko.blitzIdx;
+function gromkoBlitzGuess(i) {
+  const w = gromko.blitzWords[i];
+  if (!w || w.done) return;
+  w.done = true;
+  gromko.blitzGuessed = gromko.blitzWords.filter((x) => x.done).length;
   document.getElementById("gromko-blitz-done").textContent = gromko.blitzGuessed;
   hapticSuccess();
-  if (gromko.blitzIdx >= gromko.blitzWords.length) {
+  if (gromko.blitzWords.every((x) => x.done)) {
     if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
     gromkoBlitzEnd(true);
   } else {
@@ -870,7 +872,6 @@ document.getElementById("btn-gromko-toselect").addEventListener("click", gromkoE
 document.getElementById("btn-gromko-next").addEventListener("click", gromkoNextRound);
 document.getElementById("btn-gromko-abort").addEventListener("click", gromkoAbort);
 document.getElementById("btn-gromko-blitz-start").addEventListener("click", gromkoBlitzStart);
-document.getElementById("btn-gromko-blitz-guessed").addEventListener("click", gromkoBlitzGuessed);
 
 // ==============================
 // ========== СПРИНТ ============
