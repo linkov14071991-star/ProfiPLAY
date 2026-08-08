@@ -2152,6 +2152,13 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .gromko-diff-btn.lvl-easy   { background: #7ED957; }
 .gromko-diff-btn.lvl-medium { background: #FFC93C; }
 .gromko-diff-btn.lvl-hard   { background: #FF6B6B; color: #fff; }
+.gromko-diff-btn.selected {
+  box-shadow: 0 0 0 3px var(--card), 0 0 0 6px var(--brand-lime);
+}
+#btn-gromko-round-start:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
 
 /* Супер-блиц */
 .blitz-flash {

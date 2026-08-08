@@ -587,11 +587,16 @@ async function gromkoStart() {
 
 // Следующий раунд банка или переход к блицу
 function gromkoNextRound() {
+  if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
   gromkoStopMusic();
   if (gromko.round >= gromko.totalRounds) { gromkoBlitzIntro(); return; }
   gromko.round++;
   document.getElementById("gromko-round").textContent = gromko.round;
   updateGromkoBank();
+  // сброс выбора сложности
+  gromko.curDifficulty = null;
+  document.querySelectorAll("#screen-gromko-difficulty .gromko-diff-btn").forEach((b) => b.classList.remove("selected"));
+  document.getElementById("btn-gromko-round-start").disabled = true;
   showScreen("gromkoDifficulty");
 }
 
@@ -601,12 +606,21 @@ function gromkoSetLevelBadge(id, d) {
   el.className = "gromko-level-badge lvl-" + d;
 }
 
-// Игрок выбрал сложность → показываем вопрос команде и включаем музыку
-function gromkoPickDifficulty(d) {
+// Игрок отметил сложность (кнопка «Начать раунд» разблокируется)
+function gromkoSelectDifficulty(d) {
+  gromko.curDifficulty = d;
+  document.querySelectorAll("#screen-gromko-difficulty .gromko-diff-btn").forEach((b) =>
+    b.classList.toggle("selected", b.dataset.difficulty === d));
+  document.getElementById("btn-gromko-round-start").disabled = false;
+}
+
+// «Начать раунд» → показываем вопрос команде, включаем музыку и таймер
+function gromkoStartRound() {
+  const d = gromko.curDifficulty;
+  if (!d) return;
   const pool = gromko.pools[d] || [];
   if (!pool.length) return;
   if (gromko.idx[d] >= pool.length) { gromkoShuffle(pool); gromko.idx[d] = 0; }
-  gromko.curDifficulty = d;
   gromko.current = pool[gromko.idx[d]++];
   gromko.locked = false;
   document.getElementById("gromko-question").textContent = gromko.current.q;
@@ -615,10 +629,31 @@ function gromkoPickDifficulty(d) {
   updateGromkoBank();
   showScreen("gromkoExplain");
   gromkoStartMusic();
+  gromkoStartExplainTimer();
 }
 
-// Команда готова → музыка стоп, «глухой» выбирает вариант
+// Обратный отсчёт на объяснение (по уровню: 30/60/90 сек)
+function gromkoUpdateExplainTimer() {
+  const el = document.getElementById("gromko-explain-timer");
+  el.textContent = fmtTime(Math.max(0, gromko.timeLeft));
+  el.classList.remove("warn", "danger");
+  if (gromko.timeLeft <= 5) el.classList.add("danger");
+  else if (gromko.timeLeft <= 10) el.classList.add("warn");
+}
+function gromkoStartExplainTimer() {
+  if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
+  gromko.timeLeft = GROMKO_BANK_SEC[gromko.curDifficulty] || 60;
+  gromkoUpdateExplainTimer();
+  gromko.timer = setInterval(() => {
+    gromko.timeLeft--;
+    gromkoUpdateExplainTimer();
+    if (gromko.timeLeft <= 0) { clearInterval(gromko.timer); gromko.timer = null; playTimeUpSound(); gromkoToSelect(); }
+  }, 1000);
+}
+
+// Команда готова (или время вышло) → музыка стоп, «глухой» выбирает вариант
 function gromkoToSelect() {
+  if (gromko.timer) { clearInterval(gromko.timer); gromko.timer = null; }
   gromkoStopMusic();
   hapticMedium();
   gromkoSetLevelBadge("gromko-level-badge-sel", gromko.curDifficulty);
@@ -769,7 +804,8 @@ function gromkoAbort() {
 document.getElementById("btn-gromko-start").addEventListener("click", gromkoStart);
 document.getElementById("btn-gromko-again").addEventListener("click", gromkoStart);
 document.querySelectorAll("#screen-gromko-difficulty .gromko-diff-btn").forEach((b) =>
-  b.addEventListener("click", () => { hapticLight(); gromkoPickDifficulty(b.dataset.difficulty); }));
+  b.addEventListener("click", () => { hapticLight(); gromkoSelectDifficulty(b.dataset.difficulty); }));
+document.getElementById("btn-gromko-round-start").addEventListener("click", () => { hapticMedium(); gromkoStartRound(); });
 document.getElementById("btn-gromko-toselect").addEventListener("click", gromkoToSelect);
 document.getElementById("btn-gromko-next").addEventListener("click", gromkoNextRound);
 document.getElementById("btn-gromko-abort").addEventListener("click", gromkoAbort);

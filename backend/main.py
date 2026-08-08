@@ -1456,7 +1456,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "gromko-blitz-v15"
+BUILD_TAG = "gromko-timer-v16"
 
 
 @app.get("/api/version")

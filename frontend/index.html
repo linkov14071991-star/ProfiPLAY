@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=15">
+<link rel="stylesheet" href="/style.css?v=16">
 </head>
 <body>
 
@@ -385,10 +385,11 @@
     <h1 style="font-size:22px;">Выбери сложность</h1>
     <p class="subtitle">Возьми телефон. За верный ответ — время в банк.</p>
     <div class="gromko-diff-picker">
-      <button class="gromko-diff-btn lvl-easy" data-difficulty="easy"><span class="gdb-name">Простой</span><span class="gdb-sec">+30 сек</span></button>
-      <button class="gromko-diff-btn lvl-medium" data-difficulty="medium"><span class="gdb-name">Средний</span><span class="gdb-sec">+60 сек</span></button>
-      <button class="gromko-diff-btn lvl-hard" data-difficulty="hard"><span class="gdb-name">Сложный</span><span class="gdb-sec">+90 сек</span></button>
+      <button class="gromko-diff-btn lvl-easy" data-difficulty="easy"><span class="gdb-name">Простой</span><span class="gdb-sec">30 сек</span></button>
+      <button class="gromko-diff-btn lvl-medium" data-difficulty="medium"><span class="gdb-name">Средний</span><span class="gdb-sec">60 сек</span></button>
+      <button class="gromko-diff-btn lvl-hard" data-difficulty="hard"><span class="gdb-name">Сложный</span><span class="gdb-sec">90 сек</span></button>
     </div>
+    <button id="btn-gromko-round-start" class="btn btn-primary btn-big" disabled>Начать раунд ▶</button>
   </div>
   <button id="btn-gromko-abort" class="btn btn-link">Выйти в меню</button>
 </section>
@@ -396,7 +397,7 @@
 <!-- ==== Экран: объяснение (команда показывает «глухому») ==== -->
 <section id="screen-gromko-explain" class="screen">
   <div class="game-header">
-    <div class="bank-chip">🏦 <span class="gromko-bank">0</span> сек</div>
+    <div class="timer" id="gromko-explain-timer">0:30</div>
     <div class="gromko-level-badge" id="gromko-level-badge">Простой</div>
   </div>
 
@@ -1630,6 +1631,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=15"></script>
+<script src="/script.js?v=16"></script>
 </body>
 </html>
