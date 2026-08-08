@@ -1456,7 +1456,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "quiz-3000-v11"
+BUILD_TAG = "themes3-relevel-v12"
 
 
 @app.get("/api/version")

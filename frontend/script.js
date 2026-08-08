@@ -401,7 +401,7 @@ const sprint = {
   locked: false,
 };
 
-sprint.topics = ["informatika", "mathematics", "physics", "programming"];
+sprint.topics = ["informatika", "mathematics", "physics"];
 setupPills("sprint-difficulty", (v) => { sprint.difficulty = v; renderSprintRecord(); updateSprintMult(); });
 setupPillsMulti("sprint-topic", (arr) => (sprint.topics = arr));
 setupPills("sprint-duration", (v) => { sprint.duration = v; renderSprintRecord(); }, (v) => parseInt(v, 10));
@@ -727,7 +727,7 @@ const marathon = {
   locked: false,
 };
 
-marathon.topics = ["informatika", "mathematics", "physics", "programming"];
+marathon.topics = ["informatika", "mathematics", "physics"];
 setupPills("marathon-difficulty", (v) => { marathon.difficulty = v; updateMarathonMult(); });
 setupPillsMulti("marathon-topic", (arr) => (marathon.topics = arr));
 setupPills("marathon-lives", (v) => { marathon.lives = v; updateMarathonMult(); }, (v) => parseInt(v, 10));
@@ -2307,7 +2307,7 @@ window.openAchievements = openAchievements;
 // ==============================
 const duel = {
   difficulty: "medium",
-  topics: ["informatika", "mathematics", "physics", "programming"],
+  topics: ["informatika", "mathematics", "physics"],
   duelId: null,
   role: null,          // 'creator' | 'opponent'
   questions: [],
