@@ -1433,6 +1433,18 @@ async def python_session_end(payload: dict = Body(...)):
     return {"ok": True, "xp_added": xp_earned, "rating_added": rating_added}
 
 
+# ---------- Версия сборки (для проверки, что задеплоилось) ----------
+BUILD_TAG = "boot-async-v3"
+
+
+@app.get("/api/version")
+async def version():
+    return {
+        "build": BUILD_TAG,
+        "commit": os.environ.get("RAILWAY_GIT_COMMIT_SHA", "dev")[:8],
+    }
+
+
 # ---------- Раздача статики фронтенда ----------
 # Всё, что не /api/*, отдаём как статику
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
