@@ -2303,6 +2303,7 @@ window.openAchievements = openAchievements;
 // ==============================
 const duel = {
   difficulty: "medium",
+  topic: "mix",
   duelId: null,
   role: null,          // 'creator' | 'opponent'
   questions: [],
@@ -2317,11 +2318,12 @@ const duel = {
 };
 
 setupPills("duel-difficulty", (v) => (duel.difficulty = v));
+setupPills("duel-topic", (v) => (duel.topic = v));
 
 async function duelStartCreate() {
   hapticMedium();
   const res = await apiPost("/api/duel/create", {
-    init_data: INIT_DATA, difficulty: duel.difficulty,
+    init_data: INIT_DATA, difficulty: duel.difficulty, topic: duel.topic === "mix" ? "" : duel.topic,
   });
   if (!res || !res.duel_id) {
     alert("Не удалось создать дуэль. Попробуй ещё раз.");

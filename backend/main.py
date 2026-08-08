@@ -983,6 +983,23 @@ def _pool_for_difficulty(difficulty: str) -> list:
     return pool
 
 
+# Доступные темы вопросов (для выбора темы в дуэли/спринте)
+QUIZ_TOPICS = list(QUESTIONS.keys())
+
+
+def _pool_for(difficulty: str, topic: str = "") -> list:
+    """Пул вопросов. Если задана тема (одна из дисциплин) — только из неё,
+    иначе микс всех тем. topic='mix'/'' → микс."""
+    if difficulty not in ("easy", "medium", "hard"):
+        raise HTTPException(status_code=400, detail="Bad difficulty")
+    if topic and topic in QUESTIONS:
+        pool = list(QUESTIONS[topic].get(difficulty, []))
+        if not pool:
+            raise HTTPException(status_code=500, detail="Empty question pool")
+        return pool
+    return _pool_for_difficulty(difficulty)
+
+
 def _score_answers(questions: list, answers: list) -> int:
     """Считаем очки: 100 базы + до 100 бонуса за скорость на каждый правильный."""
     total = 0
@@ -1148,10 +1165,12 @@ def _duel_public_view(db, duel, viewer_id: int) -> dict:
 async def duel_create(
     init_data: str = Body(...),
     difficulty: str = Body("mixed"),
+    topic: str = Body(""),
 ):
-    """Создать новую дуэль. Возвращает id и 10 вопросов (без правильных ответов)."""
+    """Создать новую дуэль. Возвращает id и 10 вопросов (без правильных ответов).
+    topic — тема вопросов (informatika/mathematics/programming) или пусто = микс."""
     tg_user = get_verified_user(init_data)
-    pool = _pool_for_difficulty(difficulty)
+    pool = _pool_for(difficulty, topic)
     if len(pool) < DUEL_QUESTIONS_COUNT:
         raise HTTPException(status_code=500, detail="Not enough questions")
     # Перемешиваем варианты каждого вопроса. Сохраняется этот вариант — оба игрока увидят один и тот же порядок.
@@ -1434,7 +1453,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "python-badge-v7"
+BUILD_TAG = "duel-topic-v7"
 
 
 @app.get("/api/version")
