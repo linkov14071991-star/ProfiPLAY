@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=10">
+<link rel="stylesheet" href="/style.css?v=11">
 </head>
 <body>
 
@@ -336,6 +336,14 @@
       <div class="profik-chip-msg" data-profik-context="sprint_start"></div>
     </div>
 
+    <label class="field">Темы <span class="field-hint">— можно несколько</span></label>
+    <div class="pills pills-multi" id="sprint-topic">
+      <button class="pill active" data-value="informatika">💻 Инф</button>
+      <button class="pill active" data-value="mathematics">📐 Мат</button>
+      <button class="pill active" data-value="physics">⚛️ Физ</button>
+      <button class="pill active" data-value="programming">🐍 Прог</button>
+    </div>
+
     <label class="field">Сложность</label>
     <div class="pills" id="sprint-difficulty">
       <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
@@ -448,6 +456,14 @@
     <div class="profik-chip">
       <img src="/profik.svg" alt="Профик" class="profik-chip-img">
       <div class="profik-chip-msg" data-profik-context="marathon_start"></div>
+    </div>
+
+    <label class="field">Темы <span class="field-hint">— можно несколько</span></label>
+    <div class="pills pills-multi" id="marathon-topic">
+      <button class="pill active" data-value="informatika">💻 Инф</button>
+      <button class="pill active" data-value="mathematics">📐 Мат</button>
+      <button class="pill active" data-value="physics">⚛️ Физ</button>
+      <button class="pill active" data-value="programming">🐍 Прог</button>
     </div>
 
     <label class="field">Сложность</label>
@@ -1452,6 +1468,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=10"></script>
+<script src="/script.js?v=11"></script>
 </body>
 </html>

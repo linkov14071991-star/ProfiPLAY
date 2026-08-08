@@ -509,9 +509,9 @@ async def get_alias_words(difficulty: str = Query("easy"), subjects: str = Query
 
 
 @app.get("/api/questions")
-async def get_questions(difficulty: str = Query("easy"), limit: int = Query(50)):
-    """Возвращает перемешанный список вопросов (для Спринта). Микс всех дисциплин."""
-    questions = _pool_for_difficulty(difficulty).copy()
+async def get_questions(difficulty: str = Query("easy"), limit: int = Query(50), topics: str = Query("")):
+    """Список вопросов для Спринта. topics — темы через запятую, пусто = микс всех."""
+    questions = _pool_for(difficulty, topics).copy()
     random.shuffle(questions)
     # Перемешиваем варианты внутри каждого вопроса, чтобы правильный не был всегда первым
     return {"questions": [shuffle_question(q) for q in questions[:limit]]}
@@ -550,9 +550,9 @@ async def get_spy(difficulty: str = Query("easy"), subjects: str = Query("inform
 
 
 @app.get("/api/marathon")
-async def get_marathon(difficulty: str = Query("easy"), limit: int = Query(200)):
-    """Для Марафона: возвращает пул вопросов выбранной сложности со всех дисциплин."""
-    pool = _pool_for_difficulty(difficulty).copy()
+async def get_marathon(difficulty: str = Query("easy"), limit: int = Query(200), topics: str = Query("")):
+    """Для Марафона: пул вопросов выбранной сложности. topics — темы через запятую."""
+    pool = _pool_for(difficulty, topics).copy()
     random.shuffle(pool)
     return {"questions": [shuffle_question(q) for q in pool[:limit]]}
 
@@ -1456,7 +1456,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "duel-physics-v10"
+BUILD_TAG = "quiz-3000-v11"
 
 
 @app.get("/api/version")

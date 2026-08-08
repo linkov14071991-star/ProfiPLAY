@@ -401,7 +401,9 @@ const sprint = {
   locked: false,
 };
 
+sprint.topics = ["informatika", "mathematics", "physics", "programming"];
 setupPills("sprint-difficulty", (v) => { sprint.difficulty = v; renderSprintRecord(); updateSprintMult(); });
+setupPillsMulti("sprint-topic", (arr) => (sprint.topics = arr));
 setupPills("sprint-duration", (v) => { sprint.duration = v; renderSprintRecord(); }, (v) => parseInt(v, 10));
 
 function updateSprintMult() {
@@ -461,7 +463,7 @@ function renderSprintRecord() {
 
 // --- Игра ---
 async function sprintLoadQuestions() {
-  const r = await fetch(`/api/questions?difficulty=${sprint.difficulty}&limit=50`);
+  const r = await fetch(`/api/questions?difficulty=${sprint.difficulty}&limit=50&topics=${(sprint.topics || []).join(",")}`);
   const data = await r.json();
   sprint.questions = data.questions;
   sprint.qIndex = 0;
@@ -725,7 +727,9 @@ const marathon = {
   locked: false,
 };
 
+marathon.topics = ["informatika", "mathematics", "physics", "programming"];
 setupPills("marathon-difficulty", (v) => { marathon.difficulty = v; updateMarathonMult(); });
+setupPillsMulti("marathon-topic", (arr) => (marathon.topics = arr));
 setupPills("marathon-lives", (v) => { marathon.lives = v; updateMarathonMult(); }, (v) => parseInt(v, 10));
 
 function updateMarathonMult() {
@@ -784,7 +788,7 @@ function marathonRenderStreak() {
 }
 
 async function marathonLoad() {
-  const r = await fetch(`/api/marathon?difficulty=${marathon.difficulty}&limit=300`);
+  const r = await fetch(`/api/marathon?difficulty=${marathon.difficulty}&limit=300&topics=${(marathon.topics || []).join(",")}`);
   const d = await r.json();
   marathon.questions = d.questions;
   marathon.qIndex = 0;
@@ -2363,6 +2367,8 @@ function duelRenderQ() {
     duelUpdateTimer();
     if (duel.timeLeft <= 0) {
       duelAnswer(-1);  // таймаут
+    } else {
+      playTick(duel.timeLeft);
     }
   }, 1000);
 }
