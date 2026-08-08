@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=12">
+<link rel="stylesheet" href="/style.css?v=13">
 </head>
 <body>
 
@@ -112,6 +112,7 @@
   <h3 style="padding-left:4px;" id="modes-anchor">🎮 Играй и учись</h3>
   <div class="games-grid">
     <div class="game-card" data-game="sprint">
+      <button class="game-info-btn" data-info="sprint" aria-label="Правила">ℹ️</button>
       <div class="icon">⚡</div>
       <div class="info">
         <div class="title">Спринт</div>
@@ -120,6 +121,7 @@
       </div>
     </div>
     <div class="game-card" data-game="marathon">
+      <button class="game-info-btn" data-info="marathon" aria-label="Правила">ℹ️</button>
       <div class="icon">🏆</div>
       <div class="info">
         <div class="title">Марафон</div>
@@ -128,6 +130,7 @@
       </div>
     </div>
     <div class="game-card" data-game="python">
+      <button class="game-info-btn" data-info="python" aria-label="Правила">ℹ️</button>
       <div class="icon" style="background:#B6A9D9;">🐍</div>
       <div class="info">
         <div class="title">Python <span class="by-profik">by Профик</span></div>
@@ -151,6 +154,7 @@
   <h3 style="padding-left:4px; margin-top:24px;">⚔ Соревнования</h3>
   <div class="games-grid">
     <div class="game-card" data-game="duel">
+      <button class="game-info-btn" data-info="duel" aria-label="Правила">ℹ️</button>
       <div class="icon">⚡⚔</div>
       <div class="info">
         <div class="title">Блиц-дуэль</div>
@@ -188,6 +192,7 @@
 
   <div class="games-grid">
     <div class="game-card" data-game="crocodile">
+      <button class="game-info-btn" data-info="crocodile" aria-label="Правила">ℹ️</button>
       <div class="icon">🐊</div>
       <div class="info">
         <div class="title">Крокодил</div>
@@ -195,6 +200,7 @@
       </div>
     </div>
     <div class="game-card" data-game="alias">
+      <button class="game-info-btn" data-info="alias" aria-label="Правила">ℹ️</button>
       <div class="icon">🗣</div>
       <div class="info">
         <div class="title">Alias</div>
@@ -210,6 +216,7 @@
       <button class="game-info-btn" data-info="timebank" aria-label="Правила игры">ℹ️</button>
     </div>
     <div class="game-card" data-game="spy">
+      <button class="game-info-btn" data-info="spy" aria-label="Правила">ℹ️</button>
       <div class="icon">🕵</div>
       <div class="info">
         <div class="title">Шпион</div>
@@ -217,6 +224,7 @@
       </div>
     </div>
     <div class="game-card" data-game="whoami">
+      <button class="game-info-btn" data-info="whoami" aria-label="Правила">ℹ️</button>
       <div class="icon">❓</div>
       <div class="info">
         <div class="title">Кто я?</div>
@@ -238,11 +246,18 @@
     <h1>🐊 Крокодил</h1>
     <p class="subtitle">Показывай жестами — друзья угадывают. Кто угадал — берёт телефон.</p>
 
-    <label class="field">Время игры</label>
+    <label class="field">Сложность</label>
+    <div class="pills" id="croco-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Просто</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средне</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложно</span></button>
+    </div>
+
+    <label class="field">Время на показ слова</label>
     <div class="pills" id="croco-time">
       <button class="pill active" data-value="60">1 мин</button>
-      <button class="pill" data-value="180">3 мин</button>
-      <button class="pill" data-value="300">5 мин</button>
+      <button class="pill" data-value="120">2 мин</button>
+      <button class="pill" data-value="0">Безлимит</button>
     </div>
 
     <div class="record-hint" id="croco-record-hint" style="display:none;">
@@ -1465,6 +1480,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=12"></script>
+<script src="/script.js?v=13"></script>
 </body>
 </html>

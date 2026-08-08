@@ -200,6 +200,54 @@ document.querySelectorAll(".btn-back").forEach((btn) => {
 
 // ==== Инфо-модалка с правилами игры ====
 const GAME_INFO = {
+  sprint: {
+    title: "⚡ Спринт",
+    body: `<p>Соло-режим на скорость. За выбранное время (30/60/90 сек) отвечай на максимум вопросов — 4 варианта, автопереход к следующему.</p>
+      <p>Выбираешь <b>темы</b> (Информатика/Математика/Физика, можно несколько) и <b>сложность</b>.</p>
+      <p>За правильный ответ: <b>+1 рейтинг и +2 XP</b>, умноженные на множитель сложности (×1 / ×1.5 / ×2).</p>`,
+  },
+  marathon: {
+    title: "🏆 Марафон",
+    body: `<p>Отвечай на вопросы, пока не закончатся жизни. Каждая ошибка — минус жизнь.</p>
+      <p>Меньше жизней (1/3/5) — больше очков за риск: ×3 / ×2 / ×1. Плюс множитель сложности.</p>
+      <p>Выбираешь темы и сложность. За правильный ответ: <b>+2 рейтинга и +3 XP</b>.</p>`,
+  },
+  python: {
+    title: "🐍 Python by Профик",
+    body: `<p>Курс программирования от основ до задач ЕГЭ. Идёшь по темам шаг за шагом.</p>
+      <p>Внутри: теория с примерами, тесты, «что выведет код», «найди ошибку», «собери код», мини-проекты и ежедневные задания.</p>
+      <p>Копишь готовность к экзамену, а за первое прохождение уроков — рейтинг в общий зачёт Арены.</p>`,
+  },
+  duel: {
+    title: "⚔ Блиц-дуэль",
+    body: `<p>Соревнование 1×1 — асинхронно. Ты играешь 10 вопросов по 15 секунд, очки за скорость ответа.</p>
+      <p>Выбираешь <b>темы</b> (1–3) и <b>сложность</b>. После партии получаешь ссылку — отправляешь другу в Telegram. Он играет те же вопросы когда захочет.</p>
+      <p>Очки сравниваются автоматически. Победа поднимает рейтинг (ELO), поражение — снижает.</p>`,
+  },
+  crocodile: {
+    title: "🐊 Крокодил",
+    body: `<p>Показывай слово жестами, без слов и звуков — друзья угадывают. Кто угадал, берёт телефон и играет дальше.</p>
+      <p>Перед игрой выбираешь <b>сложность</b> слов и <b>время на показ одного слова</b> (1 мин, 2 мин или безлимит).</p>
+      <p>Каждый ход игрок выбирает тему (Информатика/Математика/Физика) и показывает слово. Угадали — жми «Угадано!». Счёт угаданных сохраняется в рекорды.</p>`,
+  },
+  alias: {
+    title: "🗣 Alias",
+    body: `<p>Объясняй слово другими словами, не называя само слово и запретные слова к нему. Друзья угадывают.</p>
+      <p>Выбираешь <b>предметы</b>, <b>сложность</b> и длительность раунда. Галочкой можно включить или выключить запретные слова.</p>
+      <p>За раунд считаются угаданные слова, пропуски и штрафы (за названное запретное слово).</p>`,
+  },
+  spy: {
+    title: "🕵 Шпион",
+    body: `<p>Всем игрокам показывают одно слово — кроме шпиона. Телефон передаётся по кругу, каждый видит свою роль.</p>
+      <p>Потом обсуждение: по очереди намекаете на слово, <b>не называя его прямо</b>. Шпион пытается понять, о чём речь.</p>
+      <p>После обсуждения голосуете, кто шпион. Поймали шпиона — он пытается угадать слово. Угадал — победа шпиона, нет — победа мирных.</p>`,
+  },
+  whoami: {
+    title: "❓ Кто я?",
+    body: `<p>Телефон ко лбу экраном к друзьям — сам ты слово не видишь. Задавай вопросы «да/нет», друзья тапают кнопки за тебя.</p>
+      <p>Твоя задача — угадать, кто ты (какое слово), за отведённое время. Выбираешь сложность и длительность хода.</p>
+      <p>Чем больше угадаешь за ход — тем лучше результат.</p>`,
+  },
   timebank: {
     title: "⏳ Тайм-баттл <span class='by-profik'>by Профик</span>",
     body: `
@@ -227,27 +275,26 @@ document.querySelector("#game-info-modal .gim-backdrop").addEventListener("click
 // ==============================
 // ========= КРОКОДИЛ ===========
 // ==============================
-// Механика: игроки по очереди. Ход = выбрать тему → показать слово → угадали →
-// телефон берёт угадавший и выбирает тему заново. Общий таймер идёт непрерывно.
+// Механика: игроки по очереди выбирают тему и показывают слово. У каждого слова —
+// свой таймер (1/2 мин или безлимит). Угадали → следующий игрок берёт телефон.
 const croco = {
-  duration: 60,        // общее время игры, сек (1/3/5 мин)
-  pools: {},           // { informatika:[{word,emoji}], matematika:[...], fizika:[...] }
-  idx: {},             // индекс в каждом пуле
+  difficulty: "easy",
+  wordTime: 60,        // сек на показ ОДНОГО слова (0 = безлимит)
+  pools: {}, idx: {},
   curSubject: null,
-  timer: null,
-  timeLeft: 0,
+  timer: null, timeLeft: 0,
   guessed: 0,
-  running: false,
-  started: false,     // таймер запущен (после первого выбора слова)
+  started: false,
 };
 
 const CROCO_SUBJECTS = ["informatika", "matematika", "fizika"];
 
-setupPills("croco-time", (v) => { croco.duration = v; renderCrocoRecord(); }, (v) => parseInt(v, 10));
+setupPills("croco-difficulty", (v) => { croco.difficulty = v; renderCrocoRecord(); });
+setupPills("croco-time", (v) => { croco.wordTime = v; renderCrocoRecord(); }, (v) => parseInt(v, 10));
 
-// --- Рекорды Крокодила (по времени игры) ---
+// --- Рекорды Крокодила (по времени на слово и сложности) ---
 const crocoRecords = {};
-function crocoRecordKey() { return `croco_${croco.duration}`; }
+function crocoRecordKey() { return `croco_${croco.wordTime}_${croco.difficulty}`; }
 function getCrocoRecord() { return crocoRecords[crocoRecordKey()] || 0; }
 function saveCrocoRecord(score) {
   const key = crocoRecordKey();
@@ -260,7 +307,8 @@ function saveCrocoRecord(score) {
 }
 function loadCrocoRecordsFromCloud() {
   if (!tg?.CloudStorage) return;
-  const keys = [60, 180, 300].map((t) => `croco_${t}`);
+  const keys = [];
+  for (const t of [60, 120, 0]) for (const d of ["easy", "medium", "hard"]) keys.push(`croco_${t}_${d}`);
   tg.CloudStorage.getItems(keys, (err, values) => {
     if (err || !values) return;
     Object.entries(values).forEach(([k, v]) => { if (v) crocoRecords[k] = parseInt(v, 10) || 0; });
@@ -275,9 +323,8 @@ function renderCrocoRecord() {
 }
 
 async function crocoLoadPools() {
-  // грузим все три темы (микс всех уровней) один раз на игру
   const results = await Promise.all(
-    CROCO_SUBJECTS.map((s) => fetch(`/api/words?difficulty=mixed&subjects=${s}`).then((r) => r.json()))
+    CROCO_SUBJECTS.map((s) => fetch(`/api/words?difficulty=${croco.difficulty}&subjects=${s}`).then((r) => r.json()))
   );
   CROCO_SUBJECTS.forEach((s, i) => {
     const items = results[i].items || [];
@@ -292,26 +339,14 @@ function fmtTime(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 function crocoUpdateTimer() {
+  const unlimited = croco.wordTime <= 0;
   document.querySelectorAll(".croco-timer").forEach((el) => {
-    el.textContent = fmtTime(Math.max(0, croco.timeLeft));
+    el.textContent = unlimited ? "∞" : fmtTime(Math.max(0, croco.timeLeft));
     el.classList.remove("warn", "danger");
-    if (croco.timeLeft <= 5) el.classList.add("danger");
-    else if (croco.timeLeft <= 15) el.classList.add("warn");
+    if (!unlimited && croco.timeLeft <= 5) el.classList.add("danger");
+    else if (!unlimited && croco.timeLeft <= 15) el.classList.add("warn");
   });
   document.querySelectorAll(".croco-guessed").forEach((el) => (el.textContent = croco.guessed));
-}
-
-function crocoStartTimer() {
-  croco.timeLeft = croco.duration;
-  croco.running = true;
-  croco.started = true;
-  crocoUpdateTimer();
-  croco.timer = setInterval(() => {
-    croco.timeLeft--;
-    crocoUpdateTimer();
-    if (croco.timeLeft <= 0) { playTimeUpSound(); crocoFinish(); }
-    else playTick(croco.timeLeft);
-  }, 1000);
 }
 
 async function crocoStart() {
@@ -319,24 +354,25 @@ async function crocoStart() {
   await crocoLoadPools();
   croco.guessed = 0;
   croco.curSubject = null;
-  croco.started = false;         // таймер ещё не идёт — можно вернуться в настройки
-  croco.timeLeft = croco.duration;
+  croco.started = false;
+  croco.timeLeft = croco.wordTime;
   crocoShowThemePicker();
 }
 
-// Экран выбора темы (перед каждым словом)
+// Экран выбора темы (перед каждым словом). Таймер слова остановлен, пока выбираешь.
 function crocoShowThemePicker() {
+  if (croco.timer) { clearInterval(croco.timer); croco.timer = null; }
+  croco.timeLeft = croco.wordTime;
   crocoUpdateTimer();
-  // до старта — кнопка «Назад», после старта — «Завершить игру»
   document.getElementById("btn-croco-theme-back").style.display = croco.started ? "none" : "";
   document.getElementById("btn-croco-theme-stop").style.display = croco.started ? "" : "none";
   showScreen("crocoTheme");
 }
 
-// Показать слово выбранной темы. Первый выбор запускает таймер (игра началась).
+// Показать слово выбранной темы. Запускает таймер этого слова.
 function crocoShowWord(subject) {
   croco.curSubject = subject;
-  if (!croco.started) crocoStartTimer();
+  croco.started = true;
   crocoNextWord();
   showScreen("game");
 }
@@ -349,13 +385,31 @@ function crocoNextWord() {
   const item = pool[croco.idx[s]++];
   document.getElementById("word").textContent = item.word;
   document.getElementById("word-emoji").textContent = item.emoji || "";
+  crocoStartWordTimer();
+}
+
+// Таймер на показ одного слова
+function crocoStartWordTimer() {
+  if (croco.timer) { clearInterval(croco.timer); croco.timer = null; }
+  if (croco.wordTime <= 0) { crocoUpdateTimer(); return; }  // безлимит — без таймера
+  croco.timeLeft = croco.wordTime;
   crocoUpdateTimer();
+  croco.timer = setInterval(() => {
+    croco.timeLeft--;
+    crocoUpdateTimer();
+    if (croco.timeLeft <= 0) { clearInterval(croco.timer); croco.timer = null; playTimeUpSound(); crocoWordTimeout(); }
+    else playTick(croco.timeLeft);
+  }, 1000);
+}
+
+// Время на слово вышло — слово не засчитано, ход переходит дальше
+function crocoWordTimeout() {
+  hapticError();
+  crocoShowThemePicker();
 }
 
 async function crocoFinish() {
-  clearInterval(croco.timer);
-  croco.timer = null;
-  croco.running = false;
+  if (croco.timer) { clearInterval(croco.timer); croco.timer = null; }
   const isRecord = saveCrocoRecord(croco.guessed);
   document.getElementById("result-guessed").textContent = croco.guessed;
   document.getElementById("result-record").textContent = getCrocoRecord();
@@ -368,17 +422,17 @@ async function crocoFinish() {
 
 document.getElementById("btn-croco-start").addEventListener("click", crocoStart);
 document.getElementById("btn-croco-again").addEventListener("click", crocoStart);
-// Выбор темы на экране-пикере
 document.querySelectorAll("#screen-croco-theme .theme-btn").forEach((btn) => {
   btn.addEventListener("click", () => { hapticLight(); crocoShowWord(btn.dataset.subject); });
 });
-// Угадано → следующий ход: телефон берёт угадавший, снова выбор темы
+// Угадано → следующий ход: угадавший берёт телефон и выбирает тему
 document.getElementById("btn-guessed").addEventListener("click", () => {
+  if (croco.timer) { clearInterval(croco.timer); croco.timer = null; }
   croco.guessed++;
   hapticLight();
   crocoShowThemePicker();
 });
-// Другое слово той же темы (сложное слово можно пропустить)
+// Другое слово той же темы (сбрасывает таймер слова)
 document.getElementById("btn-skip").addEventListener("click", () => {
   hapticLight();
   crocoNextWord();
