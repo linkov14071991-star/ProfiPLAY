@@ -490,7 +490,7 @@ const gromko = {
   curDifficulty: "easy",
   phase: "read",           // фаза объяснения: read (10с) → explain (30/60/90)
   current: null, locked: false,
-  blitzWords: [], blitzIdx: 0, blitzGuessed: 0,
+  blitzWords: [], blitzGuessed: 0,
   timer: null, timeLeft: 0,
 };
 
