@@ -1434,7 +1434,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "boot-async-v3"
+BUILD_TAG = "review-tick-v4"
 
 
 @app.get("/api/version")

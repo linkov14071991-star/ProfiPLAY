@@ -39,6 +39,7 @@ const SCREENS = {
   tbSetup: "screen-tb-setup",
   tbAttempt: "screen-tb-attempt",
   tbPlay: "screen-tb-play",
+  tbReview: "screen-tb-review",
   tbFinalIntro: "screen-tb-final-intro",
   tbFinal: "screen-tb-final",
   tbResult: "screen-tb-result",
@@ -142,6 +143,35 @@ function playTimeUpSound() {
     });
     if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred("warning");
   } catch (e) { /* звук недоступен — не критично */ }
+}
+
+// Тиканье хронометра каждую секунду. В последние 10 сек громкость и высота растут —
+// нагнетает напряжение. Вызывать раз в секунду с оставшимся временем.
+function playTick(secondsLeft) {
+  if (secondsLeft <= 0) return;
+  try {
+    _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    if (ctx.state === "suspended") ctx.resume();
+    const last10 = secondsLeft <= 10;
+    // громкость: тихо обычно (0.05), в последние 10 сек нарастает до ~0.6
+    const vol = last10 ? Math.min(0.6, 0.1 + (10 - secondsLeft) * 0.055) : 0.05;
+    const freq = last10 ? 1100 : 750;                 // в финале выше и звонче
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = last10 ? "square" : "sine";
+    osc.frequency.value = freq;
+    const t0 = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + (last10 ? 0.12 : 0.05));
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.13);
+    if (last10 && secondsLeft <= 5 && window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred("light");
+    }
+  } catch (e) { /* не критично */ }
 }
 
 // ==== Меню игр (делегирование по клику) ====
@@ -254,6 +284,7 @@ function crocoStartTimer() {
     croco.timeLeft--;
     crocoUpdateTimer();
     if (croco.timeLeft <= 0) { playTimeUpSound(); crocoFinish(); }
+    else playTick(croco.timeLeft);
   }, 1000);
 }
 
@@ -425,6 +456,7 @@ function sprintStartTimer() {
     sprint.timeLeft--;
     sprintUpdateTimer();
     if (sprint.timeLeft <= 0) { playTimeUpSound(); sprintFinish(); }
+    else playTick(sprint.timeLeft);
   }, 1000);
 }
 
@@ -600,6 +632,7 @@ function aliasStartTimer() {
     alias.timeLeft--;
     aliasUpdateTimer();
     if (alias.timeLeft <= 0) { playTimeUpSound(); aliasStop(); }
+    else playTick(alias.timeLeft);
   }, 1000);
 }
 
@@ -873,8 +906,9 @@ const tb = {
   step: 0,          // 0..3: 0=R1p1,1=R1p2,2=R2p1,3=R2p2
   bank: 0,          // накопленные секунды
   difficulty: "easy",
-  items: [], idx: 0,
+  items: [], idx: 0, cur: null,
   timer: null, timeLeft: 0, count: 0,
+  attemptWords: [],   // угаданные слова текущей попытки (для страницы проверки)
   finalDifficulty: "easy", finalMult: 1,
   finalTimer: null, finalLeft: 0, finalWord: null,
   score: 0,
@@ -929,6 +963,7 @@ async function tbAttemptGo() {
   const s = TB_STEPS[tb.step];
   await tbLoadItems(s.round, tb.difficulty);
   tb.count = 0;
+  tb.attemptWords = [];
   tb.timeLeft = TB_ATTEMPT_TIME;
   tbNextWord(s.round);
   tbRenderPlay();
@@ -936,7 +971,8 @@ async function tbAttemptGo() {
   tb.timer = setInterval(() => {
     tb.timeLeft--;
     tbRenderPlay();
-    if (tb.timeLeft <= 0) { playTimeUpSound(); tbEndAttempt(); }
+    if (tb.timeLeft <= 0) { playTimeUpSound(); tbShowReview(); }
+    else playTick(tb.timeLeft);
   }, 1000);
 }
 
@@ -964,10 +1000,38 @@ function tbRenderPlay() {
   document.getElementById("tb-play-bank").textContent = tb.bank + tb.count * TB_SEC_PER_WORD[tb.difficulty];
 }
 
-function tbEndAttempt() {
+// Страница проверки: показываем угаданные слова, можно снять галочку с ошибочного
+// или запретного слова. Банк считается по отмеченным.
+function tbShowReview() {
   clearInterval(tb.timer);
   tb.timer = null;
-  tb.bank += tb.count * TB_SEC_PER_WORD[tb.difficulty];
+  const s = TB_STEPS[tb.step];
+  document.getElementById("tb-review-title").textContent = `Проверка · Раунд ${s.round} · Попытка ${s.attempt}`;
+  const list = document.getElementById("tb-review-list");
+  if (!tb.attemptWords.length) {
+    list.innerHTML = `<div class="tb-review-empty">Слов не угадано за эту попытку.</div>`;
+  } else {
+    list.innerHTML = tb.attemptWords.map((it, i) => `
+      <label class="tb-review-row">
+        <input type="checkbox" class="tb-review-cb" data-i="${i}" checked>
+        <span class="tb-review-emoji">${it.emoji || "•"}</span>
+        <span class="tb-review-word">${escapeTb(it.word)}</span>
+      </label>`).join("");
+    list.querySelectorAll(".tb-review-cb").forEach((cb) => cb.addEventListener("change", () => { hapticLight(); tbReviewRecount(); }));
+  }
+  tbReviewRecount();
+  showScreen("tbReview");
+}
+
+function tbReviewRecount() {
+  const checked = document.querySelectorAll("#tb-review-list .tb-review-cb:checked").length;
+  document.getElementById("tb-review-count").textContent = checked;
+  document.getElementById("tb-review-sec").textContent = checked * TB_SEC_PER_WORD[tb.difficulty];
+}
+
+function tbApplyReview() {
+  const checked = document.querySelectorAll("#tb-review-list .tb-review-cb:checked").length;
+  tb.bank += checked * TB_SEC_PER_WORD[tb.difficulty];
   tb.step++;
   if (tb.step >= TB_STEPS.length) tbShowFinalIntro();
   else tbShowAttempt();
@@ -997,6 +1061,7 @@ async function tbFinalGo() {
     tb.finalLeft--;
     tbRenderFinalTimer();
     if (tb.finalLeft <= 0) { playTimeUpSound(); tbFinishFinal(false); }
+    else playTick(tb.finalLeft);
   }, 1000);
 }
 
@@ -1023,11 +1088,13 @@ function tbFinishFinal(guessed) {
 document.getElementById("btn-tb-attempt-go").addEventListener("click", tbAttemptGo);
 document.getElementById("btn-tb-ok").addEventListener("click", () => {
   const s = TB_STEPS[tb.step];
-  tb.count++;
+  if (tb.cur) tb.attemptWords.push(tb.cur);   // запоминаем для страницы проверки
+  tb.count = tb.attemptWords.length;
   hapticLight();
   tbNextWord(s.round);
   tbRenderPlay();
 });
+document.getElementById("btn-tb-review-done").addEventListener("click", tbApplyReview);
 document.getElementById("btn-tb-skip").addEventListener("click", () => {
   const s = TB_STEPS[tb.step];
   hapticLight();
@@ -1149,6 +1216,8 @@ function spyStartDiscussion() {
       spy.timer = null;
       playTimeUpSound();
       spyShowVote();
+    } else {
+      playTick(spy.timeLeft);
     }
   }, 1000);
   showScreen("spyDiscuss");
@@ -1300,6 +1369,7 @@ function whoamiPlay() {
     whoami.timeLeft--;
     whoamiUpdateTimer();
     if (whoami.timeLeft <= 0) whoamiEndTurn();
+    else playTick(whoami.timeLeft);
   }, 1000);
 }
 

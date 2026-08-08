@@ -356,6 +356,18 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .tb-banned { font-size: 13px; color: var(--danger); margin-top: 10px; text-align: center; line-height: 1.4; }
 .tb-banned span { font-weight: 700; }
 .tb-final-hint { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 12px; line-height: 1.4; }
+/* Страница проверки слов */
+.tb-review-list { max-height: 46vh; overflow-y: auto; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+.tb-review-empty { text-align: center; color: var(--text-muted); padding: 20px; }
+.tb-review-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px;
+  background: var(--card-alt); cursor: pointer; user-select: none;
+}
+.tb-review-row input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--brand-lime); flex-shrink: 0; cursor: pointer; }
+.tb-review-emoji { font-size: 26px; flex-shrink: 0; }
+.tb-review-word { font-size: 17px; font-weight: 700; color: var(--text-on-light); }
+.tb-review-row:has(input:not(:checked)) { opacity: 0.45; }
+.tb-review-row:has(input:not(:checked)) .tb-review-word { text-decoration: line-through; }
 .tb-score-big { font-size: 64px; font-weight: 800; text-align: center; color: var(--brand-purple); line-height: 1; }
 /* таблица рекордов */
 .tb-records { margin-top: 18px; }
