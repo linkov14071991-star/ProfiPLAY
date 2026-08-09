@@ -321,7 +321,7 @@ const GAME_INFO = {
   fastmath: {
     title: "🧮 Быстрый счёт",
     body: `<p>Решай короткие примеры и мини-уравнения (сложение, вычитание, умножение, деление, «x + 7 = 12»). 4 варианта ответа, автопереход.</p>
-      <p>За выбранное время (30/60/90 сек) реши как можно больше. Сложность влияет на размер чисел и множитель наград: ×1 / ×1.5 / ×2.</p>
+      <p>За <b>60 секунд</b> реши как можно больше. Сложность влияет на размер чисел и множитель наград: ×1 / ×1.5 / ×2.</p>
       <p>Тренировочная игра: рейтинг в общий зачёт с капом <b>100 очков в день</b> (со Спринтом, Марафоном и «Угадай число»). Есть своя таблица лучших.</p>`,
   },
   python: {
@@ -1619,7 +1619,6 @@ document.getElementById("btn-numguess-stop").addEventListener("click", () => num
 const fastmath = { difficulty: "easy", duration: 60, timeLeft: 0, timer: null, correct: 0, wrong: 0, cur: null, locked: false };
 
 setupPills("fastmath-difficulty", (v) => { fastmath.difficulty = v; updateFastmathMult(); });
-setupPills("fastmath-duration", (v) => (fastmath.duration = v), (v) => parseInt(v, 10));
 function updateFastmathMult() {
   const dm = { easy: 1, medium: 1.5, hard: 2 }[fastmath.difficulty] || 1;
   const el = document.getElementById("fastmath-mult");
@@ -1743,8 +1742,7 @@ function fmSaveRecord(score) {
 }
 function fmLoadRecords() {
   if (!tg?.CloudStorage) return;
-  const keys = [];
-  for (const d of ["easy", "medium", "hard"]) for (const t of [30, 60, 90]) keys.push(`fastmath_${d}_${t}`);
+  const keys = ["easy", "medium", "hard"].map((d) => `fastmath_${d}_60`);
   tg.CloudStorage.getItems(keys, (err, values) => {
     if (err || !values) return;
     Object.entries(values).forEach(([k, v]) => { if (v) fmRecords[k] = parseInt(v, 10) || 0; });

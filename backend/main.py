@@ -1557,7 +1557,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "back-arrow-v30"
+BUILD_TAG = "fastmath-60s-v31"
 
 
 @app.get("/api/version")
