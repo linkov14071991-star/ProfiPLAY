@@ -1558,7 +1558,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "it-razminka-v33"
+BUILD_TAG = "it-logic-v34"
 
 
 @app.get("/api/version")

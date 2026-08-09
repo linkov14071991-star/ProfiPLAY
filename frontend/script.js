@@ -331,7 +331,7 @@ const GAME_INFO = {
   },
   infomath: {
     title: "🖥️ IT-разминка",
-    body: `<p>Тренажёр по информатике: <b>степени двойки</b> (2⁰…2¹⁶ наизусть), перевод <b>двоичная ↔ десятичная</b> и <b>единицы информации</b> (бит, байт, Кбайт, Мбайт, Гбайт). 4 варианта, автопереход.</p>
+    body: `<p>Тренажёр по информатике: <b>степени двойки</b> (2⁰…2¹⁶ наизусть), перевод <b>двоичная ↔ десятичная</b> и <b>единицы информации</b> (бит, байт, Кбайт, Мбайт, Гбайт) и <b>логические выражения</b> (И, ИЛИ, НЕ). 4 варианта, автопереход.</p>
       <p>Числа подобраны так, чтобы считать <b>в уме</b>. За <b>60 секунд</b> реши как можно больше. Сложность (до 2⁸ / 2¹² / 2¹⁶) даёт множитель ×1 / ×1.5 / ×2.</p>
       <p>Тренировочная игра: рейтинг в общий зачёт с капом <b>100 очков в день</b>. Есть своя таблица лучших.</p>`,
   },
@@ -1783,8 +1783,8 @@ const IM_MAXEXP = { easy: 8, medium: 12, hard: 16 };
 const IM_BINMAX = { easy: 15, medium: 31, hard: 63 };
 const IM_CATS = {
   easy: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB"],
-  medium: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB", "unitBK"],
-  hard: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB", "unitBK", "unitKM"],
+  medium: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB", "unitBK", "logicA", "logicB"],
+  hard: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB", "unitBK", "unitKM", "logicA", "logicB", "logicC"],
 };
 function imRand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
 function imMcq(correct, cands) {
@@ -1844,17 +1844,46 @@ function imGen(difficulty) {
     const ds = [n + 1, n - 1, n * 2, 1024].filter((v) => v > 0 && v !== correct);
     return { q: `${bytes} байт = ? Кбайт`, ...imMcq(correct, ds) };
   }
-  // unitKM
-  const upper = imRand(0, 1);
-  const n = imRand(1, 8); const correct = n * 1024;
-  const ds = [correct + 1024, correct - 1024, n * 512, n * 2048].filter((v) => v > 0 && v !== correct);
-  return { q: upper ? `${n} Мбайт = ? Кбайт` : `${n} Гбайт = ? Мбайт`, ...imMcq(correct, ds) };
+  if (cat === "unitKM") {
+    const upper = imRand(0, 1);
+    const n = imRand(1, 8); const correct = n * 1024;
+    const ds = [correct + 1024, correct - 1024, n * 512, n * 2048].filter((v) => v > 0 && v !== correct);
+    return { q: upper ? `${n} Мбайт = ? Кбайт` : `${n} Гбайт = ? Мбайт`, ...imMcq(correct, ds) };
+  }
+  if (cat === "logicA") {
+    // (X<b+1) И НЕ(X<b) → единственное X=b
+    const b = imRand(3, 20); const a = b + 1; const correct = b;
+    const ds = [b - 1, b + 1, b + 2, b - 2].filter((v) => v > 0 && v !== correct);
+    return { q: `Найди X: (X<${a}) И НЕ(X<${b})`, ...imMcq(correct, ds) };
+  }
+  if (cat === "logicB") {
+    // наибольшее x: (x<a) ИЛИ НЕ(x>b) → x ≤ max(a-1, b)
+    const a = imRand(4, 20), b = imRand(2, 18);
+    const correct = Math.max(a - 1, b);
+    const ds = [correct - 1, correct + 1, correct + 2, correct - 2].filter((v) => v > 0 && v !== correct);
+    return { q: `Наиб. x: (x<${a}) ИЛИ НЕ(x>${b})`, ...imMcq(correct, ds) };
+  }
+  if (cat === "logicC") {
+    // сколько x: НЕ((x≥a) ИЛИ (x<b)) И (чёт/нечёт) → b ≤ x ≤ a-1
+    const b = imRand(10, 25); const a = b + imRand(6, 18);
+    const evenWanted = imRand(0, 1) === 0;
+    let cnt = 0;
+    for (let x = b; x <= a - 1; x++) { if ((x % 2 === 0) === evenWanted) cnt++; }
+    const ds = [cnt - 1, cnt + 1, cnt + 2, cnt - 2].filter((v) => v >= 0 && v !== cnt);
+    return { q: `Сколько x: НЕ((x≥${a}) ИЛИ (x<${b})) И x ${evenWanted ? "чётное" : "нечётное"}`, ...imMcq(cnt, ds) };
+  }
+  // запас: степень двойки
+  const n = imRand(2, maxExp); const correct = Math.pow(2, n);
+  const ds = []; [n - 1, n + 1, n + 2].forEach((k) => { if (k >= 0 && k <= 16 && k !== n) ds.push(Math.pow(2, k)); });
+  return { q: `2^${n} = ?`, ...imMcq(correct, ds) };
 }
 
 function infomathRenderQ() {
   const g = imGen(infomath.difficulty);
   infomath.cur = { correct: g.correct };
-  document.getElementById("infomath-expr").textContent = g.q;
+  const exprEl = document.getElementById("infomath-expr");
+  exprEl.textContent = g.q;
+  exprEl.classList.toggle("fm-long", g.q.length > 20);
   const wrap = document.getElementById("infomath-answers");
   wrap.innerHTML = "";
   g.options.forEach((opt, i) => {

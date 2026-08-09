@@ -2294,3 +2294,4 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
   -webkit-tap-highlight-color: transparent;
 }
 .screen-back:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.22); }
+.fm-expr.fm-long { font-size: 18px; letter-spacing: 0; line-height: 1.35; }
