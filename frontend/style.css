@@ -2278,3 +2278,5 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .game-lb-place { width: 22px; font-weight: 800; color: var(--brand-purple); text-align: center; }
 .game-lb-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .game-lb-score { font-weight: 800; color: var(--brand-purple); }
+
+.fm-expr { font-size: 30px; font-weight: 800; letter-spacing: 1px; }

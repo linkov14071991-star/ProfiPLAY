@@ -45,6 +45,9 @@ const SCREENS = {
   marathonResult: "screen-marathon-result",
   numguessSetup: "screen-numguess-setup",
   numguessPlay: "screen-numguess-play",
+  fastmathSetup: "screen-fastmath-setup",
+  fastmathPlay: "screen-fastmath-play",
+  fastmathResult: "screen-fastmath-result",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -139,6 +142,7 @@ function initMenuExtras() {
   setupGameLeaderboard("sprint", "sprint-lb", "sprint-lb-list");
   setupGameLeaderboard("marathon", "marathon-lb", "marathon-lb-list");
   setupGameLeaderboard("numguess", "numguess-lb", "numguess-lb-list");
+  setupGameLeaderboard("fastmath", "fastmath-lb", "fastmath-lb-list");
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initMenuExtras);
 else initMenuExtras();
@@ -262,6 +266,7 @@ document.body.addEventListener("click", (e) => {
   if (game === "alias") showScreen("aliasSetup");
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); }
   if (game === "numguess") { resetLbTabs("numguess-lb"); loadGameLeaderboard("numguess", "numguess-lb-list", "all"); showScreen("numguessSetup"); }
+  if (game === "fastmath") { resetLbTabs("fastmath-lb"); loadGameLeaderboard("fastmath", "fastmath-lb-list", "all"); showScreen("fastmathSetup"); }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); }
   if (game === "spy") showScreen("spySetup");
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); }
@@ -293,6 +298,12 @@ const GAME_INFO = {
     body: `<p>Приложение загадывает число, ты вводишь догадки — оно подсказывает «📈 Больше» или «📉 Меньше» и сужает диапазон.</p>
       <p>Выбираешь сложность: просто (1–10, 15 сек), средне (1–100, 20 сек), сложно (1–1000, 30 сек). Угадал до конца времени — получаешь рейтинг (×1 / ×1.5 / ×2 по сложности).</p>
       <p>Тренировочная игра: рейтинг идёт в общий зачёт с капом <b>100 очков в день</b> (вместе со Спринтом и Марафоном). У игры своя таблица лучших.</p>`,
+  },
+  fastmath: {
+    title: "🧮 Быстрый счёт",
+    body: `<p>Решай короткие примеры и мини-уравнения (сложение, вычитание, умножение, деление, «x + 7 = 12»). 4 варианта ответа, автопереход.</p>
+      <p>За выбранное время (30/60/90 сек) реши как можно больше. Сложность влияет на размер чисел и множитель наград: ×1 / ×1.5 / ×2.</p>
+      <p>Тренировочная игра: рейтинг в общий зачёт с капом <b>100 очков в день</b> (со Спринтом, Марафоном и «Угадай число»). Есть своя таблица лучших.</p>`,
   },
   python: {
     title: "🐍 Python by Профик",
@@ -1580,6 +1591,150 @@ document.getElementById("btn-numguess-start").addEventListener("click", numguess
 document.getElementById("btn-numguess-guess").addEventListener("click", numguessGuess);
 document.getElementById("numguess-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); numguessGuess(); } });
 document.getElementById("btn-numguess-stop").addEventListener("click", () => numguessEnd(false));
+
+// ==============================
+// ======= БЫСТРЫЙ СЧЁТ =========
+// ==============================
+// Отдельная тренировочная игра уровня Спринта: примеры генерируются на лету,
+// 4 варианта, таймер, рейтинг с общим капом 100/день (источник fastmath), своя таблица лидеров.
+const fastmath = { difficulty: "easy", duration: 60, timeLeft: 0, timer: null, correct: 0, wrong: 0, cur: null, locked: false };
+
+setupPills("fastmath-difficulty", (v) => { fastmath.difficulty = v; updateFastmathMult(); });
+setupPills("fastmath-duration", (v) => (fastmath.duration = v), (v) => parseInt(v, 10));
+function updateFastmathMult() {
+  const dm = { easy: 1, medium: 1.5, hard: 2 }[fastmath.difficulty] || 1;
+  const el = document.getElementById("fastmath-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
+}
+updateFastmathMult();
+
+function fmRand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function fmGen(difficulty) {
+  let a, b, answer, expr;
+  if (difficulty === "easy") {
+    const t = fmRand(1, 3);
+    if (t === 1) { a = fmRand(2, 20); b = fmRand(2, 20); answer = a + b; expr = `${a} + ${b}`; }
+    else if (t === 2) { a = fmRand(5, 25); b = fmRand(1, a); answer = a - b; expr = `${a} − ${b}`; }
+    else { a = fmRand(2, 9); b = fmRand(2, 9); answer = a * b; expr = `${a} × ${b}`; }
+  } else if (difficulty === "medium") {
+    const t = fmRand(1, 4);
+    if (t === 1) { a = fmRand(15, 99); b = fmRand(15, 99); answer = a + b; expr = `${a} + ${b}`; }
+    else if (t === 2) { a = fmRand(30, 120); b = fmRand(5, a); answer = a - b; expr = `${a} − ${b}`; }
+    else if (t === 3) { a = fmRand(3, 12); b = fmRand(3, 12); answer = a * b; expr = `${a} × ${b}`; }
+    else { b = fmRand(2, 12); answer = fmRand(2, 12); a = b * answer; expr = `${a} ÷ ${b}`; }
+  } else {
+    const t = fmRand(1, 5);
+    if (t === 1) { a = fmRand(100, 500); b = fmRand(100, 500); answer = a + b; expr = `${a} + ${b}`; }
+    else if (t === 2) { a = fmRand(120, 600); b = fmRand(20, a); answer = a - b; expr = `${a} − ${b}`; }
+    else if (t === 3) { a = fmRand(6, 19); b = fmRand(6, 19); answer = a * b; expr = `${a} × ${b}`; }
+    else if (t === 4) { b = fmRand(3, 12); answer = fmRand(4, 15); a = b * answer; expr = `${a} ÷ ${b}`; }
+    else {
+      if (fmRand(0, 1)) { const x = fmRand(2, 30); const c = fmRand(3, 40); answer = x; expr = `x + ${c} = ${x + c}`; }
+      else { const k = fmRand(2, 9); const x = fmRand(2, 12); answer = x; expr = `${k}·x = ${k * x}`; }
+    }
+  }
+  return { expr, answer };
+}
+function fmBuildOptions(answer) {
+  const set = new Set([answer]);
+  const offs = [1, -1, 2, -2, 3, -3, 5, -5, 10, -10];
+  let guard = 0;
+  while (set.size < 4 && guard++ < 50) {
+    const v = answer + offs[Math.floor(Math.random() * offs.length)];
+    if (v >= 0 && v !== answer) set.add(v);
+  }
+  let bump = 1;
+  while (set.size < 4) { if (answer + bump >= 0) set.add(answer + bump); bump++; }
+  const arr = [...set];
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  return { options: arr, correct: arr.indexOf(answer) };
+}
+
+function fastmathRenderQ() {
+  const g = fmGen(fastmath.difficulty);
+  const o = fmBuildOptions(g.answer);
+  fastmath.cur = { answer: g.answer, correct: o.correct };
+  document.getElementById("fastmath-expr").textContent = g.expr;
+  const wrap = document.getElementById("fastmath-answers");
+  wrap.innerHTML = "";
+  o.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "answer-btn";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => fastmathAnswer(i, btn));
+    wrap.appendChild(btn);
+  });
+  fastmath.locked = false;
+}
+function fastmathUpdateTimer() {
+  const el = document.getElementById("fastmath-timer");
+  el.textContent = fastmath.timeLeft;
+  el.classList.remove("warn", "danger");
+  if (fastmath.timeLeft <= 5) el.classList.add("danger");
+  else if (fastmath.timeLeft <= 10) el.classList.add("warn");
+}
+function fastmathAnswer(chosen, btnEl) {
+  if (fastmath.locked) return;
+  fastmath.locked = true;
+  const isCorrect = chosen === fastmath.cur.correct;
+  const btns = document.querySelectorAll("#fastmath-answers .answer-btn");
+  if (isCorrect) { fastmath.correct++; btnEl.classList.add("correct"); hapticSuccess(); }
+  else { fastmath.wrong++; btnEl.classList.add("wrong"); btns[fastmath.cur.correct].classList.add("correct"); hapticError(); }
+  document.getElementById("fastmath-score").textContent = fastmath.correct;
+  btns.forEach((b) => (b.disabled = true));
+  setTimeout(fastmathRenderQ, isCorrect ? 300 : 700);
+}
+function fastmathStart() {
+  hapticMedium();
+  fastmath.correct = 0; fastmath.wrong = 0; fastmath.timeLeft = fastmath.duration;
+  document.getElementById("fastmath-score").textContent = 0;
+  fastmathUpdateTimer();
+  showScreen("fastmathPlay");
+  fastmathRenderQ();
+  fastmath.timer = setInterval(() => {
+    fastmath.timeLeft--; fastmathUpdateTimer();
+    if (fastmath.timeLeft <= 0) { playTimeUpSound(); fastmathFinish(); }
+    else playTick(fastmath.timeLeft);
+  }, 1000);
+}
+async function fastmathFinish() {
+  if (fastmath.timer) { clearInterval(fastmath.timer); fastmath.timer = null; }
+  const isRecord = fmSaveRecord(fastmath.correct);
+  document.getElementById("fastmath-r-correct").textContent = fastmath.correct;
+  document.getElementById("fastmath-r-wrong").textContent = fastmath.wrong;
+  document.getElementById("fastmath-r-best").textContent = fmGetRecord();
+  document.getElementById("fastmath-new-record").style.display = isRecord && fastmath.correct > 0 ? "block" : "none";
+  const res = fastmath.correct > 0
+    ? await awardTraining("fastmath", fastmath.correct, { correct: fastmath.correct, difficulty: fastmath.difficulty })
+    : { delta_awarded: 0, xp_awarded: 0 };
+  document.getElementById("fastmath-r-rating").textContent = res.delta_awarded || 0;
+  document.getElementById("fastmath-r-xp").textContent = res.xp_awarded || 0;
+  showScreen("fastmathResult");
+  hapticSuccess();
+}
+
+// Рекорды (личный лучший результат по сложности+длительности)
+const fmRecords = {};
+function fmRecordKey() { return `fastmath_${fastmath.difficulty}_${fastmath.duration}`; }
+function fmGetRecord() { return fmRecords[fmRecordKey()] || 0; }
+function fmSaveRecord(score) {
+  const k = fmRecordKey();
+  if (score > (fmRecords[k] || 0)) { fmRecords[k] = score; tg?.CloudStorage?.setItem?.(k, String(score), () => {}); return true; }
+  return false;
+}
+function fmLoadRecords() {
+  if (!tg?.CloudStorage) return;
+  const keys = [];
+  for (const d of ["easy", "medium", "hard"]) for (const t of [30, 60, 90]) keys.push(`fastmath_${d}_${t}`);
+  tg.CloudStorage.getItems(keys, (err, values) => {
+    if (err || !values) return;
+    Object.entries(values).forEach(([k, v]) => { if (v) fmRecords[k] = parseInt(v, 10) || 0; });
+  });
+}
+
+document.getElementById("btn-fastmath-start").addEventListener("click", fastmathStart);
+document.getElementById("btn-fastmath-again").addEventListener("click", fastmathStart);
+document.getElementById("btn-fastmath-stop").addEventListener("click", fastmathFinish);
 
 // ==============================
 // ======= БАНК ВРЕМЕНИ =========
@@ -3620,6 +3775,7 @@ function boot() {
       loadCrocoRecordsFromCloud();
       loadGromkoRecordsFromCloud();
       tbLoadRecordsFromCloud();
+      fmLoadRecords();
       checkSubscription();
     }
   }, 100);

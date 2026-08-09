@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=26">
+<link rel="stylesheet" href="/style.css?v=27">
 </head>
 <body>
 
@@ -144,6 +144,15 @@
         <div class="title">Угадай число</div>
         <div class="desc">Отгадай число по подсказкам «больше / меньше». На скорость!</div>
         <div class="card-stat" id="card-numguess-stat"></div>
+      </div>
+    </div>
+    <div class="game-card" data-game="fastmath">
+      <button class="game-info-btn" data-info="fastmath" aria-label="Правила">?</button>
+      <div class="icon">🧮</div>
+      <div class="info">
+        <div class="title">Быстрый счёт</div>
+        <div class="desc">Реши как можно больше примеров за время. 4 варианта.</div>
+        <div class="card-stat" id="card-fastmath-stat"></div>
       </div>
     </div>
   </div>
@@ -1203,6 +1212,88 @@
   <button id="btn-numguess-stop" class="btn btn-link">Сдаться</button>
 </section>
 
+<!-- ==== Экраны: Быстрый счёт (отдельная игра) ==== -->
+<section id="screen-fastmath-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🧮 Быстрый счёт</h1>
+    <p class="subtitle">Реши как можно больше примеров за отведённое время</p>
+
+    <label class="field">Сложность</label>
+    <div class="pills" id="fastmath-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
+    </div>
+
+    <label class="field">Длительность</label>
+    <div class="pills" id="fastmath-duration">
+      <button class="pill" data-value="30">30 сек</button>
+      <button class="pill active" data-value="60">60 сек</button>
+      <button class="pill" data-value="90">90 сек</button>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">Награда: <b id="fastmath-mult">×1</b> к очкам (макс 100/день)</div>
+    </div>
+
+    <button id="btn-fastmath-start" class="btn btn-primary btn-big">Начать</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+
+    <div class="game-lb" id="fastmath-lb">
+      <div class="game-lb-head">🏆 Лучшие</div>
+      <div class="game-lb-tabs">
+        <button class="game-lb-tab active" data-period="all">За всё время</button>
+        <button class="game-lb-tab" data-period="week">За неделю</button>
+      </div>
+      <div class="game-lb-list" id="fastmath-lb-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-fastmath-play" class="screen">
+  <div class="sprint-topbar">
+    <div class="timer" id="fastmath-timer">60</div>
+    <div class="score-big">✅ <span id="fastmath-score">0</span></div>
+  </div>
+  <div class="q-card">
+    <div class="q-text fm-expr" id="fastmath-expr">—</div>
+  </div>
+  <div class="answers" id="fastmath-answers"></div>
+  <button id="btn-fastmath-stop" class="btn btn-link">Остановить</button>
+</section>
+
+<section id="screen-fastmath-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1 id="fastmath-result-title">🏁 Готово!</h1>
+    <div id="fastmath-new-record" class="new-record-badge" style="display:none;">🎉 Новый рекорд!</div>
+    <div class="result-stats">
+      <div class="stat stat-ok">
+        <div class="stat-num" id="fastmath-r-correct">0</div>
+        <div class="stat-label">Правильно</div>
+      </div>
+      <div class="stat stat-skip">
+        <div class="stat-num" id="fastmath-r-wrong">0</div>
+        <div class="stat-label">Ошибок</div>
+      </div>
+    </div>
+    <div class="reward-strip">
+      <div class="reward-chip rating pos">🏆 <span id="fastmath-r-rating">0</span></div>
+      <div class="reward-chip xp pos">💎 <span id="fastmath-r-xp">0</span> XP</div>
+    </div>
+    <p style="text-align:center; opacity:0.7; margin:12px 0 8px;">Личный рекорд: <b id="fastmath-r-best">0</b></p>
+    <button id="btn-fastmath-again" class="btn btn-primary btn-big">🚀 Ещё раз</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
@@ -1786,6 +1877,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=26"></script>
+<script src="/script.js?v=27"></script>
 </body>
 </html>
