@@ -51,7 +51,7 @@ XP_PER_RATING = {
     "party": 3.0,     # тусовка: +5 рейтинг → +15 XP
     "numguess": 2.0,  # угадай число: как спринт
     "fastmath": 2.0,  # быстрый счёт: как спринт
-    "infomath": 2.0,  # инфо-счёт: как спринт
+    "infomath": 2.0,  # IT-разминка: как спринт
 }
 
 # Множитель по сложности вопросов
@@ -1558,7 +1558,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "infomath-game-v32"
+BUILD_TAG = "it-razminka-v33"
 
 
 @app.get("/api/version")
