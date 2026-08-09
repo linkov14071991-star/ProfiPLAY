@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=25">
+<link rel="stylesheet" href="/style.css?v=26">
 </head>
 <body>
 
@@ -137,6 +137,15 @@
         <div class="desc">От основ до задач ЕГЭ, шаг за шагом. Уроки, тесты, ежедневки.</div>
       </div>
     </div>
+    <div class="game-card" data-game="numguess">
+      <button class="game-info-btn" data-info="numguess" aria-label="Правила">?</button>
+      <div class="icon">🔢</div>
+      <div class="info">
+        <div class="title">Угадай число</div>
+        <div class="desc">Отгадай число по подсказкам «больше / меньше». На скорость!</div>
+        <div class="card-stat" id="card-numguess-stat"></div>
+      </div>
+    </div>
   </div>
 
   <h3 style="padding-left:4px; margin-top:24px;">🎉 Тусовка (для компании)</h3>
@@ -145,7 +154,7 @@
       <div class="icon">🎭</div>
       <div class="info">
         <div class="title">Играть в компании</div>
-        <div class="desc">Крокодил, Alias, Тайм-баттл, Шпион, Кто я? — все командные игры.</div>
+        <div class="desc">Крокодил, Alias, Громкий вопрос, Тайм-баттл, Шпион — все командные игры.</div>
         <div class="card-stat" id="card-party-stat"></div>
       </div>
     </div>
@@ -1145,6 +1154,55 @@
 </section>
 
 <!-- ==== Экраны: Кто я? ==== -->
+<!-- ==== Экраны: Угадай число (отдельная игра) ==== -->
+<section id="screen-numguess-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🔢 Угадай число</h1>
+    <p class="subtitle">Отгадай загаданное число по подсказкам «больше / меньше»</p>
+
+    <label class="field">Сложность</label>
+    <div class="pills pills-col" id="numguess-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Просто</span><span class="pill-hint">1–10 · 15 сек · ×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средне</span><span class="pill-hint">1–100 · 20 сек · ×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложно</span><span class="pill-hint">1–1000 · 30 сек · ×2</span></button>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">Награда: <b id="numguess-mult">×1</b> к очкам (макс 100/день)</div>
+    </div>
+
+    <button id="btn-numguess-start" class="btn btn-primary btn-big">Начать</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+
+    <div class="game-lb" id="numguess-lb">
+      <div class="game-lb-head">🏆 Лучшие</div>
+      <div class="game-lb-tabs">
+        <button class="game-lb-tab active" data-period="all">За всё время</button>
+        <button class="game-lb-tab" data-period="week">За неделю</button>
+      </div>
+      <div class="game-lb-list" id="numguess-lb-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-numguess-play" class="screen">
+  <div class="sprint-topbar">
+    <div class="timer" id="numguess-timer">15</div>
+    <div class="score-big">🎯 <span id="numguess-tries">0</span></div>
+  </div>
+  <div class="card" style="margin:auto; text-align:center;">
+    <p class="tb-num-hint">Загадано число <b id="numguess-range">от 1 до 10</b></p>
+    <div class="tb-num-feedback" id="numguess-feedback">Введите догадку</div>
+    <input type="number" id="numguess-input" class="tb-num-input" inputmode="numeric" placeholder="?">
+    <button id="btn-numguess-guess" class="btn btn-primary btn-big">Проверить</button>
+  </div>
+  <button id="btn-numguess-stop" class="btn btn-link">Сдаться</button>
+</section>
+
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
@@ -1728,6 +1786,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=25"></script>
+<script src="/script.js?v=26"></script>
 </body>
 </html>

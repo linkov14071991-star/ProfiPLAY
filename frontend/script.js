@@ -43,6 +43,8 @@ const SCREENS = {
   marathonSetup: "screen-marathon-setup",
   marathon: "screen-marathon",
   marathonResult: "screen-marathon-result",
+  numguessSetup: "screen-numguess-setup",
+  numguessPlay: "screen-numguess-play",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -136,6 +138,7 @@ function initMenuExtras() {
   applyUnlocks();
   setupGameLeaderboard("sprint", "sprint-lb", "sprint-lb-list");
   setupGameLeaderboard("marathon", "marathon-lb", "marathon-lb-list");
+  setupGameLeaderboard("numguess", "numguess-lb", "numguess-lb-list");
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initMenuExtras);
 else initMenuExtras();
@@ -258,6 +261,7 @@ document.body.addEventListener("click", (e) => {
   if (game === "sprint") { renderSprintRecord(); resetLbTabs("sprint-lb"); loadGameLeaderboard("sprint", "sprint-lb-list", "all"); showScreen("sprintSetup"); }
   if (game === "alias") showScreen("aliasSetup");
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); }
+  if (game === "numguess") { resetLbTabs("numguess-lb"); loadGameLeaderboard("numguess", "numguess-lb-list", "all"); showScreen("numguessSetup"); }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); }
   if (game === "spy") showScreen("spySetup");
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); }
@@ -281,8 +285,14 @@ const GAME_INFO = {
   marathon: {
     title: "🏆 Марафон",
     body: `<p>Отвечай на вопросы, пока не закончатся жизни. Каждая ошибка — минус жизнь.</p>
-      <p>Меньше жизней (1/3/5) — больше очков за риск: ×3 / ×2 / ×1. Плюс множитель сложности.</p>
-      <p>Выбираешь темы и сложность. За правильный ответ: <b>+2 рейтинга и +3 XP</b>.</p>`,
+      <p>Жизни зависят от сложности: простая — 1, средняя — 2, сложная — 3 (максимум 3). Серия правильных подряд восполняет жизнь: 30 / 20 / 10.</p>
+      <p>Выбираешь темы и сложность. За правильный: <b>+2 рейтинга и +3 XP</b> × множитель сложности.</p>`,
+  },
+  numguess: {
+    title: "🔢 Угадай число",
+    body: `<p>Приложение загадывает число, ты вводишь догадки — оно подсказывает «📈 Больше» или «📉 Меньше» и сужает диапазон.</p>
+      <p>Выбираешь сложность: просто (1–10, 15 сек), средне (1–100, 20 сек), сложно (1–1000, 30 сек). Угадал до конца времени — получаешь рейтинг (×1 / ×1.5 / ×2 по сложности).</p>
+      <p>Тренировочная игра: рейтинг идёт в общий зачёт с капом <b>100 очков в день</b> (вместе со Спринтом и Марафоном). У игры своя таблица лучших.</p>`,
   },
   python: {
     title: "🐍 Python by Профик",
@@ -1477,6 +1487,99 @@ document.getElementById("btn-marathon-stop").addEventListener("click", () => mar
     });
   });
 })();
+
+// ==============================
+// ======= УГАДАЙ ЧИСЛО =========
+// ==============================
+// Отдельная тренировочная игра уровня Спринт/Марафон: рейтинг с общим капом 100/день
+// (источник numguess) и своя таблица лидеров. Механика «больше/меньше».
+const NG_LEVELS = {
+  easy:   { max: 10,   time: 15 },
+  medium: { max: 100,  time: 20 },
+  hard:   { max: 1000, time: 30 },
+};
+const numguess = { difficulty: "easy", target: 0, lo: 1, hi: 10, timeLeft: 0, timer: null, tries: 0, locked: false };
+
+setupPills("numguess-difficulty", (v) => { numguess.difficulty = v; updateNumguessMult(); });
+function updateNumguessMult() {
+  const dm = { easy: 1, medium: 1.5, hard: 2 }[numguess.difficulty] || 1;
+  const el = document.getElementById("numguess-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
+}
+updateNumguessMult();
+
+function numguessStart() {
+  hapticMedium();
+  const cfg = NG_LEVELS[numguess.difficulty];
+  numguess.target = 1 + Math.floor(Math.random() * cfg.max);
+  numguess.lo = 1; numguess.hi = cfg.max;
+  numguess.timeLeft = cfg.time; numguess.tries = 0; numguess.locked = false;
+  document.getElementById("numguess-range").textContent = `от ${numguess.lo} до ${numguess.hi}`;
+  document.getElementById("numguess-tries").textContent = 0;
+  const fb = document.getElementById("numguess-feedback");
+  fb.textContent = "Введите догадку"; fb.className = "tb-num-feedback";
+  const inp = document.getElementById("numguess-input");
+  inp.value = ""; inp.disabled = false;
+  document.getElementById("btn-numguess-guess").disabled = false;
+  numguessUpdateTimer();
+  showScreen("numguessPlay");
+  try { inp.focus(); } catch (e) {}
+  numguess.timer = setInterval(() => {
+    numguess.timeLeft--; numguessUpdateTimer();
+    if (numguess.timeLeft <= 0) { clearInterval(numguess.timer); numguess.timer = null; playTimeUpSound(); numguessEnd(false); }
+    else playTick(numguess.timeLeft);
+  }, 1000);
+}
+function numguessUpdateTimer() {
+  const el = document.getElementById("numguess-timer");
+  el.textContent = numguess.timeLeft;
+  el.classList.remove("warn", "danger");
+  if (numguess.timeLeft <= 5) el.classList.add("danger");
+  else if (numguess.timeLeft <= 10) el.classList.add("warn");
+}
+function numguessGuess() {
+  if (numguess.locked) return;
+  const inp = document.getElementById("numguess-input");
+  const g = parseInt(inp.value, 10);
+  const fb = document.getElementById("numguess-feedback");
+  if (isNaN(g)) { fb.textContent = "Введите число"; fb.className = "tb-num-feedback"; return; }
+  numguess.tries++;
+  document.getElementById("numguess-tries").textContent = numguess.tries;
+  if (g === numguess.target) { numguessEnd(true); return; }
+  if (g < numguess.target) { numguess.lo = Math.max(numguess.lo, g + 1); fb.textContent = "📈 Больше!"; fb.className = "tb-num-feedback up"; }
+  else { numguess.hi = Math.min(numguess.hi, g - 1); fb.textContent = "📉 Меньше!"; fb.className = "tb-num-feedback down"; }
+  hapticLight();
+  document.getElementById("numguess-range").textContent = `от ${numguess.lo} до ${numguess.hi}`;
+  inp.value = ""; try { inp.focus(); } catch (e) {}
+}
+function numguessEnd(win) {
+  if (numguess.locked) return;
+  numguess.locked = true;
+  if (numguess.timer) { clearInterval(numguess.timer); numguess.timer = null; }
+  const fb = document.getElementById("numguess-feedback");
+  document.getElementById("numguess-input").disabled = true;
+  document.getElementById("btn-numguess-guess").disabled = true;
+  if (win) {
+    hapticSuccess();
+    fb.textContent = `✅ Это ${numguess.target}! За ${numguess.tries} попыток`;
+    fb.className = "tb-num-feedback win";
+    awardTraining("numguess", 1, { correct: 1, difficulty: numguess.difficulty }).then(showRatingToast);
+  } else {
+    hapticError();
+    fb.textContent = `⌛ Время! Было ${numguess.target}`;
+    fb.className = "tb-num-feedback down";
+  }
+  setTimeout(() => {
+    resetLbTabs("numguess-lb");
+    loadGameLeaderboard("numguess", "numguess-lb-list", "all");
+    showScreen("numguessSetup");
+  }, 1700);
+}
+
+document.getElementById("btn-numguess-start").addEventListener("click", numguessStart);
+document.getElementById("btn-numguess-guess").addEventListener("click", numguessGuess);
+document.getElementById("numguess-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); numguessGuess(); } });
+document.getElementById("btn-numguess-stop").addEventListener("click", () => numguessEnd(false));
 
 // ==============================
 // ======= БАНК ВРЕМЕНИ =========
