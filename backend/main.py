@@ -1558,7 +1558,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "uniform-diff-v35"
+BUILD_TAG = "im-numsys-back-v36"
 
 
 @app.get("/api/version")

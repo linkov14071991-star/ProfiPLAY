@@ -140,12 +140,29 @@ function resetLbTabs(wrapId) {
   wrap.querySelectorAll(".game-lb-tab").forEach((t, i) => t.classList.toggle("active", i === 0));
 }
 
+// Экран итогов «назад» ведёт сначала в меню самой игры (её настройки),
+// а второе нажатие «назад» уже на экране настроек — в меню приложения.
+const REV_SCREENS = Object.fromEntries(Object.entries(SCREENS).map(([k, v]) => [v, k]));
+const BACK_PARENT = {
+  sprintResult: "sprintSetup",
+  marathonResult: "marathonSetup",
+  fastmathResult: "fastmathSetup",
+  infomathResult: "infomathSetup",
+  aliasResult: "aliasSetup",
+  gromkoResult: "gromkoSetup",
+  tbResult: "tbSetup",
+  spyResult: "spySetup",
+  duelResult: "duelSetup",
+  result: "crocoSetup",
+};
+
 // Нижние ссылки «← назад/в меню» превращаем в стрелку в левом верхнем углу экрана
 function installBackArrows() {
   document.querySelectorAll(".screen").forEach((scr) => {
     const back = scr.querySelector(".btn-back");
     if (!back || scr.querySelector(".screen-back")) return;
-    const target = back.dataset.back;
+    const key = REV_SCREENS[scr.id];
+    const target = (key && BACK_PARENT[key]) || back.dataset.back;
     if (!target) return;
     const arrow = document.createElement("button");
     arrow.type = "button";
@@ -1782,7 +1799,7 @@ updateInfomathMult();
 const IM_MAXEXP = { easy: 8, medium: 12, hard: 16 };
 const IM_BINMAX = { easy: 15, medium: 31, hard: 63 };
 const IM_CATS = {
-  easy: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB"],
+  easy: ["pow", "powBack", "unitBB"],
   medium: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB", "unitBK", "logicA", "logicB"],
   hard: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB", "unitBK", "unitKM", "logicA", "logicB", "logicC"],
 };
