@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=29">
+<link rel="stylesheet" href="/style.css?v=30">
 </head>
 <body>
 
@@ -153,6 +153,15 @@
         <div class="title">Быстрый счёт</div>
         <div class="desc">Реши как можно больше примеров за время. 4 варианта.</div>
         <div class="card-stat" id="card-fastmath-stat"></div>
+      </div>
+    </div>
+    <div class="game-card" data-game="infomath">
+      <button class="game-info-btn" data-info="infomath" aria-label="Правила">?</button>
+      <div class="icon">🖥️</div>
+      <div class="info">
+        <div class="title">Инфо-счёт</div>
+        <div class="desc">Степени двойки, системы счисления, единицы информации.</div>
+        <div class="card-stat" id="card-infomath-stat"></div>
       </div>
     </div>
   </div>
@@ -1287,6 +1296,81 @@
   </div>
 </section>
 
+<!-- ==== Экраны: Инфо-счёт (отдельная игра) ==== -->
+<section id="screen-infomath-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🖥️ Инфо-счёт</h1>
+    <p class="subtitle">Степени двойки, перевод систем счисления и единиц информации</p>
+
+    <label class="field">Сложность</label>
+    <div class="pills" id="infomath-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">до 2⁸ · ×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">до 2¹² · ×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">до 2¹⁶ · ×2</span></button>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">60 секунд · награда <b id="infomath-mult">×1</b> к очкам (макс 100/день)</div>
+    </div>
+
+    <button id="btn-infomath-start" class="btn btn-primary btn-big">Начать</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+
+    <div class="game-lb" id="infomath-lb">
+      <div class="game-lb-head">🏆 Лучшие</div>
+      <div class="game-lb-tabs">
+        <button class="game-lb-tab active" data-period="all">За всё время</button>
+        <button class="game-lb-tab" data-period="week">За неделю</button>
+      </div>
+      <div class="game-lb-list" id="infomath-lb-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-infomath-play" class="screen">
+  <div class="sprint-topbar">
+    <div class="timer" id="infomath-timer">60</div>
+    <div class="score-big">✅ <span id="infomath-score">0</span></div>
+  </div>
+  <div class="q-card">
+    <div class="q-text fm-expr" id="infomath-expr">—</div>
+  </div>
+  <div class="answers" id="infomath-answers"></div>
+  <button id="btn-infomath-stop" class="btn btn-link">Остановить</button>
+</section>
+
+<section id="screen-infomath-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1 id="infomath-result-title">🏁 Готово!</h1>
+    <div id="infomath-new-record" class="new-record-badge" style="display:none;">🎉 Новый рекорд!</div>
+    <div class="result-stats">
+      <div class="stat stat-ok">
+        <div class="stat-num" id="infomath-r-correct">0</div>
+        <div class="stat-label">Правильно</div>
+      </div>
+      <div class="stat stat-skip">
+        <div class="stat-num" id="infomath-r-wrong">0</div>
+        <div class="stat-label">Ошибок</div>
+      </div>
+    </div>
+    <div class="reward-strip">
+      <div class="reward-chip rating pos">🏆 <span id="infomath-r-rating">0</span></div>
+      <div class="reward-chip xp pos">💎 <span id="infomath-r-xp">0</span> XP</div>
+    </div>
+    <p style="text-align:center; opacity:0.7; margin:12px 0 8px;">Личный рекорд: <b id="infomath-r-best">0</b></p>
+    <button id="btn-infomath-again" class="btn btn-primary btn-big">🚀 Ещё раз</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
@@ -1870,6 +1954,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=29"></script>
+<script src="/script.js?v=30"></script>
 </body>
 </html>

@@ -409,7 +409,7 @@ def next_streak_milestone(current_streak: int) -> dict | None:
 
 # ---------- Дневной кап тренировок ----------
 DAILY_TRAINING_CAP = 100
-TRAINING_SOURCES = ("sprint", "marathon", "party", "numguess", "fastmath")
+TRAINING_SOURCES = ("sprint", "marathon", "party", "numguess", "fastmath", "infomath")
 
 
 def get_training_earned_today(db, user_id: int) -> int:

@@ -51,6 +51,7 @@ XP_PER_RATING = {
     "party": 3.0,     # тусовка: +5 рейтинг → +15 XP
     "numguess": 2.0,  # угадай число: как спринт
     "fastmath": 2.0,  # быстрый счёт: как спринт
+    "infomath": 2.0,  # инфо-счёт: как спринт
 }
 
 # Множитель по сложности вопросов
@@ -60,7 +61,7 @@ LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
 # Базовая ставка рейтинга за один правильный ответ.
 # Тусовка (party) = 0 очков, потому что играется на своей честности —
 # слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
-BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1}
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1}
 # Duel XP
 XP_DUEL_WIN = 50
 XP_DUEL_DRAW = 30
@@ -957,8 +958,8 @@ async def get_game_leaderboard(
     limit: int = Query(10),
 ):
     """Топ игроков по суммарному рейтингу, заработанному в конкретной игре.
-    game: sprint / marathon / python / numguess / fastmath. period: all / week."""
-    if game not in ("sprint", "marathon", "python", "numguess", "fastmath"):
+    game: sprint / marathon / python / numguess / fastmath / infomath. period: all / week."""
+    if game not in ("sprint", "marathon", "python", "numguess", "fastmath", "infomath"):
         raise HTTPException(status_code=400, detail="Bad game")
     limit = max(1, min(50, limit))
     where_time = "AND rl.created_at >= datetime('now', '-7 days')" if period == "week" else ""
@@ -1557,7 +1558,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "fastmath-60s-v31"
+BUILD_TAG = "infomath-game-v32"
 
 
 @app.get("/api/version")

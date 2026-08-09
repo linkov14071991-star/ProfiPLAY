@@ -48,6 +48,9 @@ const SCREENS = {
   fastmathSetup: "screen-fastmath-setup",
   fastmathPlay: "screen-fastmath-play",
   fastmathResult: "screen-fastmath-result",
+  infomathSetup: "screen-infomath-setup",
+  infomathPlay: "screen-infomath-play",
+  infomathResult: "screen-infomath-result",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -162,6 +165,7 @@ function initMenuExtras() {
   setupGameLeaderboard("marathon", "marathon-lb", "marathon-lb-list");
   setupGameLeaderboard("numguess", "numguess-lb", "numguess-lb-list");
   setupGameLeaderboard("fastmath", "fastmath-lb", "fastmath-lb-list");
+  setupGameLeaderboard("infomath", "infomath-lb", "infomath-lb-list");
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initMenuExtras);
 else initMenuExtras();
@@ -286,6 +290,7 @@ document.body.addEventListener("click", (e) => {
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); }
   if (game === "numguess") { resetLbTabs("numguess-lb"); loadGameLeaderboard("numguess", "numguess-lb-list", "all"); showScreen("numguessSetup"); }
   if (game === "fastmath") { resetLbTabs("fastmath-lb"); loadGameLeaderboard("fastmath", "fastmath-lb-list", "all"); showScreen("fastmathSetup"); }
+  if (game === "infomath") { resetLbTabs("infomath-lb"); loadGameLeaderboard("infomath", "infomath-lb-list", "all"); showScreen("infomathSetup"); }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); }
   if (game === "spy") showScreen("spySetup");
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); }
@@ -323,6 +328,12 @@ const GAME_INFO = {
     body: `<p>Решай короткие примеры и мини-уравнения (сложение, вычитание, умножение, деление, «x + 7 = 12»). 4 варианта ответа, автопереход.</p>
       <p>За <b>60 секунд</b> реши как можно больше. Сложность влияет на размер чисел и множитель наград: ×1 / ×1.5 / ×2.</p>
       <p>Тренировочная игра: рейтинг в общий зачёт с капом <b>100 очков в день</b> (со Спринтом, Марафоном и «Угадай число»). Есть своя таблица лучших.</p>`,
+  },
+  infomath: {
+    title: "🖥️ Инфо-счёт",
+    body: `<p>Тренажёр по информатике: <b>степени двойки</b> (2⁰…2¹⁶ наизусть), перевод <b>двоичная ↔ десятичная</b> и <b>единицы информации</b> (бит, байт, Кбайт, Мбайт, Гбайт). 4 варианта, автопереход.</p>
+      <p>Числа подобраны так, чтобы считать <b>в уме</b>. За <b>60 секунд</b> реши как можно больше. Сложность (до 2⁸ / 2¹² / 2¹⁶) даёт множитель ×1 / ×1.5 / ×2.</p>
+      <p>Тренировочная игра: рейтинг в общий зачёт с капом <b>100 очков в день</b>. Есть своя таблица лучших.</p>`,
   },
   python: {
     title: "🐍 Python by Профик",
@@ -1752,6 +1763,176 @@ function fmLoadRecords() {
 document.getElementById("btn-fastmath-start").addEventListener("click", fastmathStart);
 document.getElementById("btn-fastmath-again").addEventListener("click", fastmathStart);
 document.getElementById("btn-fastmath-stop").addEventListener("click", fastmathFinish);
+
+// ==============================
+// ======== ИНФО-СЧЁТ ===========
+// ==============================
+// Тренажёр по информатике: степени двойки (до 2^16), перевод двоичная↔десятичная
+// и единицы информации. Числа считаются в уме. Движок как у «Быстрого счёта».
+const infomath = { difficulty: "easy", duration: 60, timeLeft: 0, timer: null, correct: 0, wrong: 0, cur: null, locked: false };
+
+setupPills("infomath-difficulty", (v) => { infomath.difficulty = v; updateInfomathMult(); });
+function updateInfomathMult() {
+  const dm = { easy: 1, medium: 1.5, hard: 2 }[infomath.difficulty] || 1;
+  const el = document.getElementById("infomath-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
+}
+updateInfomathMult();
+
+const IM_MAXEXP = { easy: 8, medium: 12, hard: 16 };
+const IM_BINMAX = { easy: 15, medium: 31, hard: 63 };
+const IM_CATS = {
+  easy: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB"],
+  medium: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB", "unitBK"],
+  hard: ["pow", "powBack", "bin2dec", "dec2bin", "unitBB", "unitBK", "unitKM"],
+};
+function imRand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function imMcq(correct, cands) {
+  const opts = [String(correct)];
+  for (const c of cands) { if (opts.length >= 4) break; const s = String(c); if (!opts.includes(s)) opts.push(s); }
+  let k = 1;
+  while (opts.length < 4 && k < 300) { const s = String((parseInt(correct, 10) || 0) + k); if (!opts.includes(s)) opts.push(s); k++; }
+  for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+  return { options: opts, correct: opts.indexOf(String(correct)) };
+}
+function imGen(difficulty) {
+  const maxExp = IM_MAXEXP[difficulty], binMax = IM_BINMAX[difficulty];
+  const cats = IM_CATS[difficulty];
+  const cat = cats[Math.floor(Math.random() * cats.length)];
+  if (cat === "pow") {
+    const n = imRand(2, maxExp);
+    const correct = Math.pow(2, n);
+    const ds = [];
+    [n - 1, n + 1, n + 2, n - 2, n + 3].forEach((k) => { if (k >= 0 && k <= 16 && k !== n) ds.push(Math.pow(2, k)); });
+    return { q: `2^${n} = ?`, ...imMcq(correct, ds) };
+  }
+  if (cat === "powBack") {
+    const n = imRand(2, maxExp);
+    const val = Math.pow(2, n);
+    const ds = [n - 1, n + 1, n + 2, n - 2].filter((k) => k >= 0 && k <= 16 && k !== n);
+    return { q: `${val} = 2^?`, ...imMcq(n, ds) };
+  }
+  if (cat === "bin2dec") {
+    const val = imRand(2, binMax);
+    const bin = val.toString(2);
+    const ds = [val + 1, val - 1, val + 2, val - 2, val + 4].filter((v) => v > 0 && v !== val);
+    return { q: `${bin}₂ = ?  (в десятичной)`, ...imMcq(val, ds) };
+  }
+  if (cat === "dec2bin") {
+    const val = imRand(2, binMax);
+    const correct = val.toString(2);
+    const ds = [val + 1, val - 1, val + 2, val - 2].filter((v) => v > 0 && v !== val).map((v) => v.toString(2));
+    return { q: `${val} = ?₂  (в двоичной)`, ...imMcq(correct, ds) };
+  }
+  if (cat === "unitBB") {
+    if (imRand(0, 1)) {
+      const n = imRand(2, 16); const correct = n * 8;
+      const ds = [correct + 8, correct - 8, n * 4, n * 16, correct + 16].filter((v) => v > 0 && v !== correct);
+      return { q: `${n} байт = ? бит`, ...imMcq(correct, ds) };
+    }
+    const m = imRand(2, 12); const bits = m * 8; const correct = m;
+    const ds = [m + 1, m - 1, m * 2, bits].filter((v) => v > 0 && v !== correct);
+    return { q: `${bits} бит = ? байт`, ...imMcq(correct, ds) };
+  }
+  if (cat === "unitBK") {
+    if (imRand(0, 1)) {
+      const n = imRand(1, 8); const correct = n * 1024;
+      const ds = [correct + 1024, correct - 1024, n * 512, n * 2048].filter((v) => v > 0 && v !== correct);
+      return { q: `${n} Кбайт = ? байт`, ...imMcq(correct, ds) };
+    }
+    const n = imRand(1, 8); const bytes = n * 1024; const correct = n;
+    const ds = [n + 1, n - 1, n * 2, 1024].filter((v) => v > 0 && v !== correct);
+    return { q: `${bytes} байт = ? Кбайт`, ...imMcq(correct, ds) };
+  }
+  // unitKM
+  const upper = imRand(0, 1);
+  const n = imRand(1, 8); const correct = n * 1024;
+  const ds = [correct + 1024, correct - 1024, n * 512, n * 2048].filter((v) => v > 0 && v !== correct);
+  return { q: upper ? `${n} Мбайт = ? Кбайт` : `${n} Гбайт = ? Мбайт`, ...imMcq(correct, ds) };
+}
+
+function infomathRenderQ() {
+  const g = imGen(infomath.difficulty);
+  infomath.cur = { correct: g.correct };
+  document.getElementById("infomath-expr").textContent = g.q;
+  const wrap = document.getElementById("infomath-answers");
+  wrap.innerHTML = "";
+  g.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "answer-btn";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => infomathAnswer(i, btn));
+    wrap.appendChild(btn);
+  });
+  infomath.locked = false;
+}
+function infomathUpdateTimer() {
+  const el = document.getElementById("infomath-timer");
+  el.textContent = infomath.timeLeft;
+  el.classList.remove("warn", "danger");
+  if (infomath.timeLeft <= 5) el.classList.add("danger");
+  else if (infomath.timeLeft <= 10) el.classList.add("warn");
+}
+function infomathAnswer(chosen, btnEl) {
+  if (infomath.locked) return;
+  infomath.locked = true;
+  const isCorrect = chosen === infomath.cur.correct;
+  const btns = document.querySelectorAll("#infomath-answers .answer-btn");
+  if (isCorrect) { infomath.correct++; btnEl.classList.add("correct"); hapticSuccess(); }
+  else { infomath.wrong++; btnEl.classList.add("wrong"); btns[infomath.cur.correct].classList.add("correct"); hapticError(); }
+  document.getElementById("infomath-score").textContent = infomath.correct;
+  btns.forEach((b) => (b.disabled = true));
+  setTimeout(infomathRenderQ, isCorrect ? 300 : 800);
+}
+function infomathStart() {
+  hapticMedium();
+  infomath.correct = 0; infomath.wrong = 0; infomath.timeLeft = infomath.duration;
+  document.getElementById("infomath-score").textContent = 0;
+  infomathUpdateTimer();
+  showScreen("infomathPlay");
+  infomathRenderQ();
+  infomath.timer = setInterval(() => {
+    infomath.timeLeft--; infomathUpdateTimer();
+    if (infomath.timeLeft <= 0) { playTimeUpSound(); infomathFinish(); }
+    else playTick(infomath.timeLeft);
+  }, 1000);
+}
+async function infomathFinish() {
+  if (infomath.timer) { clearInterval(infomath.timer); infomath.timer = null; }
+  const isRecord = imSaveRecord(infomath.correct);
+  document.getElementById("infomath-r-correct").textContent = infomath.correct;
+  document.getElementById("infomath-r-wrong").textContent = infomath.wrong;
+  document.getElementById("infomath-r-best").textContent = imGetRecord();
+  document.getElementById("infomath-new-record").style.display = isRecord && infomath.correct > 0 ? "block" : "none";
+  const res = infomath.correct > 0
+    ? await awardTraining("infomath", infomath.correct, { correct: infomath.correct, difficulty: infomath.difficulty })
+    : { delta_awarded: 0, xp_awarded: 0 };
+  document.getElementById("infomath-r-rating").textContent = res.delta_awarded || 0;
+  document.getElementById("infomath-r-xp").textContent = res.xp_awarded || 0;
+  showScreen("infomathResult");
+  hapticSuccess();
+}
+
+const imRecords = {};
+function imRecordKey() { return `infomath_${infomath.difficulty}_60`; }
+function imGetRecord() { return imRecords[imRecordKey()] || 0; }
+function imSaveRecord(score) {
+  const k = imRecordKey();
+  if (score > (imRecords[k] || 0)) { imRecords[k] = score; tg?.CloudStorage?.setItem?.(k, String(score), () => {}); return true; }
+  return false;
+}
+function imLoadRecords() {
+  if (!tg?.CloudStorage) return;
+  const keys = ["easy", "medium", "hard"].map((d) => `infomath_${d}_60`);
+  tg.CloudStorage.getItems(keys, (err, values) => {
+    if (err || !values) return;
+    Object.entries(values).forEach(([k, v]) => { if (v) imRecords[k] = parseInt(v, 10) || 0; });
+  });
+}
+
+document.getElementById("btn-infomath-start").addEventListener("click", infomathStart);
+document.getElementById("btn-infomath-again").addEventListener("click", infomathStart);
+document.getElementById("btn-infomath-stop").addEventListener("click", infomathFinish);
 
 // ==============================
 // ======= БАНК ВРЕМЕНИ =========
@@ -3793,6 +3974,7 @@ function boot() {
       loadGromkoRecordsFromCloud();
       tbLoadRecordsFromCloud();
       fmLoadRecords();
+      imLoadRecords();
       checkSubscription();
     }
   }, 100);
