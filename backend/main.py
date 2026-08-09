@@ -948,6 +948,39 @@ async def get_weekly_leaderboard(limit: int = Query(50)):
     return {"leaders": leaders}
 
 
+@app.get("/api/leaderboard/game")
+async def get_game_leaderboard(
+    game: str = Query(...),
+    period: str = Query("all"),
+    limit: int = Query(10),
+):
+    """Топ игроков по суммарному рейтингу, заработанному в конкретной игре.
+    game: sprint / marathon / python. period: all (за всё время) / week (7 дней)."""
+    if game not in ("sprint", "marathon", "python"):
+        raise HTTPException(status_code=400, detail="Bad game")
+    limit = max(1, min(50, limit))
+    where_time = "AND rl.created_at >= datetime('now', '-7 days')" if period == "week" else ""
+    with get_db() as db:
+        rows = db.execute(
+            f"""
+            SELECT u.first_name, u.username, COALESCE(SUM(rl.delta), 0) AS total
+            FROM rating_log rl
+            JOIN users u ON u.telegram_id = rl.user_id
+            WHERE rl.source = ? {where_time}
+            GROUP BY rl.user_id
+            HAVING total > 0
+            ORDER BY total DESC, MIN(rl.created_at) ASC
+            LIMIT ?
+            """,
+            (game, limit),
+        ).fetchall()
+    leaders = []
+    for i, r in enumerate(rows, start=1):
+        name = r["first_name"] or (f"@{r['username']}" if r["username"] else "Игрок")
+        leaders.append({"place": i, "name": name, "score": r["total"]})
+    return {"leaders": leaders}
+
+
 @app.post("/api/leaderboard/me")
 async def get_my_place(init_data: str = Body(..., embed=True)):
     """Возвращает моё место в общем рейтинге."""

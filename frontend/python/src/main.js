@@ -119,6 +119,50 @@ telemetry.init(tg?.initDataUnsafe?.user?.id ?? 0);
 // ── screens helper ──
 function show(name) {
   for (const k of Object.keys(screens)) screens[k].classList.toggle('hidden', k !== name);
+  if (name === 'tree') { try { renderPyLeaderboard(); } catch (e) {} }
+}
+
+// ── Таблица лучших курса (общий тотал / за неделю), данные из основного бэкенда ──
+async function renderPyLeaderboard() {
+  const card = document.getElementById('py-lb-card');
+  if (!card) return;
+  card.classList.remove('hidden');
+  if (!card.dataset.init) {
+    card.dataset.init = '1';
+    card.innerHTML =
+      '<div class="py-lb-head">🏆 Лучшие в курсе</div>' +
+      '<div class="py-lb-tabs">' +
+      '<button class="py-lb-tab active" data-period="all">За всё время</button>' +
+      '<button class="py-lb-tab" data-period="week">За неделю</button>' +
+      '</div><div class="py-lb-list" id="py-lb-list"></div>';
+    card.querySelectorAll('.py-lb-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        card.querySelectorAll('.py-lb-tab').forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+        pyLoadLeaderboard(tab.dataset.period);
+      });
+    });
+  }
+  const active = card.querySelector('.py-lb-tab.active');
+  pyLoadLeaderboard(active ? active.dataset.period : 'all');
+}
+async function pyLoadLeaderboard(period) {
+  const el = document.getElementById('py-lb-list');
+  if (!el) return;
+  el.innerHTML = '<div class="py-lb-empty">Загрузка…</div>';
+  try {
+    const r = await fetch('/api/leaderboard/game?game=python&period=' + period + '&limit=10');
+    const d = await r.json();
+    const leaders = d.leaders || [];
+    if (!leaders.length) { el.innerHTML = '<div class="py-lb-empty">Пока пусто — будь первым!</div>'; return; }
+    el.innerHTML = leaders.map((l) => {
+      const nm = String(l.name || '').replace(/[<>&]/g, '');
+      return '<div class="py-lb-row' + (l.place <= 3 ? ' top' : '') + '">' +
+             '<span class="py-lb-place">' + l.place + '</span>' +
+             '<span class="py-lb-name">' + nm + '</span>' +
+             '<span class="py-lb-score">' + l.score + '</span></div>';
+    }).join('');
+  } catch (e) { el.innerHTML = '<div class="py-lb-empty">Не удалось загрузить</div>'; }
 }
 
 // ── persistence ──

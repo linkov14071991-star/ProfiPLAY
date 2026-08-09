@@ -96,8 +96,49 @@ function applyUnlocks() {
     }
   });
 }
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyUnlocks);
-else applyUnlocks();
+// ===== Таблицы лучших по игре (общий тотал / за неделю) =====
+async function loadGameLeaderboard(game, listId, period) {
+  const el = document.getElementById(listId);
+  if (!el) return;
+  el.innerHTML = '<div class="game-lb-empty">Загрузка…</div>';
+  try {
+    const r = await fetch(`/api/leaderboard/game?game=${game}&period=${period}&limit=10`);
+    const d = await r.json();
+    const leaders = d.leaders || [];
+    if (!leaders.length) { el.innerHTML = '<div class="game-lb-empty">Пока пусто — будь первым!</div>'; return; }
+    el.innerHTML = leaders.map((l) => `
+      <div class="game-lb-row${l.place <= 3 ? " top" : ""}">
+        <span class="game-lb-place">${l.place}</span>
+        <span class="game-lb-name">${escapeHtml(l.name)}</span>
+        <span class="game-lb-score">${l.score}</span>
+      </div>`).join("");
+  } catch (e) { el.innerHTML = '<div class="game-lb-empty">Не удалось загрузить</div>'; }
+}
+function setupGameLeaderboard(game, wrapId, listId) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  wrap.querySelectorAll(".game-lb-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      wrap.querySelectorAll(".game-lb-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      hapticLight();
+      loadGameLeaderboard(game, listId, tab.dataset.period);
+    });
+  });
+}
+function resetLbTabs(wrapId) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  wrap.querySelectorAll(".game-lb-tab").forEach((t, i) => t.classList.toggle("active", i === 0));
+}
+
+function initMenuExtras() {
+  applyUnlocks();
+  setupGameLeaderboard("sprint", "sprint-lb", "sprint-lb-list");
+  setupGameLeaderboard("marathon", "marathon-lb", "marathon-lb-list");
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initMenuExtras);
+else initMenuExtras();
 
 // ==== Проверка подписки ====
 async function checkSubscription() {
@@ -214,9 +255,9 @@ document.body.addEventListener("click", (e) => {
   hapticMedium();
   if (game === "party") showScreen("party");
   if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); }
-  if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
+  if (game === "sprint") { renderSprintRecord(); resetLbTabs("sprint-lb"); loadGameLeaderboard("sprint", "sprint-lb-list", "all"); showScreen("sprintSetup"); }
   if (game === "alias") showScreen("aliasSetup");
-  if (game === "marathon") { renderMarathonRecord(); showScreen("marathonSetup"); }
+  if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); }
   if (game === "spy") showScreen("spySetup");
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); }

@@ -680,3 +680,18 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Таблица лучших курса (общий тотал / за неделю) */
+.py-lb-card { background: var(--surface); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+.py-lb-card.hidden { display: none; }
+.py-lb-head { font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+.py-lb-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+.py-lb-tab { flex: 1; padding: 8px 6px; border-radius: 999px; border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; background: rgba(255,255,255,0.08); color: var(--muted); }
+.py-lb-tab.active { background: #B4F24D; color: #201541; }
+.py-lb-list { display: flex; flex-direction: column; gap: 5px; }
+.py-lb-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 12px; }
+.py-lb-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.06); color: var(--text); }
+.py-lb-row.top { background: var(--accent-tint); }
+.py-lb-place { width: 22px; font-weight: 800; color: #B4F24D; text-align: center; }
+.py-lb-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.py-lb-score { font-weight: 800; color: #B4F24D; }
