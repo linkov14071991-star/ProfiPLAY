@@ -2280,3 +2280,17 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .game-lb-score { font-weight: 800; color: var(--brand-purple); }
 
 .fm-expr { font-size: 30px; font-weight: 800; letter-spacing: 1px; }
+
+/* Кнопка «назад» — стрелка в левом верхнем углу экрана (во всех играх) */
+.screen-back {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 12px;
+  z-index: 50;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12); border: none; cursor: pointer;
+  color: #fff; font-size: 22px; font-weight: 700; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.screen-back:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.22); }

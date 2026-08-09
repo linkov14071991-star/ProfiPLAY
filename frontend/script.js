@@ -137,8 +137,27 @@ function resetLbTabs(wrapId) {
   wrap.querySelectorAll(".game-lb-tab").forEach((t, i) => t.classList.toggle("active", i === 0));
 }
 
+// Нижние ссылки «← назад/в меню» превращаем в стрелку в левом верхнем углу экрана
+function installBackArrows() {
+  document.querySelectorAll(".screen").forEach((scr) => {
+    const back = scr.querySelector(".btn-back");
+    if (!back || scr.querySelector(".screen-back")) return;
+    const target = back.dataset.back;
+    if (!target) return;
+    const arrow = document.createElement("button");
+    arrow.type = "button";
+    arrow.className = "screen-back";
+    arrow.setAttribute("aria-label", "Назад");
+    arrow.textContent = "←";
+    arrow.addEventListener("click", () => { hapticLight(); showScreen(target); });
+    scr.insertBefore(arrow, scr.firstChild);
+    back.style.display = "none";
+  });
+}
+
 function initMenuExtras() {
   applyUnlocks();
+  installBackArrows();
   setupGameLeaderboard("sprint", "sprint-lb", "sprint-lb-list");
   setupGameLeaderboard("marathon", "marathon-lb", "marathon-lb-list");
   setupGameLeaderboard("numguess", "numguess-lb", "numguess-lb-list");
