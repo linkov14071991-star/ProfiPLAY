@@ -116,7 +116,7 @@ function applyUnlocks() {
 // «Спринт» открыт всем. «Марафоны», «Командная игра», «Соревнования» — только
 // для аккаунтов из ADMIN_IDS. Впиши свой Telegram id (число) — увидишь его в
 // Профиле внизу или у бота @userinfobot. Пустой список = гейт выключен (всё открыто).
-const ADMIN_IDS = [];
+const ADMIN_IDS = [1388800589]; // Igor Linkov (@tg_1inkov)
 const GATED_SECTIONS = ["sec-marathon", "sec-team", "sec-comp"];
 function isAdminUser() {
   if (!ADMIN_IDS.length) return true;
