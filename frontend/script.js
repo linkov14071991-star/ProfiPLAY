@@ -232,7 +232,7 @@ function enterDuelFor(game) {
   const ru = document.getElementById("btn-mode-rules");
   if (solo) solo.addEventListener("click", () => enterSolo(currentGame));
   if (du) du.addEventListener("click", () => enterDuelFor(currentGame));
-  if (ru) ru.addEventListener("click", () => { hapticLight(); openGameInfo(currentGame); });
+  if (ru) ru.addEventListener("click", () => { hapticLight(); openGameRules(currentGame); });
   const wrap = document.getElementById("mode-lb");
   if (wrap) wrap.querySelectorAll(".game-lb-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -358,6 +358,21 @@ function playTick(secondsLeft) {
 }
 
 // ==== Меню игр (делегирование по клику) ====
+// Открыть конкретную игру (используется и карточками, и кнопкой «Играть» в инфо-модалке)
+function routeToGame(game) {
+  if (game === "party") { showScreen("party"); return; }
+  if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); return; }
+  // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
+  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath") { openGameMode(game); return; }
+  if (game === "alias") { showScreen("aliasSetup"); return; }
+  if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); return; }
+  if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
+  if (game === "spy") { showScreen("spySetup"); return; }
+  if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); return; }
+  if (game === "duel") { showScreen("duelSetup"); return; }
+  if (game === "python") { window.location.href = "python/index.html"; return; }
+}
+
 document.body.addEventListener("click", (e) => {
   const card = e.target.closest(".game-card");
   if (!card || card.classList.contains("locked")) return;
@@ -373,17 +388,7 @@ document.body.addEventListener("click", (e) => {
   if (game === "finderr") { showScreen("finderr"); return; }
   if (game === "cup") { showScreen("cup"); return; }
   if (game === "league") { showScreen("league"); return; }
-  if (game === "party") showScreen("party");
-  if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); }
-  // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
-  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath") { openGameMode(game); return; }
-  if (game === "alias") showScreen("aliasSetup");
-  if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); }
-  if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); }
-  if (game === "spy") showScreen("spySetup");
-  if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); }
-  if (game === "duel") showScreen("duelSetup");
-  if (game === "python") window.location.href = "python/index.html";
+  routeToGame(game);
 });
 
 // Кнопка "В меню" на любом экране
@@ -469,13 +474,43 @@ const GAME_INFO = {
       <p><b>Р4 — Финал:</b> супер-блиц. Игрок в наушниках, 6 слов (2 простых, 2 средних, 2 сложных), объясняете за весь накопленный банк, в любом порядке. Очки: слово 10/20/30 + бонус +2 за секунду. Итог — в таблицу рекордов.</p>`,
   },
 };
+// Короткий завлекающий тизер для инфо-иконки (?)
+const GAME_TEASER = {
+  sprint: "Сколько верных ответов выбьешь за 60 секунд? Микс инфы, матеши и физики на скорость.",
+  marathon: "Отвечай без единой ошибки — как далеко пройдёшь, пока не кончатся жизни?",
+  numguess: "Угадай загаданное число по подсказкам «больше / меньше» и уложись во время!",
+  fastmath: "Реши как можно больше примеров за 60 секунд. Прокачай устный счёт!",
+  infomath: "Степени двойки, системы счисления, биты и байты — посчитай в уме на скорость!",
+  python: "Программируй с нуля до задач ЕГЭ — шаг за шагом, вместе с Профиком.",
+  duel: "Вызови друга 1×1 и сразись за рейтинг!",
+  crocodile: "Покажи слово жестами — кто из друзей угадает первым?",
+  alias: "Объясни слово, не называя его. Успей больше за раунд!",
+  spy: "Вычисли шпиона среди своих — или обмани всех, если шпион ты.",
+  gromko: "Объясни жестами тому, кто в наушниках и ничего не слышит!",
+  timebank: "4 раунда: копи банк времени и потрать его в финальном супер-блице!",
+};
 let _gimKey = null;
+// Инфо-иконка (?) — короткий тизер + кнопка «Играть»
 function openGameInfo(key) {
+  const info = GAME_INFO[key];
+  if (!info) return;
+  _gimKey = key;
+  const teaser = GAME_TEASER[key];
+  document.getElementById("gim-title").innerHTML = info.title;
+  document.getElementById("gim-body").innerHTML = teaser ? `<p>${teaser}</p>` : info.body;
+  const foot = document.getElementById("gim-foot");
+  if (foot) foot.style.display = "";
+  document.getElementById("game-info-modal").classList.remove("hidden");
+}
+// Отдельная кнопка «Правила» — подробное описание (без «Играть»)
+function openGameRules(key) {
   const info = GAME_INFO[key];
   if (!info) return;
   _gimKey = key;
   document.getElementById("gim-title").innerHTML = info.title;
   document.getElementById("gim-body").innerHTML = info.body;
+  const foot = document.getElementById("gim-foot");
+  if (foot) foot.style.display = "none";
   document.getElementById("game-info-modal").classList.remove("hidden");
 }
 function closeGameInfo() { document.getElementById("game-info-modal").classList.add("hidden"); }
@@ -484,17 +519,12 @@ document.querySelectorAll(".game-info-btn").forEach((btn) => {
 });
 document.querySelector("#game-info-modal .gim-close").addEventListener("click", closeGameInfo);
 document.querySelector("#game-info-modal .gim-backdrop").addEventListener("click", closeGameInfo);
-// «Открыть правила» — переход в раздел правил, раскрыть блок этой игры
-document.getElementById("gim-rules-btn").addEventListener("click", () => {
-  const key = _gimKey;
+// «Играть» в инфо-модалке — сразу открыть игру
+document.getElementById("gim-play-btn").addEventListener("click", () => {
+  const g = _gimKey;
   closeGameInfo();
-  showScreen("rules");
-  const el = key && document.getElementById("rules-" + key);
-  if (el) {
-    document.querySelectorAll("#screen-rules details.rules-block").forEach((d) => { if (d !== el) d.open = false; });
-    el.open = true;
-    setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
-  }
+  hapticMedium();
+  if (g) routeToGame(g);
 });
 
 // ==============================
