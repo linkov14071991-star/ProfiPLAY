@@ -353,7 +353,7 @@ document.querySelectorAll(".btn-back").forEach((btn) => {
 const GAME_INFO = {
   sprint: {
     title: "🎯 Профи-блиц",
-    body: `<p>Соло-режим на скорость. За выбранное время (30/60/90 сек) отвечай на максимум вопросов — 4 варианта, автопереход к следующему.</p>
+    body: `<p>Соло-режим на скорость. За <b>60 секунд</b> отвечай на максимум вопросов — 4 варианта, автопереход к следующему.</p>
       <p>Выбираешь <b>темы</b> (Информатика/Математика/Физика, можно несколько) и <b>сложность</b>.</p>
       <p>За правильный ответ: <b>+1 рейтинг и +2 XP</b>, умноженные на множитель сложности (×1 / ×1.5 / ×2). У игры <b>свой кап 100 очков в день</b> в общий зачёт.</p>`,
   },
@@ -1046,7 +1046,8 @@ const sprint = {
 sprint.topics = ["informatika", "mathematics", "physics"];
 setupPills("sprint-difficulty", (v) => { sprint.difficulty = v; renderSprintRecord(); updateSprintMult(); });
 setupPillsMulti("sprint-topic", (arr) => (sprint.topics = arr));
-setupPills("sprint-duration", (v) => { sprint.duration = v; renderSprintRecord(); }, (v) => parseInt(v, 10));
+// Длительность фиксирована — 60 секунд (однообразно с Быстрым счётом и IT-разминкой)
+sprint.duration = 60;
 
 function updateSprintMult() {
   const map = {easy: "×1", medium: "×1.5", hard: "×2"};

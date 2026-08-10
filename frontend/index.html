@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=36">
+<link rel="stylesheet" href="/style.css?v=37">
 </head>
 <body>
 
@@ -606,7 +606,7 @@
   </div>
   <div class="card">
     <h1>🎯 Профи-блиц</h1>
-    <p class="subtitle">Как можно больше правильных за таймер</p>
+    <p class="subtitle">Как можно больше правильных за 60 секунд</p>
 
     <div class="profik-chip">
       <img src="/profik.svg" alt="Профик" class="profik-chip-img">
@@ -625,13 +625,6 @@
       <button class="pill pill-diff active" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
       <button class="pill pill-diff" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
       <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
-    </div>
-
-    <label class="field">Длительность</label>
-    <div class="pills" id="sprint-duration">
-      <button class="pill" data-value="30">30 сек</button>
-      <button class="pill active" data-value="60">60 сек</button>
-      <button class="pill" data-value="90">90 сек</button>
     </div>
 
     <div id="sprint-record-hint" style="display:none;">
@@ -1849,16 +1842,16 @@
 
     <details class="rules-block" id="rules-sprint">
       <summary>🎯 Профи-блиц</summary>
-      <p class="r-lead"><b>Суть:</b> соло на скорость — как можно больше правильных ответов за таймер.</p>
+      <p class="r-lead"><b>Суть:</b> соло на скорость — как можно больше правильных ответов за 60 секунд.</p>
       <div class="r-head">Как играть</div>
       <ol class="r-steps">
         <li>Выбери темы (Информатика / Математика / Физика — можно несколько) и сложность.</li>
-        <li>Выбери длительность: 30, 60 или 90 секунд.</li>
+        <li>На всё — <b>60 секунд</b>.</li>
         <li>Появляется вопрос с 4 вариантами — жми правильный. Ответил — сразу следующий (автопереход).</li>
         <li>Ошибся — подсветится правильный вариант, и идём дальше. Играем, пока не кончится время.</li>
       </ol>
       <div class="r-head">Очки</div>
-      <p>За каждый правильный: <b>+1 рейтинг</b> и <b>+2 XP</b>. Множитель сложности: простая ×1, средняя ×1.5, сложная ×2. Сохраняется личный рекорд для каждой связки «сложность + время».</p>
+      <p>За каждый правильный: <b>+1 рейтинг</b> и <b>+2 XP</b>. Множитель сложности: простая ×1, средняя ×1.5, сложная ×2. Сохраняется личный рекорд для каждой сложности.</p>
     </details>
 
     <details class="rules-block" id="rules-marathon">
@@ -2083,6 +2076,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=36"></script>
+<script src="/script.js?v=37"></script>
 </body>
 </html>

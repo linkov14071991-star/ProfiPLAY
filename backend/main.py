@@ -1642,7 +1642,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "duel-formats-v38"
+BUILD_TAG = "sprint60-v39"
 
 
 @app.get("/api/version")
