@@ -1842,7 +1842,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "weekly-challenge-v45"
+BUILD_TAG = "duellink-fix-v46"
 
 
 @app.get("/api/version")

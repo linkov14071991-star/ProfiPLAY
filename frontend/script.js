@@ -4006,6 +4006,12 @@ async function duelOpenIncoming(duelId) {
     duelShowResult(info);
     return;
   }
+  // Свою же дуэль принять нельзя — объясняем, а не молча кидаем в меню
+  if (info.you_are === "creator") {
+    alert("Это твоя дуэль 🙂 Отправь ссылку другу — он примет вызов и сыграет те же вопросы. Результат увидите оба.");
+    showScreen("menu");
+    return;
+  }
   // Показываем экран приёма
   document.getElementById("duel-accept-from").textContent = info.creator.name;
   const league = info.creator.league;
@@ -4265,11 +4271,26 @@ async function openWeeklyFromDeepLink() {
   showScreen("compHub");
 }
 
+// Достаём параметр ссылки: из query (?duel=/?weekly=), из Telegram start_param
+// (startapp-ссылки duel_/weekly) и из hash — что-нибудь из этого да сработает.
+function _readStartParam() {
+  const q = new URLSearchParams(window.location.search);
+  if (q.get("duel")) return { type: "duel", value: q.get("duel") };
+  if (q.get("weekly")) return { type: "weekly" };
+  const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || "";
+  if (sp.startsWith("duel_")) return { type: "duel", value: sp.slice(5) };
+  if (sp === "weekly") return { type: "weekly" };
+  const h = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
+  if (h.get("duel")) return { type: "duel", value: h.get("duel") };
+  if (h.get("weekly")) return { type: "weekly" };
+  return null;
+}
+
 window._maybeOpenIncomingDuel = async function() {
-  const params = new URLSearchParams(window.location.search);
-  const incoming = params.get("duel");
-  if (incoming) { await duelOpenIncoming(incoming); return; }
-  if (params.get("weekly")) await openWeeklyFromDeepLink();
+  const p = _readStartParam();
+  if (!p) return;
+  if (p.type === "duel") { await duelOpenIncoming(p.value); return; }
+  if (p.type === "weekly") { await openWeeklyFromDeepLink(); }
 };
 
 // ==== Проверка подписки: кнопка ====
