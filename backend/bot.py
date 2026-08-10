@@ -7,10 +7,12 @@
 
 import asyncio
 import os
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandObject, CommandStart
 from aiogram.types import (
+    FSInputFile,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     MenuButtonWebApp,
@@ -26,6 +28,9 @@ import time
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 WEBAPP_URL = os.environ["WEBAPP_URL"]
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@profimatika_inf")
+
+# Картинка-приветствие (маскот Профика) для /start
+HERO_IMG = Path(__file__).resolve().parent.parent / "frontend" / "profik-hero.png"
 
 # Версия сборки для сброса кэша мини-аппа. Меняется на каждый деплой (Railway
 # отдаёт RAILWAY_GIT_COMMIT_SHA), поэтому Telegram открывает свежую версию, а не
@@ -76,15 +81,23 @@ async def start(message: Message, command: CommandObject):
         )
         return
 
-    # Обычный /start
+    # Обычный /start — приветствие с картинкой Профика
     kb = _kb_open_app(WEBAPP_URL)
-    await message.answer(
+    caption = (
         f"Привет, {message.from_user.first_name}! 👋\n\n"
         f"Это <b>Профик Arena</b> — играй, учись, побеждай.\n\n"
-        f"⚠️ Для игры нужна подписка на канал {CHANNEL_USERNAME}.",
-        reply_markup=kb,
-        parse_mode="HTML",
+        f"⚠️ Для игры нужна подписка на канал {CHANNEL_USERNAME}."
     )
+    try:
+        await message.answer_photo(
+            photo=FSInputFile(str(HERO_IMG)),
+            caption=caption,
+            reply_markup=kb,
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        print("Не удалось отправить картинку приветствия:", e)
+        await message.answer(caption, reply_markup=kb, parse_mode="HTML")
 
 
 @dp.startup()
