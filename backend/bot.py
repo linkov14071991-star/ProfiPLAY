@@ -37,6 +37,8 @@ DUEL_IMG = _IMG_DIR / "profik-duel.png"   # приглашение на дуэл
 
 # Админы — им бот раз в неделю напоминает создать «Вызов недели»
 ADMIN_IDS = {int(x) for x in os.environ.get("ADMIN_IDS", "1388800589").replace(" ", "").split(",") if x}
+# Username бота (для startapp-ссылок). Заполняется на старте через getMe.
+BOT_ME_USERNAME = os.environ.get("BOT_USERNAME", "")
 
 # Версия сборки для сброса кэша мини-аппа. Меняется на каждый деплой (Railway
 # отдаёт RAILWAY_GIT_COMMIT_SHA), поэтому Telegram открывает свежую версию, а не
@@ -68,6 +70,31 @@ def _kb_open_app(url: str, label: str = "🎮 Играть в Профик Arena
     )
 
 
+def _kb_accept_duel(duel_id: str) -> InlineKeyboardMarkup:
+    """Кнопка приёма дуэли: обычная ссылка на startapp (параметр придёт в
+    start_param, а не query) — надёжнее web-app кнопки. Фолбэк — web-app, если
+    username бота ещё не известен."""
+    if BOT_ME_USERNAME:
+        accept = InlineKeyboardButton(
+            text="⚔ Принять вызов!",
+            url=f"https://t.me/{BOT_ME_USERNAME}?startapp=duel_{duel_id}",
+        )
+    else:
+        accept = InlineKeyboardButton(
+            text="⚔ Принять вызов!",
+            web_app=WebAppInfo(url=_bust(f"{WEBAPP_URL}?duel={duel_id}")),
+        )
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [accept],
+            [InlineKeyboardButton(
+                text="📢 Подписаться на канал",
+                url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}",
+            )],
+        ]
+    )
+
+
 @dp.message(CommandStart())
 async def start(message: Message, command: CommandObject):
     payload = command.args or ""
@@ -75,8 +102,7 @@ async def start(message: Message, command: CommandObject):
     # Deep-link на конкретную дуэль
     if payload.startswith("duel_"):
         duel_id = payload[5:]
-        url = f"{WEBAPP_URL}?duel={duel_id}"
-        kb = _kb_open_app(url, "⚔ Принять вызов!")
+        kb = _kb_accept_duel(duel_id)
         caption = (
             f"⚔ <b>Тебя вызвали на Блиц-дуэль!</b>\n\n"
             f"Докажи, что ты лучший — набери больше очков, чем соперник. "
@@ -142,6 +168,14 @@ async def _weekly_reminder_loop():
 async def _on_startup():
     """При каждом запуске бота (то есть на каждый деплой) прописываем постоянную
     кнопку-меню со свежей версией — чтобы Telegram не открывал старый кэш."""
+    global BOT_ME_USERNAME
+    try:
+        me = await bot.get_me()
+        if me and me.username:
+            BOT_ME_USERNAME = me.username
+            print(f"Username бота: @{BOT_ME_USERNAME}")
+    except Exception as e:
+        print("Не удалось получить username бота:", e)
     try:
         await bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(text="🎮 Играть", web_app=WebAppInfo(url=_bust(WEBAPP_URL)))
