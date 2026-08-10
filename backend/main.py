@@ -1842,7 +1842,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webapp-accept-v50"
+BUILD_TAG = "duel-fixed-v51"
 
 
 @app.get("/api/version")

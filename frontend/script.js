@@ -4288,14 +4288,6 @@ function _readStartParam() {
 
 window._maybeOpenIncomingDuel = async function() {
   const p = _readStartParam();
-  if (isAdminUser()) {
-    alert(
-      "🔧 DEBUG (видно только тебе)\n" +
-      "start_param: " + ((tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || "(пусто)") + "\n" +
-      "search: " + (window.location.search || "(пусто)") + "\n" +
-      "распознано: " + (p ? (p.type + " " + (p.value || "")) : "ничего")
-    );
-  }
   if (!p) return;
   if (p.type === "duel") { await duelOpenIncoming(p.value); return; }
   if (p.type === "weekly") { await openWeeklyFromDeepLink(); }
