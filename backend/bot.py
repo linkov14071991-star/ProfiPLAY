@@ -94,9 +94,9 @@ async def start(message: Message, command: CommandObject):
     # Обычный /start — приветствие с картинкой Профика
     kb = _kb_open_app(WEBAPP_URL)
     caption = (
-        f"Привет, {message.from_user.first_name}! 👋\n\n"
-        f"Это <b>Профик Arena</b> — играй, учись, побеждай.\n\n"
-        f"⚠️ Для игры нужна подписка на канал {CHANNEL_USERNAME}."
+        f"{message.from_user.first_name}, добро пожаловать! 👋\n\n"
+        f"Жми <b>«Играть»</b> — тренируйся, вызывай друзей на дуэли и поднимайся в топ рейтинга.\n\n"
+        f"⚠️ Нужна подписка на канал {CHANNEL_USERNAME}."
     )
     try:
         await message.answer_photo(
