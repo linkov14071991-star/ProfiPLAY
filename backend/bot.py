@@ -6,6 +6,7 @@
 """
 
 import asyncio
+import datetime
 import os
 from pathlib import Path
 
@@ -33,6 +34,9 @@ CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@profimatika_inf")
 _IMG_DIR = Path(__file__).resolve().parent.parent / "frontend"
 HERO_IMG = _IMG_DIR / "profik-hero.png"   # приветствие /start
 DUEL_IMG = _IMG_DIR / "profik-duel.png"   # приглашение на дуэль
+
+# Админы — им бот раз в неделю напоминает создать «Вызов недели»
+ADMIN_IDS = {int(x) for x in os.environ.get("ADMIN_IDS", "1388800589").replace(" ", "").split(",") if x}
 
 # Версия сборки для сброса кэша мини-аппа. Меняется на каждый деплой (Railway
 # отдаёт RAILWAY_GIT_COMMIT_SHA), поэтому Telegram открывает свежую версию, а не
@@ -110,6 +114,30 @@ async def start(message: Message, command: CommandObject):
         await message.answer(caption, reply_markup=kb, parse_mode="HTML")
 
 
+async def _weekly_reminder_loop():
+    """Раз в неделю (Пн 10:00 МСК) напоминает админам создать «Вызов недели»."""
+    while True:
+        now = datetime.datetime.utcnow() + datetime.timedelta(hours=3)  # МСК
+        days_ahead = (0 - now.weekday()) % 7  # понедельник = 0
+        target = (now + datetime.timedelta(days=days_ahead)).replace(
+            hour=10, minute=0, second=0, microsecond=0)
+        if target <= now:
+            target += datetime.timedelta(days=7)
+        await asyncio.sleep(max(60, (target - now).total_seconds()))
+        for uid in ADMIN_IDS:
+            try:
+                await bot.send_message(
+                    uid,
+                    "🗓 Пора запустить <b>Вызов недели</b>!\n\n"
+                    "Зайди в приложение → <b>Соревнования</b> → «Создать вызов недели», "
+                    "сыграй партию — и вызов улетит всем ученикам.",
+                    reply_markup=_kb_open_app(WEBAPP_URL, "🎮 Открыть приложение"),
+                    parse_mode="HTML",
+                )
+            except Exception as e:
+                print("Напоминание не отправлено:", e)
+
+
 @dp.startup()
 async def _on_startup():
     """При каждом запуске бота (то есть на каждый деплой) прописываем постоянную
@@ -121,6 +149,7 @@ async def _on_startup():
         print(f"Кнопка-меню обновлена (v={APP_VER})")
     except Exception as e:
         print("Не удалось обновить кнопку-меню:", e)
+    asyncio.create_task(_weekly_reminder_loop())
 
 
 async def main():
