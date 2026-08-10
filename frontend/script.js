@@ -29,6 +29,7 @@ const SCREENS = {
   duelWaiting: "screen-duel-waiting",
   duelResult: "screen-duel-result",
   duelHistory: "screen-duel-history",
+  duelNg: "screen-duel-ng",
   crocoSetup: "screen-croco-setup",
   crocoTheme: "screen-croco-theme", // выбор темы (перед словом)
   game: "screen-game",           // игра Крокодил
@@ -388,9 +389,9 @@ const GAME_INFO = {
   },
   duel: {
     title: "⚔ Блиц-дуэль",
-    body: `<p>Соревнование 1×1 — асинхронно. Формат <b>«Профи-блиц»</b>: 10 вопросов по 15 секунд, очки за скорость ответа. Скоро добавим дуэли и в другие игры Спринта.</p>
-      <p>Выбираешь <b>темы</b> (1–3) и <b>сложность</b>. После партии получаешь ссылку — отправляешь другу в Telegram. Он играет те же вопросы когда захочет.</p>
-      <p>Очки сравниваются автоматически. Победа поднимает рейтинг (ELO), поражение — снижает.</p>`,
+    body: `<p>Соревнование 1×1 — асинхронно. Выбираешь <b>формат</b>: Профи-блиц, Быстрый счёт, IT-разминка или Угадай число.</p>
+      <p>Играешь свою партию и получаешь ссылку — отправляешь другу в Telegram. Он играет то же самое когда захочет, очки сравниваются автоматически.</p>
+      <p>Рейтинг за бой: победа <b>+15</b>, ничья <b>0</b>, поражение <b>−15</b>. У каждого формата свой кап <b>100/день</b> в общий зачёт.</p>`,
   },
   crocodile: {
     title: "🐊 Крокодил",
@@ -3370,6 +3371,7 @@ window.openAchievements = openAchievements;
 // ========== ДУЭЛЬ =============
 // ==============================
 const duel = {
+  format: "sprint",    // sprint | fastmath | infomath | numguess
   difficulty: "medium",
   topics: ["informatika", "mathematics", "physics"],
   duelId: null,
@@ -3383,22 +3385,59 @@ const duel = {
   timeStart: 0,
   locked: false,
   timeLimitMs: 15000,
+  // «Угадай число»
+  ngSecret: 0, ngMaxN: 10, ngGuesses: 0, ngStart: 0,
+  ngTimer: null, ngTimeLeft: 15, ngTimeLimitMs: 15000,
+};
+
+const DUEL_FMT_TITLES = {
+  sprint: "🎯 Профи-блиц · 10 вопросов × 15 сек",
+  fastmath: "🧮 Быстрый счёт · 10 примеров × 15 сек",
+  infomath: "🖥️ IT-разминка · 10 вопросов × 15 сек",
+  numguess: "🔢 Угадай число · кто быстрее и точнее",
 };
 
 setupPills("duel-difficulty", (v) => (duel.difficulty = v));
 setupPillsMulti("duel-topic", (arr) => (duel.topics = arr));
+setupPills("duel-format", (v) => {
+  duel.format = v;
+  const topicWrap = document.getElementById("duel-topic-wrap");
+  if (topicWrap) topicWrap.style.display = (v === "sprint") ? "" : "none";
+  const sub = document.getElementById("duel-subtitle");
+  if (sub) sub.textContent = DUEL_FMT_TITLES[v] || "Вызови соперника в игре на выбор";
+});
+
+// Собираем 10 MCQ для форматов Быстрый счёт / IT-разминка
+function duelBuildItems(format, difficulty) {
+  const items = [];
+  for (let i = 0; i < 10; i++) {
+    if (format === "fastmath") {
+      const g = fmGen(difficulty);
+      const o = fmBuildOptions(g.answer);
+      items.push({ q: g.expr, options: o.options.map(String), correct: o.correct });
+    } else {
+      const g = imGen(difficulty);
+      items.push({ q: g.q, options: g.options.map(String), correct: g.correct });
+    }
+  }
+  return items;
+}
 
 async function duelStartCreate() {
   hapticMedium();
-  const res = await apiPost("/api/duel/create", {
-    init_data: INIT_DATA, difficulty: duel.difficulty, topic: duel.topics.join(","),
-  });
+  const body = { init_data: INIT_DATA, difficulty: duel.difficulty, format: duel.format };
+  if (duel.format === "sprint") body.topic = duel.topics.join(",");
+  else if (duel.format === "fastmath" || duel.format === "infomath") {
+    body.questions = duelBuildItems(duel.format, duel.difficulty);
+  }
+  const res = await apiPost("/api/duel/create", body);
   if (!res || !res.duel_id) {
     alert("Не удалось создать дуэль. Попробуй ещё раз.");
     return;
   }
   duel.duelId = res.duel_id;
   duel.role = "creator";
+  if (duel.format === "numguess") { duelNgStart(res); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;
@@ -3408,6 +3447,73 @@ async function duelStartCreate() {
   showScreen("duelPlay");
   duelRenderQ();
 }
+
+// ===== Дуэль «Угадай число» =====
+function duelNgStart(info) {
+  duel.ngSecret = info.secret;
+  duel.ngMaxN = info.maxN || 10;
+  duel.ngTimeLimitMs = info.time_limit_ms || 15000;
+  duel.ngGuesses = 0;
+  duel.ngStart = Date.now();
+  duel.ngTimeLeft = Math.floor(duel.ngTimeLimitMs / 1000);
+  document.getElementById("duel-ng-range").textContent = `от 1 до ${duel.ngMaxN}`;
+  document.getElementById("duel-ng-tries").textContent = 0;
+  const fb = document.getElementById("duel-ng-feedback");
+  fb.textContent = "Введите догадку";
+  fb.className = "tb-num-feedback";
+  const inp = document.getElementById("duel-ng-input");
+  inp.value = "";
+  document.getElementById("duel-ng-timer").textContent = duel.ngTimeLeft;
+  showScreen("duelNg");
+  setTimeout(() => inp.focus(), 100);
+  clearInterval(duel.ngTimer);
+  duel.ngTimer = setInterval(() => {
+    duel.ngTimeLeft--;
+    document.getElementById("duel-ng-timer").textContent = Math.max(0, duel.ngTimeLeft);
+    if (duel.ngTimeLeft <= 0) duelNgEnd(false);
+    else playTick(duel.ngTimeLeft);
+  }, 1000);
+}
+
+function duelNgGuess() {
+  if (duel.ngTimeLeft <= 0) return;
+  const inp = document.getElementById("duel-ng-input");
+  const val = parseInt(inp.value, 10);
+  if (isNaN(val)) return;
+  duel.ngGuesses++;
+  document.getElementById("duel-ng-tries").textContent = duel.ngGuesses;
+  const fb = document.getElementById("duel-ng-feedback");
+  if (val === duel.ngSecret) {
+    fb.textContent = "🎉 Верно!";
+    fb.className = "tb-num-feedback ok";
+    duelNgEnd(true);
+    return;
+  }
+  fb.textContent = val < duel.ngSecret ? "📈 Больше" : "📉 Меньше";
+  fb.className = "tb-num-feedback";
+  hapticLight();
+  inp.value = "";
+  inp.focus();
+}
+
+async function duelNgEnd(solved) {
+  clearInterval(duel.ngTimer);
+  const elapsed = Math.min(duel.ngTimeLimitMs, Date.now() - duel.ngStart);
+  if (solved) hapticSuccess(); else hapticError();
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, {
+    init_data: INIT_DATA,
+    ng: { solved: solved, guesses: duel.ngGuesses, elapsed_ms: elapsed },
+  });
+  if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
+  refreshProfile();
+  if (res.status === "complete") duelShowResult(res);
+  else duelShowWaiting(res);
+}
+
+document.getElementById("btn-duel-ng-guess").addEventListener("click", duelNgGuess);
+document.getElementById("duel-ng-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); duelNgGuess(); }
+});
 
 function duelRenderQ() {
   const q = duel.questions[duel.qIndex];
@@ -3791,6 +3897,8 @@ async function duelOpenIncoming(duelId) {
   const league = info.creator.league;
   document.getElementById("duel-accept-league").textContent =
     `${league.emoji} ${league.display || league.name} · ${info.creator.rating}`;
+  const fmtEl = document.getElementById("duel-accept-fmt");
+  if (fmtEl) fmtEl.textContent = (DUEL_FMT_TITLES[info.format] || "Блиц-дуэль") + ". Готов?";
   if (info.creator_score) {
     document.getElementById("duel-accept-opp-score").textContent = info.creator_score;
     document.getElementById("duel-accept-opp-score-wrap").style.display = "block";
@@ -3801,11 +3909,13 @@ async function duelOpenIncoming(duelId) {
 async function duelAcceptChallenge() {
   hapticMedium();
   const res = await apiPost(`/api/duel/${duel.duelId}/join`, {init_data: INIT_DATA});
-  if (!res || !res.questions) {
+  if (!res || res.error || (res.format !== "numguess" && !res.questions)) {
     alert("Не смог присоединиться. Возможно, дуэль уже занята.");
     showScreen("menu");
     return;
   }
+  duel.format = res.format || "sprint";
+  if (duel.format === "numguess") { duelNgStart(res); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;

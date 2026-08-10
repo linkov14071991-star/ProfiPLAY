@@ -89,6 +89,10 @@ def init_db():
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_duels_creator ON duels (creator_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_duels_opponent ON duels (opponent_id)")
+    # миграция: формат дуэли (sprint = Профи-блиц по умолчанию; fastmath/infomath/numguess)
+    _dcols = [r[1] for r in conn.execute("PRAGMA table_info(duels)").fetchall()]
+    if "format" not in _dcols:
+        conn.execute("ALTER TABLE duels ADD COLUMN format TEXT NOT NULL DEFAULT 'sprint'")
 
     conn.execute(
         """

@@ -1010,6 +1010,46 @@ async def get_my_place(init_data: str = Body(..., embed=True)):
 DUEL_QUESTIONS_COUNT = 10
 DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
 
+# Форматы дуэли = игры Спринта
+DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess")
+# Дуэль «Угадай число»: диапазон и время (как в соло)
+DUEL_NG = {
+    "easy":   {"maxN": 10,   "time_ms": 15000},
+    "medium": {"maxN": 100,  "time_ms": 20000},
+    "hard":   {"maxN": 1000, "time_ms": 30000},
+}
+# Рейтинг за бой в общий зачёт: победа / ничья / поражение
+DUEL_RATING = {"win": 15, "draw": 0, "loss": -15}
+
+
+def _validate_client_questions(qs) -> list:
+    """Проверяем клиентские MCQ (Быстрый счёт / IT-разминка): ровно 10 штук,
+    4 варианта, correct в 0..3. Возвращаем очищенный список {q, options, correct}."""
+    if not isinstance(qs, list) or len(qs) != DUEL_QUESTIONS_COUNT:
+        raise HTTPException(status_code=400, detail="Bad questions")
+    out = []
+    for q in qs:
+        opts = q.get("options") if isinstance(q, dict) else None
+        c = q.get("correct") if isinstance(q, dict) else None
+        if not isinstance(opts, list) or len(opts) != 4 or not isinstance(c, int) or c < 0 or c > 3:
+            raise HTTPException(status_code=400, detail="Bad question item")
+        out.append({
+            "q": str(q.get("q", ""))[:200],
+            "options": [str(o)[:60] for o in opts],
+            "correct": c,
+        })
+    return out
+
+
+def _score_numguess(payload: dict) -> int:
+    """Очки за дуэль «Угадай число»: угадал → тем больше, чем меньше попыток и быстрее."""
+    if not payload or not payload.get("solved"):
+        return 0
+    guesses = max(1, int(payload.get("guesses", 1)))
+    elapsed_ms = max(0, int(payload.get("elapsed_ms", 0)))
+    score = 1000 - (guesses - 1) * 80 - (elapsed_ms // 1000) * 5
+    return max(100, score)
+
 
 def _gen_duel_id() -> str:
     """Короткий URL-безопасный ID (8 символов)."""
@@ -1151,24 +1191,33 @@ def _try_finalize_duel(db, duel_id: str):
     else:
         score_a, winner, is_draw = 0.5, None, 1
 
-    d_a, d_b = calculate_elo(creator["rating"], opponent["rating"], score_a)
+    # Рейтинг за бой: фикс +15 / 0 / −15, свой кап 100/день на каждый формат
+    fmt = d["format"] or "sprint"
+    src = f"duel_{fmt}"
+    res_a = "win" if score_a == 1.0 else ("draw" if is_draw else "loss")
+    res_b = "win" if score_a == 0.0 else ("draw" if is_draw else "loss")
 
-    # Обновляем рейтинги (не даём уйти в минус)
-    for uid, delta in ((creator["telegram_id"], d_a), (opponent["telegram_id"], d_b)):
-        db.execute(
-            "UPDATE users SET rating = MAX(0, rating + ?) WHERE telegram_id = ?",
-            (delta, uid),
-        )
-        new_rating = db.execute(
-            "SELECT rating FROM users WHERE telegram_id = ?", (uid,)
-        ).fetchone()["rating"]
-        db.execute(
-            """
-            INSERT INTO rating_log (user_id, delta, source, balance_after)
-            VALUES (?, ?, 'duel', ?)
-            """,
-            (uid, delta, new_rating),
-        )
+    def _apply_duel_rating(uid, res):
+        delta = DUEL_RATING[res]
+        if delta > 0:  # выигрыш ограничен дневным капом на формат
+            earned = get_training_earned_today(db, uid, src)
+            delta = min(delta, max(0, DAILY_TRAINING_CAP - earned))
+        if delta != 0:
+            db.execute(
+                "UPDATE users SET rating = MAX(0, rating + ?) WHERE telegram_id = ?",
+                (delta, uid),
+            )
+            nr = db.execute(
+                "SELECT rating FROM users WHERE telegram_id = ?", (uid,)
+            ).fetchone()["rating"]
+            db.execute(
+                "INSERT INTO rating_log (user_id, delta, source, balance_after) VALUES (?, ?, ?, ?)",
+                (uid, delta, src, nr),
+            )
+        return delta
+
+    d_a = _apply_duel_rating(creator["telegram_id"], res_a)
+    d_b = _apply_duel_rating(opponent["telegram_id"], res_b)
 
     # --- Начисляем XP: победитель много, проигравший — утешительно ---
     if is_draw:
@@ -1220,6 +1269,7 @@ def _duel_public_view(db, duel, viewer_id: int) -> dict:
         "id": duel["id"],
         "status": duel["status"],
         "difficulty": duel["difficulty"],
+        "format": duel["format"] or "sprint",
         "creator": {
             "id": creator["telegram_id"],
             "name": _display_name(creator),
@@ -1271,31 +1321,52 @@ async def duel_create(
     init_data: str = Body(...),
     difficulty: str = Body("mixed"),
     topic: str = Body(""),
+    format: str = Body("sprint"),
+    questions: list = Body(None),   # клиентские MCQ для fastmath / infomath
 ):
-    """Создать новую дуэль. Возвращает id и 10 вопросов (без правильных ответов).
-    topic — тема вопросов (informatika/mathematics/programming) или пусто = микс."""
+    """Создать новую дуэль в одном из форматов Спринта.
+    sprint — вопросы из банка (сервер); fastmath/infomath — MCQ от клиента;
+    numguess — сервер загадывает число."""
+    if format not in DUEL_FORMATS:
+        raise HTTPException(status_code=400, detail="Bad format")
     tg_user = get_verified_user(init_data)
-    pool = _pool_for(difficulty, topic)
-    if len(pool) < DUEL_QUESTIONS_COUNT:
-        raise HTTPException(status_code=500, detail="Not enough questions")
-    # Перемешиваем варианты каждого вопроса. Сохраняется этот вариант — оба игрока увидят один и тот же порядок.
-    selected = [shuffle_question(q) for q in random.sample(pool, DUEL_QUESTIONS_COUNT)]
 
     with get_db() as db:
         creator = upsert_user(db, tg_user)
         duel_id = _gen_duel_id()
+
+        if format == "numguess":
+            cfg = DUEL_NG.get(difficulty)
+            if not cfg:
+                raise HTTPException(status_code=400, detail="Bad difficulty")
+            secret = random.randint(1, cfg["maxN"])
+            payload = {"format": "numguess", "secret": secret,
+                       "maxN": cfg["maxN"], "time_ms": cfg["time_ms"]}
+            db.execute(
+                "INSERT INTO duels (id, creator_id, difficulty, questions_json, format) VALUES (?, ?, ?, ?, ?)",
+                (duel_id, creator["telegram_id"], difficulty, json.dumps(payload), format),
+            )
+            return {
+                "duel_id": duel_id, "format": "numguess",
+                "maxN": cfg["maxN"], "secret": secret, "time_limit_ms": cfg["time_ms"],
+            }
+
+        if format == "sprint":
+            pool = _pool_for(difficulty, topic)
+            if len(pool) < DUEL_QUESTIONS_COUNT:
+                raise HTTPException(status_code=500, detail="Not enough questions")
+            selected = [shuffle_question(q) for q in random.sample(pool, DUEL_QUESTIONS_COUNT)]
+        else:  # fastmath / infomath — MCQ сгенерил клиент
+            selected = [shuffle_question(q) for q in _validate_client_questions(questions)]
+
         db.execute(
-            """
-            INSERT INTO duels (id, creator_id, difficulty, questions_json)
-            VALUES (?, ?, ?, ?)
-            """,
-            (duel_id, creator["telegram_id"], difficulty, json.dumps(selected)),
+            "INSERT INTO duels (id, creator_id, difficulty, questions_json, format) VALUES (?, ?, ?, ?, ?)",
+            (duel_id, creator["telegram_id"], difficulty, json.dumps(selected), format),
         )
 
-    # Отдаём вопросы БЕЗ correct
     public_questions = [{"q": q["q"], "options": q["options"]} for q in selected]
     return {
-        "duel_id": duel_id,
+        "duel_id": duel_id, "format": format,
         "questions": public_questions,
         "time_limit_ms": DUEL_TIME_LIMIT_MS,
     }
@@ -1326,21 +1397,26 @@ async def duel_join(
             )
             duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
 
-    questions = json.loads(duel["questions_json"])
-    public_questions = [{"q": q["q"], "options": q["options"]} for q in questions]
-    creator = db.execute(
-        "SELECT * FROM users WHERE telegram_id = ?", (duel["creator_id"],)
-    ).fetchone() if False else None
+    fmt = duel["format"] or "sprint"
+    payload = json.loads(duel["questions_json"])
     with get_db() as db2:
         creator = db2.execute(
             "SELECT * FROM users WHERE telegram_id = ?", (duel["creator_id"],)
         ).fetchone()
-    return {
+    common = {
         "duel_id": duel_id,
-        "questions": public_questions,
-        "time_limit_ms": DUEL_TIME_LIMIT_MS,
+        "format": fmt,
         "creator_name": _display_name(creator),
         "creator_score": duel["creator_score"],
+    }
+    if fmt == "numguess":
+        return {**common, "maxN": payload["maxN"], "secret": payload["secret"],
+                "time_limit_ms": payload["time_ms"]}
+    public_questions = [{"q": q["q"], "options": q["options"]} for q in payload]
+    return {
+        **common,
+        "questions": public_questions,
+        "time_limit_ms": DUEL_TIME_LIMIT_MS,
     }
 
 
@@ -1348,9 +1424,10 @@ async def duel_join(
 async def duel_submit(
     duel_id: str,
     init_data: str = Body(...),
-    answers: list = Body(...),
+    answers: list = Body(None),      # MCQ-форматы (sprint/fastmath/infomath)
+    ng: dict = Body(None),           # результат «Угадай число»
 ):
-    """Сдать ответы на 10 вопросов. Считаем очки, если оба сдали — финализируем."""
+    """Сдать результат. Считаем очки, если оба сдали — финализируем."""
     tg_user = get_verified_user(init_data)
     with get_db() as db:
         me = upsert_user(db, tg_user)
@@ -1361,8 +1438,11 @@ async def duel_submit(
         if duel["status"] == "complete":
             raise HTTPException(status_code=400, detail="Duel already complete")
 
-        questions = json.loads(duel["questions_json"])
-        my_score = _score_answers(questions, answers)
+        if (duel["format"] or "sprint") == "numguess":
+            my_score = _score_numguess(ng or {})
+        else:
+            questions = json.loads(duel["questions_json"])
+            my_score = _score_answers(questions, answers or [])
 
         if my_id == duel["creator_id"]:
             if duel["creator_finished_at"]:
@@ -1562,7 +1642,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "sections-v37"
+BUILD_TAG = "duel-formats-v38"
 
 
 @app.get("/api/version")
