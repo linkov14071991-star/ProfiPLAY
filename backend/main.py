@@ -9,6 +9,7 @@ Backend: FastAPI
 3. Отдавать список слов по выбранной сложности
 """
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -74,6 +75,10 @@ PARTY_GAMES = {"croco", "gromko", "alias", "spy", "whoami", "timebank"}
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BOT_USERNAME = os.environ.get("BOT_USERNAME", "")  # без @, например 'profikarena_bot'
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@profimatika_inf")
+
+# Админы (могут создавать «Вызов недели»). Можно переопределить через env ADMIN_IDS="123,456".
+ADMIN_IDS = {int(x) for x in os.environ.get("ADMIN_IDS", "1388800589").replace(" ", "").split(",") if x}
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "")  # для рассылки вызова недели (кнопка + картинка)
 
 BASE_DIR = Path(__file__).parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
@@ -1574,6 +1579,165 @@ async def duel_info(
         return _duel_public_view(db, duel, me["telegram_id"])
 
 
+# ==============================
+# ======= ВЫЗОВ НЕДЕЛИ =========
+# ==============================
+
+WEEKLY_FMT_TITLES = {
+    "sprint": "Профи-блиц",
+    "fastmath": "Быстрый счёт",
+    "infomath": "IT-разминка",
+    "numguess": "Угадай число",
+}
+WEEKLY_BONUS = 50
+_bg_tasks: set = set()
+
+
+async def _broadcast_weekly(fmt: str, admin_score: int):
+    """Рассылает вызов недели всем пользователям (sendPhoto + web_app кнопка)."""
+    if not (BOT_TOKEN and WEBAPP_URL):
+        return
+    with get_db() as db:
+        ids = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
+    fmt_title = WEEKLY_FMT_TITLES.get(fmt, fmt)
+    caption = (
+        f"⚔ <b>Вызов недели уже здесь!</b>\n\n"
+        f"Формат: <b>{fmt_title}</b>. Счёт, который надо побить: <b>{admin_score}</b>.\n"
+        f"Обгони — и получи <b>+{WEEKLY_BONUS}</b> к рейтингу. Попытка одна, успеть можно всю неделю.\n\n"
+        f"Жми «Принять вызов» 👇"
+    )
+    photo = f"{WEBAPP_URL.rstrip('/')}/profik-weekly.png"
+    markup = {"inline_keyboard": [[{"text": "⚔ Принять вызов", "web_app": {"url": f"{WEBAPP_URL}?weekly=1"}}]]}
+    async with httpx.AsyncClient(timeout=20) as client:
+        for uid in ids:
+            try:
+                await client.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                    json={"chat_id": uid, "photo": photo, "caption": caption,
+                          "parse_mode": "HTML", "reply_markup": markup},
+                )
+            except Exception:
+                pass
+            await asyncio.sleep(0.05)  # ~20 сообщений/сек — в пределах лимитов Telegram
+
+
+@app.post("/api/weekly/promote")
+async def weekly_promote(init_data: str = Body(...), duel_id: str = Body(...)):
+    """Админ: делает свою сыгранную дуэль активным вызовом недели и рассылает его."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+        if not duel or duel["creator_id"] != me["telegram_id"]:
+            raise HTTPException(status_code=404, detail="Duel not found")
+        if duel["creator_score"] is None:
+            raise HTTPException(status_code=400, detail="Play the duel first")
+        db.execute("UPDATE weekly_challenge SET active = 0 WHERE active = 1")
+        cur = db.execute(
+            """
+            INSERT INTO weekly_challenge (creator_id, format, difficulty, payload_json, admin_score, active)
+            VALUES (?, ?, ?, ?, ?, 1)
+            """,
+            (me["telegram_id"], duel["format"] or "sprint", duel["difficulty"],
+             duel["questions_json"], duel["creator_score"]),
+        )
+        challenge_id = cur.lastrowid
+        fmt = duel["format"] or "sprint"
+        admin_score = duel["creator_score"]
+    t = asyncio.create_task(_broadcast_weekly(fmt, admin_score))
+    _bg_tasks.add(t)
+    t.add_done_callback(_bg_tasks.discard)
+    return {"id": challenge_id, "admin_score": admin_score}
+
+
+@app.post("/api/weekly/active")
+async def weekly_active(init_data: str = Body(..., embed=True)):
+    """Текущий активный вызов недели + моя попытка (если играл)."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        ch = db.execute(
+            "SELECT * FROM weekly_challenge WHERE active = 1 ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if not ch:
+            return {"active": False}
+        creator = db.execute(
+            "SELECT * FROM users WHERE telegram_id = ?", (ch["creator_id"],)
+        ).fetchone()
+        attempt = db.execute(
+            "SELECT score, beat, bonus FROM weekly_attempt WHERE challenge_id = ? AND user_id = ?",
+            (ch["id"], me["telegram_id"]),
+        ).fetchone()
+        fmt = ch["format"]
+        payload = json.loads(ch["payload_json"])
+        res = {
+            "active": True,
+            "id": ch["id"],
+            "format": fmt,
+            "difficulty": ch["difficulty"],
+            "admin_name": _display_name(creator),
+            "admin_score": ch["admin_score"],
+            "is_admin": me["telegram_id"] == ch["creator_id"],
+            "my_attempt": (dict(attempt) if attempt else None),
+        }
+        if fmt == "numguess":
+            res.update({"maxN": payload["maxN"], "secret": payload["secret"],
+                        "time_limit_ms": payload["time_ms"]})
+        else:
+            res["questions"] = [{"q": q["q"], "options": q["options"]} for q in payload]
+            res["time_limit_ms"] = DUEL_TIME_LIMIT_MS
+        return res
+
+
+@app.post("/api/weekly/{challenge_id}/attempt")
+async def weekly_attempt(
+    challenge_id: int,
+    init_data: str = Body(...),
+    answers: list = Body(None),
+    ng: dict = Body(None),
+):
+    """Пользователь сдаёт попытку. Обогнал счёт админа → +50 (один раз за вызов)."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        my_id = me["telegram_id"]
+        ch = db.execute("SELECT * FROM weekly_challenge WHERE id = ?", (challenge_id,)).fetchone()
+        if not ch:
+            raise HTTPException(status_code=404, detail="Challenge not found")
+        if my_id == ch["creator_id"]:
+            raise HTTPException(status_code=400, detail="Own challenge")
+        existing = db.execute(
+            "SELECT score, beat, bonus FROM weekly_attempt WHERE challenge_id = ? AND user_id = ?",
+            (challenge_id, my_id),
+        ).fetchone()
+        if existing:
+            return {"score": existing["score"], "admin_score": ch["admin_score"],
+                    "beat": bool(existing["beat"]), "bonus": existing["bonus"], "already": True}
+
+        if (ch["format"] or "sprint") == "numguess":
+            score = _score_numguess(ng or {})
+        else:
+            questions = json.loads(ch["payload_json"])
+            score = _score_answers(questions, answers or [])
+
+        beat = score > ch["admin_score"]
+        bonus = WEEKLY_BONUS if beat else 0
+        if bonus:
+            db.execute("UPDATE users SET rating = rating + ? WHERE telegram_id = ?", (bonus, my_id))
+            nr = db.execute("SELECT rating FROM users WHERE telegram_id = ?", (my_id,)).fetchone()["rating"]
+            db.execute(
+                "INSERT INTO rating_log (user_id, delta, source, balance_after) VALUES (?, ?, 'weekly', ?)",
+                (my_id, bonus, nr),
+            )
+        db.execute(
+            "INSERT INTO weekly_attempt (challenge_id, user_id, score, beat, bonus) VALUES (?, ?, ?, ?, ?)",
+            (challenge_id, my_id, score, 1 if beat else 0, bonus),
+        )
+        return {"score": score, "admin_score": ch["admin_score"], "beat": beat, "bonus": bonus}
+
+
 # ---------- Python-режим (MVP) ----------
 @app.post("/api/python/telemetry_batch")
 async def python_telemetry_batch(payload: dict = Body(...)):
@@ -1678,7 +1842,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "botname-getme-v44"
+BUILD_TAG = "weekly-challenge-v45"
 
 
 @app.get("/api/version")

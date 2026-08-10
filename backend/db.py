@@ -94,6 +94,35 @@ def init_db():
     if "format" not in _dcols:
         conn.execute("ALTER TABLE duels ADD COLUMN format TEXT NOT NULL DEFAULT 'sprint'")
 
+    # Вызов недели от админа: один активный вызов, все играют те же вопросы против его счёта
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS weekly_challenge (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            creator_id    INTEGER NOT NULL,
+            format        TEXT NOT NULL,
+            difficulty    TEXT NOT NULL,
+            payload_json  TEXT NOT NULL,
+            admin_score   INTEGER NOT NULL,
+            active        INTEGER NOT NULL DEFAULT 1,
+            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS weekly_attempt (
+            challenge_id  INTEGER NOT NULL,
+            user_id       INTEGER NOT NULL,
+            score         INTEGER NOT NULL,
+            beat          INTEGER NOT NULL DEFAULT 0,
+            bonus         INTEGER NOT NULL DEFAULT 0,
+            created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (challenge_id, user_id)
+        )
+        """
+    )
+
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS xp_log (

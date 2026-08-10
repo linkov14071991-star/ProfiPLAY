@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=43">
+<link rel="stylesheet" href="/style.css?v=44">
 </head>
 <body>
 
@@ -238,7 +238,9 @@
   </div>
   <h1 style="text-align:center; margin-bottom:6px;">⚔ Соревнования</h1>
   <p class="subtitle" style="text-align:center;">Сражайся за рейтинг</p>
-  <p style="font-size:13px; opacity:0.7; text-align:center; margin:-2px 0 10px;">💡 Дуэли теперь внутри каждой игры Спринта — жми на игру и выбирай «Дуэль».</p>
+  <div id="weekly-block"></div>
+  <button id="btn-weekly-create" class="btn btn-primary" style="display:none;">➕ Создать вызов недели</button>
+  <p style="font-size:13px; opacity:0.7; text-align:center; margin:6px 0 10px;">💡 Дуэли теперь внутри каждой игры Спринта — жми на игру и выбирай «Дуэль».</p>
   <div class="games-grid">
     <div class="game-card" data-game="cup">
       <div class="icon" style="background:#B6A9D9;">🥇</div>
@@ -258,6 +260,50 @@
     </div>
   </div>
   <button class="btn btn-link btn-back" data-back="menu">← Назад</button>
+</section>
+
+<!-- ==== Вызов недели: создание (только админ) ==== -->
+<section id="screen-weekly-admin" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>➕ Вызов недели</h1>
+    <p class="subtitle">Сыграй партию — твой счёт станет вызовом для всех учеников.</p>
+    <label class="field">Формат</label>
+    <div class="pills" id="wa-format">
+      <button class="pill active" data-value="sprint">🎯 Профи-блиц</button>
+      <button class="pill" data-value="fastmath">🧮 Быстрый счёт</button>
+      <button class="pill" data-value="infomath">🖥️ IT-разминка</button>
+      <button class="pill" data-value="numguess">🔢 Угадай число</button>
+    </div>
+    <label class="field">Сложность</label>
+    <div class="pills" id="wa-difficulty">
+      <button class="pill pill-diff" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff active" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
+    </div>
+    <p style="font-size:13px; opacity:0.7; margin-top:14px;">После игры вызов автоматически разошлётся всем. Кто тебя обгонит — получит +50 к рейтингу.</p>
+    <button id="btn-wa-start" class="btn btn-primary btn-big">Сыграть и разослать</button>
+    <button class="btn btn-link btn-back" data-back="compHub">← Назад</button>
+  </div>
+</section>
+
+<!-- ==== Вызов недели: результат ==== -->
+<section id="screen-weekly-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card" style="text-align:center;">
+    <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+    <h1 id="weekly-res-title">Результат</h1>
+    <div style="font-size:18px; margin:8px 0;">Ты: <b id="weekly-res-you">0</b> · Соперник: <b id="weekly-res-admin">0</b></div>
+    <p class="subtitle" id="weekly-res-sub"></p>
+    <button class="btn btn-primary" onclick="showScreen('compHub')">В соревнования</button>
+    <button class="btn btn-link btn-back" data-back="compHub">← Назад</button>
+  </div>
 </section>
 
 <!-- ==== Экраны-заглушки «в разработке» ==== -->
@@ -2056,6 +2102,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=43"></script>
+<script src="/script.js?v=44"></script>
 </body>
 </html>

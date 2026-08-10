@@ -1136,6 +1136,27 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 }
 .mult-hint b { font-size: 16px; }
 
+/* Вызов недели */
+.weekly-card {
+  background: linear-gradient(135deg, var(--brand-purple-deep), var(--brand-purple-dark));
+  border: 2px solid var(--brand-lime);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 8px 0 6px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(180, 242, 77, 0.15);
+}
+.weekly-card.weekly-empty {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+  opacity: 0.75;
+  font-size: 14px;
+}
+.weekly-title { font-weight: 800; font-size: 17px; margin-bottom: 4px; }
+.weekly-sub { font-size: 14px; opacity: 0.92; }
+.weekly-status { margin-top: 8px; font-size: 14px; font-weight: 700; }
+.weekly-status.ok { color: var(--brand-lime); }
+
 /* Мини-плашка множителя в панели игры */
 .mult-badge {
   position: absolute;

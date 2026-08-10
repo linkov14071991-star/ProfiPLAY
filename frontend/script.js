@@ -15,6 +15,8 @@ const SCREENS = {
   sprintHub: "screen-sprint-hub",
   marathonHub: "screen-marathon-hub",
   compHub: "screen-comp-hub",
+  weeklyAdmin: "screen-weekly-admin",
+  weeklyResult: "screen-weekly-result",
   finderr: "screen-finderr",
   cup: "screen-cup",
   league: "screen-league",
@@ -86,6 +88,7 @@ function showScreen(name) {
   // при возврате на меню — обновим плашку рейтинга
   if (name === "menu") refreshProfile();
   if (name === "profile") loadProfileScreen();
+  if (name === "compHub") loadWeekly();
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
@@ -248,6 +251,7 @@ function enterSolo(game) {
 }
 function enterDuelFor(game) {
   hapticMedium();
+  duel.mode = "duel";
   setDuelFormat(game);
   showScreen("duelSetup");
 }
@@ -3470,6 +3474,9 @@ window.openAchievements = openAchievements;
 // ========== ДУЭЛЬ =============
 // ==============================
 const duel = {
+  mode: "duel",        // duel | weekly | weekly-admin
+  weeklyId: null,
+  weeklyAdminScore: 0,
   format: "sprint",    // sprint | fastmath | infomath | numguess
   difficulty: "medium",
   topics: ["informatika", "mathematics", "physics"],
@@ -3600,10 +3607,10 @@ async function duelNgEnd(solved) {
   clearInterval(duel.ngTimer);
   const elapsed = Math.min(duel.ngTimeLimitMs, Date.now() - duel.ngStart);
   if (solved) hapticSuccess(); else hapticError();
-  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, {
-    init_data: INIT_DATA,
-    ng: { solved: solved, guesses: duel.ngGuesses, elapsed_ms: elapsed },
-  });
+  const ngPayload = { solved: solved, guesses: duel.ngGuesses, elapsed_ms: elapsed };
+  if (duel.mode === "weekly") return weeklyUserFinish({ ng: ngPayload });
+  if (duel.mode === "weekly-admin") return weeklyAdminFinish({ ng: ngPayload });
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, ng: ngPayload });
   if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
   refreshProfile();
   if (res.status === "complete") duelShowResult(res);
@@ -3668,10 +3675,17 @@ function duelAnswer(chosen) {
 
   duel.qIndex++;
   if (duel.qIndex >= duel.questions.length) {
-    duelSubmit();
+    duelFinishMCQ();
   } else {
     setTimeout(duelRenderQ, 250);
   }
+}
+
+// Куда уходит результат после последнего вопроса — зависит от режима
+function duelFinishMCQ() {
+  if (duel.mode === "weekly") return weeklyUserFinish({ answers: duel.answers });
+  if (duel.mode === "weekly-admin") return weeklyAdminFinish({ answers: duel.answers });
+  return duelSubmit();
 }
 
 async function duelSubmit() {
@@ -4008,6 +4022,7 @@ async function duelOpenIncoming(duelId) {
 
 async function duelAcceptChallenge() {
   hapticMedium();
+  duel.mode = "duel";
   const res = await apiPost(`/api/duel/${duel.duelId}/join`, {init_data: INIT_DATA});
   if (!res || res.error || (res.format !== "numguess" && !res.questions)) {
     alert("Не смог присоединиться. Возможно, дуэль уже занята.");
@@ -4123,10 +4138,138 @@ function escapeHtml(s) {
 document.getElementById("btn-duel-history").addEventListener("click", openDuelHistory);
 
 // Экспортируем для checkSubscription — она вызывает после успеха
+// ==============================
+// ======= ВЫЗОВ НЕДЕЛИ =========
+// ==============================
+const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число" };
+let weeklyActive = null;
+const weeklyAdmin = { format: "sprint", difficulty: "medium" };
+
+async function loadWeekly() {
+  const block = document.getElementById("weekly-block");
+  const createBtn = document.getElementById("btn-weekly-create");
+  if (createBtn) createBtn.style.display = isAdminUser() ? "" : "none";
+  if (!block) return;
+  block.innerHTML = '<div class="weekly-card weekly-empty">Загрузка…</div>';
+  const res = await apiPost("/api/weekly/active", { init_data: INIT_DATA });
+  weeklyActive = (res && res.active) ? res : null;
+  if (!weeklyActive) {
+    block.innerHTML = '<div class="weekly-card weekly-empty">Пока нет активного вызова недели.</div>';
+    return;
+  }
+  const a = weeklyActive;
+  const played = a.my_attempt;
+  let status = "";
+  if (played) {
+    status = played.beat
+      ? `<div class="weekly-status ok">✅ Ты обыграл! +${played.bonus} получено</div>`
+      : `<div class="weekly-status">Твой счёт ${played.score} — в этот раз не хватило</div>`;
+  } else if (a.is_admin) {
+    status = `<div class="weekly-status">Это твой вызов — ученики уже играют!</div>`;
+  }
+  const btn = (!played && !a.is_admin)
+    ? `<button class="btn btn-primary" onclick="openWeeklyPlay()" style="margin-top:10px;">⚔ Принять вызов</button>` : "";
+  block.innerHTML = `
+    <div class="weekly-card">
+      <div class="weekly-title">🔥 Вызов недели от ${escapeHtml(a.admin_name)}</div>
+      <div class="weekly-sub">Формат: <b>${WEEKLY_FMT_TITLES_JS[a.format] || a.format}</b> · побей <b>${a.admin_score}</b> → <b style="color:var(--brand-lime);">+50</b></div>
+      ${status}${btn}
+    </div>`;
+}
+
+function openWeeklyPlay() {
+  const a = weeklyActive;
+  if (!a) return;
+  hapticMedium();
+  duel.mode = "weekly";
+  duel.weeklyId = a.id;
+  duel.weeklyAdminScore = a.admin_score;
+  duel.format = a.format;
+  if (a.format === "numguess") {
+    duelNgStart({ secret: a.secret, maxN: a.maxN, time_limit_ms: a.time_limit_ms });
+  } else {
+    duel.questions = a.questions;
+    duel.timeLimitMs = a.time_limit_ms || 15000;
+    duel.qIndex = 0; duel.answers = []; duel.score = 0;
+    document.getElementById("duel-score").textContent = 0;
+    showScreen("duelPlay");
+    duelRenderQ();
+  }
+}
+
+async function weeklyUserFinish(payload) {
+  const body = { init_data: INIT_DATA };
+  if (payload.ng) body.ng = payload.ng; else body.answers = payload.answers;
+  const res = await apiPost(`/api/weekly/${duel.weeklyId}/attempt`, body);
+  duel.mode = "duel";
+  if (!res) { alert("Не удалось отправить результат."); showScreen("compHub"); return; }
+  refreshProfile();
+  document.getElementById("weekly-res-you").textContent = res.score;
+  document.getElementById("weekly-res-admin").textContent = res.admin_score;
+  const title = document.getElementById("weekly-res-title");
+  const sub = document.getElementById("weekly-res-sub");
+  if (res.beat) {
+    title.textContent = "🎉 Ты обыграл!";
+    sub.innerHTML = res.already ? "Ты уже проходил этот вызов." : `<b style="color:var(--brand-lime);">+${res.bonus}</b> к рейтингу!`;
+    hapticSuccess();
+  } else {
+    title.textContent = "😅 В этот раз не хватило";
+    sub.textContent = res.already ? "Ты уже проходил этот вызов." : "Побей счёт в следующий раз!";
+    hapticError();
+  }
+  showScreen("weeklyResult");
+}
+
+// --- Админ создаёт вызов недели ---
+setupPills("wa-format", (v) => (weeklyAdmin.format = v));
+setupPills("wa-difficulty", (v) => (weeklyAdmin.difficulty = v));
+document.getElementById("btn-weekly-create").addEventListener("click", () => { hapticMedium(); showScreen("weeklyAdmin"); });
+document.getElementById("btn-wa-start").addEventListener("click", weeklyAdminStart);
+
+async function weeklyAdminStart() {
+  duel.mode = "weekly-admin";
+  duel.format = weeklyAdmin.format;
+  duel.difficulty = weeklyAdmin.difficulty;
+  duel.topics = ["informatika", "mathematics", "physics"];
+  await duelStartCreate();  // создаёт реальную дуэль (creator=админ) и запускает игру
+}
+
+async function weeklyAdminFinish(payload) {
+  const body = { init_data: INIT_DATA };
+  if (payload.ng) body.ng = payload.ng; else body.answers = payload.answers;
+  await apiPost(`/api/duel/${duel.duelId}/submit`, body);      // проставит creator_score
+  const prom = await apiPost("/api/weekly/promote", { init_data: INIT_DATA, duel_id: duel.duelId });
+  duel.mode = "duel";
+  document.getElementById("weekly-res-you").textContent = prom ? prom.admin_score : "—";
+  document.getElementById("weekly-res-admin").textContent = "все";
+  const title = document.getElementById("weekly-res-title");
+  const sub = document.getElementById("weekly-res-sub");
+  if (prom) {
+    title.textContent = "🚀 Вызов недели создан!";
+    sub.textContent = "Разослан всем ученикам. Кто тебя обгонит — получит +50.";
+    hapticSuccess();
+  } else {
+    title.textContent = "Не удалось создать вызов";
+    sub.textContent = "Попробуй ещё раз.";
+  }
+  showScreen("weeklyResult");
+  refreshProfile();
+}
+
+async function openWeeklyFromDeepLink() {
+  const res = await apiPost("/api/weekly/active", { init_data: INIT_DATA });
+  if (res && res.active) {
+    weeklyActive = res;
+    if (!res.my_attempt && !res.is_admin) { openWeeklyPlay(); return; }
+  }
+  showScreen("compHub");
+}
+
 window._maybeOpenIncomingDuel = async function() {
   const params = new URLSearchParams(window.location.search);
   const incoming = params.get("duel");
-  if (incoming) await duelOpenIncoming(incoming);
+  if (incoming) { await duelOpenIncoming(incoming); return; }
+  if (params.get("weekly")) await openWeeklyFromDeepLink();
 };
 
 // ==== Проверка подписки: кнопка ====
