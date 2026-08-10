@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=34">
+<link rel="stylesheet" href="/style.css?v=35">
 </head>
 <body>
 
@@ -109,32 +109,56 @@
     <button class="btn btn-secondary" onclick="showScreen('rules')" style="margin-top:0; font-size:13px; padding:12px 6px;">📖 Правила</button>
   </div>
 
-  <h3 style="padding-left:4px;" id="modes-anchor">🎮 Играй и учись</h3>
+  <h3 style="padding-left:4px;" id="modes-anchor">🎮 Разделы</h3>
   <div class="games-grid">
-    <div class="game-card" data-game="sprint">
-      <button class="game-info-btn" data-info="sprint" aria-label="Правила">?</button>
+    <div class="game-card" data-game="sec-sprint">
       <div class="icon">⚡</div>
       <div class="info">
         <div class="title">Спринт</div>
-        <div class="desc">Максимум правильных ответов за 60 секунд.</div>
+        <div class="desc">Быстрые игры на разминку: Профи-блиц, Угадай число, Быстрый счёт, IT-разминка.</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="sec-marathon">
+      <div class="icon" style="background:#B6A9D9;">📚</div>
+      <div class="info">
+        <div class="title">Марафоны</div>
+        <div class="desc">Обучение без таймера: На выживание, курс Python, Найди ошибку.</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="sec-team">
+      <div class="icon">🤝</div>
+      <div class="info">
+        <div class="title">Командная игра</div>
+        <div class="desc">Для компании: Крокодил, Alias, Тайм-баттл, Шпион, Громкий вопрос.</div>
+        <div class="card-stat" id="card-party-stat"></div>
+      </div>
+    </div>
+    <div class="game-card" data-game="sec-comp">
+      <div class="icon">⚔</div>
+      <div class="info">
+        <div class="title">Соревнования</div>
+        <div class="desc">Блиц-дуэль, Кубок Профика, Лига. Сражайся за рейтинг.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==== Экран-хаб: СПРИНТ ==== -->
+<section id="screen-sprint-hub" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <h1 style="text-align:center; margin-bottom:6px;">⚡ Спринт</h1>
+  <p class="subtitle" style="text-align:center;">Быстрые игры на разминку · 100 очков в день с каждой</p>
+  <div class="games-grid">
+    <div class="game-card" data-game="sprint">
+      <button class="game-info-btn" data-info="sprint" aria-label="Правила">?</button>
+      <div class="icon">🎯</div>
+      <div class="info">
+        <div class="title">Профи-блиц</div>
+        <div class="desc">Максимум правильных ответов за 60 секунд. Микс тем.</div>
         <div class="card-stat" id="card-sprint-stat"></div>
-      </div>
-    </div>
-    <div class="game-card" data-game="marathon">
-      <button class="game-info-btn" data-info="marathon" aria-label="Правила">?</button>
-      <div class="icon">🏆</div>
-      <div class="info">
-        <div class="title">Марафон</div>
-        <div class="desc">Отвечай без ошибок. Жизни по сложности, серия их восполняет.</div>
-        <div class="card-stat" id="card-marathon-stat"></div>
-      </div>
-    </div>
-    <div class="game-card" data-game="python">
-      <button class="game-info-btn" data-info="python" aria-label="Правила">?</button>
-      <div class="icon" style="background:#B6A9D9;">🐍</div>
-      <div class="info">
-        <div class="title">Python <span class="by-profik">by Профик</span></div>
-        <div class="desc">От основ до задач ЕГЭ, шаг за шагом. Уроки, тесты, ежедневки.</div>
       </div>
     </div>
     <div class="game-card" data-game="numguess">
@@ -151,7 +175,7 @@
       <div class="icon">🧮</div>
       <div class="info">
         <div class="title">Быстрый счёт</div>
-        <div class="desc">Реши как можно больше примеров за время. 4 варианта.</div>
+        <div class="desc">Реши как можно больше примеров за 60 секунд. 4 варианта.</div>
         <div class="card-stat" id="card-fastmath-stat"></div>
       </div>
     </div>
@@ -165,31 +189,66 @@
       </div>
     </div>
   </div>
+  <button class="btn btn-link btn-back" data-back="menu">← Назад</button>
+</section>
 
-  <h3 style="padding-left:4px; margin-top:24px;">🎉 Тусовка (для компании)</h3>
+<!-- ==== Экран-хаб: МАРАФОНЫ ==== -->
+<section id="screen-marathon-hub" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <h1 style="text-align:center; margin-bottom:6px;">📚 Марафоны</h1>
+  <p class="subtitle" style="text-align:center;">Обучение без времени · 100 очков в день с каждой</p>
   <div class="games-grid">
-    <div class="game-card" data-game="party">
-      <div class="icon">🎭</div>
+    <div class="game-card" data-game="marathon">
+      <button class="game-info-btn" data-info="marathon" aria-label="Правила">?</button>
+      <div class="icon">🛡️</div>
       <div class="info">
-        <div class="title">Играть в компании</div>
-        <div class="desc">Крокодил, Alias, Громкий вопрос, Тайм-баттл, Шпион — все командные игры.</div>
-        <div class="card-stat" id="card-party-stat"></div>
+        <div class="title">На выживание</div>
+        <div class="desc">Отвечай без ошибок. Жизни по сложности, серия их восполняет.</div>
+        <div class="card-stat" id="card-marathon-stat"></div>
       </div>
     </div>
+    <div class="game-card" data-game="python">
+      <button class="game-info-btn" data-info="python" aria-label="Правила">?</button>
+      <div class="icon" style="background:#B6A9D9;">🐍</div>
+      <div class="info">
+        <div class="title">Python <span class="by-profik">by Профик</span></div>
+        <div class="desc">От основ до задач ЕГЭ, шаг за шагом. Уроки, тесты, ежедневки.</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="finderr">
+      <div class="icon">🔎</div>
+      <div class="info">
+        <div class="title">Найди ошибку</div>
+        <div class="desc">Ищи баги в коде и примерах. Скоро!</div>
+      </div>
+      <div class="badge-soon">в разработке</div>
+    </div>
   </div>
+  <button class="btn btn-link btn-back" data-back="menu">← Назад</button>
+</section>
 
-  <h3 style="padding-left:4px; margin-top:24px;">⚔ Соревнования</h3>
+<!-- ==== Экран-хаб: СОРЕВНОВАНИЯ ==== -->
+<section id="screen-comp-hub" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <h1 style="text-align:center; margin-bottom:6px;">⚔ Соревнования</h1>
+  <p class="subtitle" style="text-align:center;">Сражайся за рейтинг</p>
   <div class="games-grid">
     <div class="game-card" data-game="duel">
       <button class="game-info-btn" data-info="duel" aria-label="Правила">?</button>
       <div class="icon">⚡⚔</div>
       <div class="info">
         <div class="title">Блиц-дуэль</div>
-        <div class="desc">1×1 асинхронно. Вызови друга или соперника по рейтингу.</div>
+        <div class="desc">1×1 асинхронно. Формат «Профи-блиц». Вызови друга или соперника по рейтингу.</div>
         <div class="card-stat" id="card-duel-stat"></div>
       </div>
     </div>
-    <div class="game-card locked">
+    <div class="game-card" data-game="cup">
       <div class="icon" style="background:#B6A9D9;">🥇</div>
       <div class="info">
         <div class="title">Кубок Профика</div>
@@ -197,7 +256,7 @@
       </div>
       <div class="badge-soon">скоро</div>
     </div>
-    <div class="game-card locked">
+    <div class="game-card" data-game="league">
       <div class="icon" style="background:#B6A9D9;">📈</div>
       <div class="info">
         <div class="title">Лига</div>
@@ -205,6 +264,50 @@
       </div>
       <div class="badge-soon">скоро</div>
     </div>
+  </div>
+  <button class="btn btn-link btn-back" data-back="menu">← Назад</button>
+</section>
+
+<!-- ==== Экраны-заглушки «в разработке» ==== -->
+<section id="screen-finderr" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card" style="text-align:center;">
+    <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+    <h1>🔎 Найди ошибку</h1>
+    <p class="subtitle">В разработке</p>
+    <p style="opacity:0.75;">Скоро здесь появится игра: ищи ошибки в коде и примерах. Профик уже готовит задания!</p>
+    <button class="btn btn-link btn-back" data-back="marathonHub">← Назад</button>
+  </div>
+</section>
+
+<section id="screen-cup" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card" style="text-align:center;">
+    <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+    <h1>🥇 Кубок Профика</h1>
+    <p class="subtitle">В разработке</p>
+    <p style="opacity:0.75;">Недельный турнир на выбывание: Пн–Пт квалификация, Сб–Вс плей-офф. Скоро запустим!</p>
+    <button class="btn btn-link btn-back" data-back="compHub">← Назад</button>
+  </div>
+</section>
+
+<section id="screen-league" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card" style="text-align:center;">
+    <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+    <h1>📈 Лига</h1>
+    <p class="subtitle">В разработке</p>
+    <p style="opacity:0.75;">Сезонный рейтинг с дивизионами. Топ недели — в канале профиматика. Скоро!</p>
+    <button class="btn btn-link btn-back" data-back="compHub">← Назад</button>
   </div>
 </section>
 
@@ -214,7 +317,7 @@
     <img src="/profik.svg" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
-  <h1 style="text-align:center; margin-bottom:6px;">🎉 Тусовка</h1>
+  <h1 style="text-align:center; margin-bottom:6px;">🤝 Командная игра</h1>
   <p class="subtitle" style="text-align:center;">Игры для компании</p>
 
   <div class="games-grid">
@@ -502,7 +605,7 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1>⚡ Спринт</h1>
+    <h1>🎯 Профи-блиц</h1>
     <p class="subtitle">Как можно больше правильных за таймер</p>
 
     <div class="profik-chip">
@@ -632,7 +735,7 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1>🏆 Марафон</h1>
+    <h1>🛡️ На выживание</h1>
     <p class="subtitle">Отвечай, пока есть жизни. Ошибка = −1 ❤️</p>
 
     <div class="profik-chip">
@@ -712,7 +815,7 @@
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
-    <h1 id="marathon-result-title" class="reveal reveal-bounce">🏁 Марафон окончен</h1>
+    <h1 id="marathon-result-title" class="reveal reveal-bounce">🏁 Игра окончена</h1>
 
     <div id="marathon-new-record" class="reveal reveal-pop" style="display:none; text-align:center;">
       <div class="result-record">НОВЫЙ РЕКОРД</div>
@@ -1719,7 +1822,7 @@
     </details>
 
     <details class="rules-block" id="rules-sprint">
-      <summary>⚡ Спринт</summary>
+      <summary>🎯 Профи-блиц</summary>
       <p class="r-lead"><b>Суть:</b> соло на скорость — как можно больше правильных ответов за таймер.</p>
       <div class="r-head">Как играть</div>
       <ol class="r-steps">
@@ -1733,7 +1836,7 @@
     </details>
 
     <details class="rules-block" id="rules-marathon">
-      <summary>🏆 Марафон</summary>
+      <summary>🛡️ На выживание</summary>
       <p class="r-lead"><b>Суть:</b> отвечай без ошибок как можно дольше — на кону жизни.</p>
       <div class="r-head">Как играть</div>
       <ol class="r-steps">
@@ -1775,7 +1878,7 @@
     </details>
 
     <details class="rules-block">
-      <summary>🎭 Тусовка (командные игры)</summary>
+      <summary>🤝 Командная игра</summary>
       <p class="r-lead"><b>Суть:</b> игры для компании на одном телефоне — его передают друг другу.</p>
       <p>Сюда входят: Крокодил, Alias, Громкий вопрос, Тайм-баттл, Шпион.</p>
       <p><b>Рейтинг за них <span style="color:var(--danger);">не начисляется</span></b> — эти игры на честности, накрутить слишком легко. Но прогресс <b>квестов</b> и <b>ачивок</b> засчитывается, так что играть выгодно.</p>
@@ -1954,6 +2057,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=34"></script>
+<script src="/script.js?v=35"></script>
 </body>
 </html>

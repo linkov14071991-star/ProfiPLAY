@@ -698,8 +698,8 @@ async def add_training_points(
         row = upsert_user(db, tg_user)
         user_id = row["telegram_id"]
 
-        # --- Рейтинг с капом ---
-        earned = get_training_earned_today(db, user_id)
+        # --- Рейтинг с капом (у каждой игры свой лимит 100/день) ---
+        earned = get_training_earned_today(db, user_id, source)
         remaining = max(0, DAILY_TRAINING_CAP - earned)
         actual_delta = min(points, remaining)
 
@@ -1537,6 +1537,10 @@ async def python_session_end(payload: dict = Body(...)):
             if not already:
                 base = min(20, max(5, xp_earned))
                 rating_added = max(2, min(15, round(base * accuracy / 100)))
+                # у Python свой кап 100 рейтинга в день, как у игр Спринта
+                earned_py = get_training_earned_today(db, uid, "python")
+                rating_added = min(rating_added, max(0, DAILY_TRAINING_CAP - earned_py))
+            if not already and rating_added > 0:
                 db.execute(
                     "UPDATE users SET rating = rating + ? WHERE telegram_id = ?",
                     (rating_added, uid),
@@ -1558,7 +1562,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "im-numsys-back-v36"
+BUILD_TAG = "sections-v37"
 
 
 @app.get("/api/version")

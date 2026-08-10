@@ -412,15 +412,29 @@ DAILY_TRAINING_CAP = 100
 TRAINING_SOURCES = ("sprint", "marathon", "party", "numguess", "fastmath", "infomath")
 
 
-def get_training_earned_today(db, user_id: int) -> int:
-    row = db.execute(
-        f"""
-        SELECT COALESCE(SUM(delta), 0) AS total
-        FROM rating_log
-        WHERE user_id = ?
-          AND source IN ({",".join("?" * len(TRAINING_SOURCES))})
-          AND date(created_at) = date('now')
-        """,
-        (user_id, *TRAINING_SOURCES),
-    ).fetchone()
+def get_training_earned_today(db, user_id: int, source: str = None) -> int:
+    """Сколько рейтинга набрано сегодня.
+    source=None → суммарно по всем тренировочным источникам (для сводки).
+    source задан → только по этой игре (для per-game капа 100/день)."""
+    if source is None:
+        row = db.execute(
+            f"""
+            SELECT COALESCE(SUM(delta), 0) AS total
+            FROM rating_log
+            WHERE user_id = ?
+              AND source IN ({",".join("?" * len(TRAINING_SOURCES))})
+              AND date(created_at) = date('now')
+            """,
+            (user_id, *TRAINING_SOURCES),
+        ).fetchone()
+    else:
+        row = db.execute(
+            """
+            SELECT COALESCE(SUM(delta), 0) AS total
+            FROM rating_log
+            WHERE user_id = ? AND source = ?
+              AND date(created_at) = date('now')
+            """,
+            (user_id, source),
+        ).fetchone()
     return row["total"] or 0
