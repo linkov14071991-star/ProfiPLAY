@@ -577,11 +577,33 @@ async def get_marathon(difficulty: str = Query("easy"), limit: int = Query(200),
     return {"questions": [shuffle_question(q) for q in pool[:limit]]}
 
 
+_BOT_USERNAME_CACHE = None
+
+
+async def _resolve_bot_username() -> str:
+    """Username бота определяем из самого токена (getMe) и кэшируем — тогда при
+    смене бота ссылки на дуэль автоматически ведут на нового. Фолбэк — env BOT_USERNAME."""
+    global _BOT_USERNAME_CACHE
+    if _BOT_USERNAME_CACHE:
+        return _BOT_USERNAME_CACHE
+    if BOT_TOKEN:
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
+                uname = (r.json().get("result") or {}).get("username")
+                if uname:
+                    _BOT_USERNAME_CACHE = uname
+                    return uname
+        except Exception:
+            pass
+    return BOT_USERNAME or "your_bot"
+
+
 @app.get("/api/config")
 async def get_config():
     """Небольшой конфиг для фронтенда (публичные данные + множители)."""
     return {
-        "bot_username": BOT_USERNAME,
+        "bot_username": await _resolve_bot_username(),
         "channel_username": CHANNEL_USERNAME.lstrip("@"),
         "difficulty_mult": DIFFICULTY_MULT,
         "lives_mult": LIVES_MULT,
@@ -1656,7 +1678,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "account-gate-v42"
+BUILD_TAG = "botname-getme-v44"
 
 
 @app.get("/api/version")
