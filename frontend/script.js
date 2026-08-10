@@ -1654,9 +1654,9 @@ document.getElementById("btn-marathon-stop").addEventListener("click", () => mar
 // Отдельная тренировочная игра уровня Спринт/Марафон: рейтинг с общим капом 100/день
 // (источник numguess) и своя таблица лидеров. Механика «больше/меньше».
 const NG_LEVELS = {
-  easy:   { max: 10,   time: 15 },
-  medium: { max: 100,  time: 20 },
-  hard:   { max: 1000, time: 30 },
+  easy:   { max: 10,   time: 60 },
+  medium: { max: 100,  time: 60 },
+  hard:   { max: 1000, time: 60 },
 };
 const numguess = { difficulty: "easy", target: 0, lo: 1, hi: 10, timeLeft: 0, timer: null, tries: 0, locked: false };
 

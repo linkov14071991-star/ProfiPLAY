@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=40">
+<link rel="stylesheet" href="/style.css?v=41">
 </head>
 <body>
 
@@ -651,7 +651,7 @@
     </div>
 
     <div style="text-align:center;">
-      <div class="mult-hint">Награда: <b id="sprint-mult">×1</b> к очкам</div>
+      <div class="mult-hint">60 сек · множитель <b id="sprint-mult">×1</b> к рейтингу · макс 100/день</div>
     </div>
 
     <button id="btn-sprint-start" class="btn btn-primary btn-big">Начать</button>
@@ -984,10 +984,11 @@
 
     <label class="field">Сложность</label>
     <div class="pills" id="duel-difficulty">
-      <button class="pill pill-diff" data-value="easy"><span>Простая</span><span class="pill-hint">⭐⭐</span></button>
-      <button class="pill pill-diff active" data-value="medium"><span>Средняя</span><span class="pill-hint">⭐⭐⭐</span></button>
-      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">⭐⭐⭐⭐⭐</span></button>
+      <button class="pill pill-diff" data-value="easy"><span>Простая</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff active" data-value="medium"><span>Средняя</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложная</span><span class="pill-hint">×2</span></button>
     </div>
+    <div class="mult-hint">Сложнее — вопросы труднее · за бой +15 / 0 / −15 к рейтингу · макс 100/день</div>
 
     <p style="font-size:13px; opacity:0.7; margin-top:16px;">💡 После твоей партии получишь ссылку — отправишь другу в Telegram. Он сыграет когда захочет, оба увидите результат.</p>
 
@@ -1299,7 +1300,7 @@
     </div>
 
     <div style="text-align:center;">
-      <div class="mult-hint">Награда: <b id="numguess-mult">×1</b> к очкам (макс 100/день)</div>
+      <div class="mult-hint">60 сек · множитель <b id="numguess-mult">×1</b> к рейтингу · макс 100/день</div>
     </div>
 
     <button id="btn-numguess-start" class="btn btn-primary btn-big">Начать</button>
@@ -1356,7 +1357,7 @@
     </div>
 
     <div style="text-align:center;">
-      <div class="mult-hint">60 секунд · награда <b id="fastmath-mult">×1</b> к очкам (макс 100/день)</div>
+      <div class="mult-hint">60 сек · множитель <b id="fastmath-mult">×1</b> к рейтингу · макс 100/день</div>
     </div>
 
     <button id="btn-fastmath-start" class="btn btn-primary btn-big">Начать</button>
@@ -1423,7 +1424,7 @@
     </div>
 
     <div style="text-align:center;">
-      <div class="mult-hint">60 секунд · награда <b id="infomath-mult">×1</b> к очкам (макс 100/день)</div>
+      <div class="mult-hint">60 сек · множитель <b id="infomath-mult">×1</b> к рейтингу · макс 100/день</div>
     </div>
 
     <button id="btn-infomath-start" class="btn btn-primary btn-big">Начать</button>
@@ -2054,6 +2055,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=40"></script>
+<script src="/script.js?v=41"></script>
 </body>
 </html>

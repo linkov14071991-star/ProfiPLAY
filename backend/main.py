@@ -1026,11 +1026,11 @@ DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
 
 # Форматы дуэли = игры Спринта
 DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess")
-# Дуэль «Угадай число»: диапазон и время (как в соло)
+# Дуэль «Угадай число»: диапазон и время (как в соло — 60 сек на всех уровнях)
 DUEL_NG = {
-    "easy":   {"maxN": 10,   "time_ms": 15000},
-    "medium": {"maxN": 100,  "time_ms": 20000},
-    "hard":   {"maxN": 1000, "time_ms": 30000},
+    "easy":   {"maxN": 10,   "time_ms": 60000},
+    "medium": {"maxN": 100,  "time_ms": 60000},
+    "hard":   {"maxN": 1000, "time_ms": 60000},
 }
 # Рейтинг за бой в общий зачёт: победа / ничья / поражение
 DUEL_RATING = {"win": 15, "draw": 0, "loss": -15}
@@ -1656,7 +1656,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "game-modes-v40"
+BUILD_TAG = "sprint-unify-v41"
 
 
 @app.get("/api/version")
