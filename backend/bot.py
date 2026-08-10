@@ -29,8 +29,10 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 WEBAPP_URL = os.environ["WEBAPP_URL"]
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@profimatika_inf")
 
-# Картинка-приветствие (маскот Профика) для /start
-HERO_IMG = Path(__file__).resolve().parent.parent / "frontend" / "profik-hero.png"
+# Картинки для сообщений бота
+_IMG_DIR = Path(__file__).resolve().parent.parent / "frontend"
+HERO_IMG = _IMG_DIR / "profik-hero.png"   # приветствие /start
+DUEL_IMG = _IMG_DIR / "profik-duel.png"   # приглашение на дуэль
 
 # Версия сборки для сброса кэша мини-аппа. Меняется на каждый деплой (Railway
 # отдаёт RAILWAY_GIT_COMMIT_SHA), поэтому Telegram открывает свежую версию, а не
@@ -71,14 +73,22 @@ async def start(message: Message, command: CommandObject):
         duel_id = payload[5:]
         url = f"{WEBAPP_URL}?duel={duel_id}"
         kb = _kb_open_app(url, "⚔ Принять вызов!")
-        await message.answer(
+        caption = (
             f"⚔ <b>Тебя вызвали на Блиц-дуэль!</b>\n\n"
-            f"Прими вызов и попробуй набрать больше очков, чем соперник. "
-            f"Победа поднимает твой рейтинг, поражение — снижает.\n\n"
-            f"⚠️ Для участия нужна подписка на канал {CHANNEL_USERNAME}.",
-            reply_markup=kb,
-            parse_mode="HTML",
+            f"Докажи, что ты лучший — набери больше очков, чем соперник. "
+            f"Победа: <b>+15</b> к рейтингу, поражение: −15.\n\n"
+            f"⚠️ Для участия нужна подписка на канал {CHANNEL_USERNAME}."
         )
+        try:
+            await message.answer_photo(
+                photo=FSInputFile(str(DUEL_IMG)),
+                caption=caption,
+                reply_markup=kb,
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            print("Не удалось отправить картинку дуэли:", e)
+            await message.answer(caption, reply_markup=kb, parse_mode="HTML")
         return
 
     # Обычный /start — приветствие с картинкой Профика
