@@ -1843,7 +1843,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "startapp-btn-v48"
+BUILD_TAG = "debug-startparam-v49"
 
 
 @app.get("/api/version")
