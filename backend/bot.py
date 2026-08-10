@@ -22,6 +22,8 @@ from aiogram.types import (
 )
 from dotenv import load_dotenv
 
+from db import get_db
+
 load_dotenv()
 
 import time
@@ -82,6 +84,16 @@ async def start(message: Message, command: CommandObject):
     # Deep-link на конкретную дуэль
     if payload.startswith("duel_"):
         duel_id = payload[5:]
+        # Запоминаем приглашение на сервере — приложение откроет приём даже если
+        # клиент не донесёт параметр в URL.
+        try:
+            with get_db() as db:
+                db.execute(
+                    "INSERT OR REPLACE INTO pending_duel (user_id, duel_id, created_at) VALUES (?, ?, datetime('now'))",
+                    (message.from_user.id, duel_id),
+                )
+        except Exception as e:
+            print("pending_duel write err:", e)
         kb = _kb_accept_duel(duel_id)
         caption = (
             f"⚔ <b>Тебя вызвали на Блиц-дуэль!</b>\n\n"

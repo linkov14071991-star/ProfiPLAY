@@ -1564,6 +1564,27 @@ async def duels_history(
     return {"history": history}
 
 
+@app.post("/api/duel/pending")
+async def duel_pending(init_data: str = Body(..., embed=True)):
+    """Есть ли у игрока свежее приглашение на дуэль (записанное ботом по клику на
+    ссылку). Одноразово: отдаём и очищаем. Нужно, если клиент не донёс параметр в URL."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        row = db.execute(
+            "SELECT duel_id FROM pending_duel WHERE user_id = ? "
+            "AND created_at >= datetime('now', '-30 minutes')",
+            (me["telegram_id"],),
+        ).fetchone()
+        db.execute("DELETE FROM pending_duel WHERE user_id = ?", (me["telegram_id"],))
+        if not row:
+            return {"duel_id": None}
+        duel = db.execute("SELECT status FROM duels WHERE id = ?", (row["duel_id"],)).fetchone()
+        if not duel or duel["status"] == "complete":
+            return {"duel_id": None}
+        return {"duel_id": row["duel_id"]}
+
+
 @app.post("/api/duel/{duel_id}")
 async def duel_info(
     duel_id: str,
@@ -1842,7 +1863,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "duel-fixed-v51"
+BUILD_TAG = "pending-invite-v52"
 
 
 @app.get("/api/version")

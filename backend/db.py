@@ -122,6 +122,18 @@ def init_db():
         )
         """
     )
+    # «Приглашение на дуэль»: бот пишет сюда, кого в какую дуэль позвали (по клику
+    # на ссылку). Нужно на случай, если клиент режет параметр у web-app кнопки —
+    # приложение спросит сервер и откроет приём даже без параметра в URL.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS pending_duel (
+            user_id    INTEGER PRIMARY KEY,
+            duel_id    TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
 
     conn.execute(
         """
