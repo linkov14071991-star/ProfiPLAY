@@ -1607,8 +1607,7 @@ async def _broadcast_weekly(fmt: str, admin_score: int):
         f"Жми «Принять вызов» 👇"
     )
     photo = f"{WEBAPP_URL.rstrip('/')}/profik-weekly.png"
-    uname = await _resolve_bot_username()
-    markup = {"inline_keyboard": [[{"text": "⚔ Принять вызов", "url": f"https://t.me/{uname}?startapp=weekly"}]]}
+    markup = {"inline_keyboard": [[{"text": "⚔ Принять вызов", "web_app": {"url": f"{WEBAPP_URL}?weekly=1"}}]]}
     async with httpx.AsyncClient(timeout=20) as client:
         for uid in ids:
             try:
@@ -1843,7 +1842,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "debug-startparam-v49"
+BUILD_TAG = "webapp-accept-v50"
 
 
 @app.get("/api/version")

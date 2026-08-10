@@ -3829,9 +3829,8 @@ function duelGetShareLink() {
   const botUser = document.querySelector('a[href^="https://t.me/"]')?.getAttribute("href");
   // Пробуем достать username бота из initDataUnsafe / переменных окружения нет, поэтому используем текущий домен
   // Лучший вариант: показать сообщение с текстом ссылки к боту
-  // startapp открывает мини-апп напрямую (один тап сразу в дуэль), параметр
-  // приходит в tg.initDataUnsafe.start_param — надёжнее, чем query у web-app кнопки.
-  const botLink = `https://t.me/${DUEL_BOT_USERNAME}?startapp=duel_${duel.duelId}`;
+  // Ссылка-диплинк на бота: бот пришлёт сообщение с кнопкой «Принять вызов».
+  const botLink = `https://t.me/${DUEL_BOT_USERNAME}?start=duel_${duel.duelId}`;
   return botLink;
 }
 

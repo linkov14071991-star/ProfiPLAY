@@ -71,28 +71,8 @@ def _kb_open_app(url: str, label: str = "🎮 Играть в Профик Arena
 
 
 def _kb_accept_duel(duel_id: str) -> InlineKeyboardMarkup:
-    """Кнопка приёма дуэли: обычная ссылка на startapp (параметр придёт в
-    start_param, а не query) — надёжнее web-app кнопки. Фолбэк — web-app, если
-    username бота ещё не известен."""
-    if BOT_ME_USERNAME:
-        accept = InlineKeyboardButton(
-            text="⚔ Принять вызов!",
-            url=f"https://t.me/{BOT_ME_USERNAME}?startapp=duel_{duel_id}",
-        )
-    else:
-        accept = InlineKeyboardButton(
-            text="⚔ Принять вызов!",
-            web_app=WebAppInfo(url=_bust(f"{WEBAPP_URL}?duel={duel_id}")),
-        )
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [accept],
-            [InlineKeyboardButton(
-                text="📢 Подписаться на канал",
-                url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}",
-            )],
-        ]
-    )
+    """Кнопка приёма дуэли — web-app с id дуэли в адресе (?duel=...)."""
+    return _kb_open_app(f"{WEBAPP_URL}?duel={duel_id}", "⚔ Принять вызов!")
 
 
 @dp.message(CommandStart())
