@@ -30,6 +30,7 @@ const SCREENS = {
   duelResult: "screen-duel-result",
   duelHistory: "screen-duel-history",
   duelNg: "screen-duel-ng",
+  gameMode: "screen-game-mode",
   crocoSetup: "screen-croco-setup",
   crocoTheme: "screen-croco-theme", // выбор темы (перед словом)
   game: "screen-game",           // игра Крокодил
@@ -162,18 +163,19 @@ const BACK_PARENT = {
   spyResult: "spySetup",
   duelResult: "duelSetup",
   result: "crocoSetup",
-  // экран настроек игры → в свой раздел (хаб)
-  sprintSetup: "sprintHub",
-  numguessSetup: "sprintHub",
-  fastmathSetup: "sprintHub",
-  infomathSetup: "sprintHub",
+  // игры Спринта: настройки/дуэль → экран выбора режима → раздел
+  gameMode: "sprintHub",
+  sprintSetup: "gameMode",
+  numguessSetup: "gameMode",
+  fastmathSetup: "gameMode",
+  infomathSetup: "gameMode",
+  duelSetup: "gameMode",
   marathonSetup: "marathonHub",
   crocoSetup: "party",
   aliasSetup: "party",
   tbSetup: "party",
   spySetup: "party",
   gromkoSetup: "party",
-  duelSetup: "compHub",
 };
 
 // Нижние ссылки «← назад/в меню» превращаем в стрелку в левом верхнем углу экрана
@@ -195,14 +197,56 @@ function installBackArrows() {
   });
 }
 
+// ===== Экран выбора режима игры (Спринт) =====
+let currentGame = "sprint";
+const GAME_MODE_META = {
+  sprint:   { icon: "🎯", title: "Профи-блиц" },
+  numguess: { icon: "🔢", title: "Угадай число" },
+  fastmath: { icon: "🧮", title: "Быстрый счёт" },
+  infomath: { icon: "🖥️", title: "IT-разминка" },
+};
+function openGameMode(game) {
+  currentGame = game;
+  const m = GAME_MODE_META[game] || GAME_MODE_META.sprint;
+  document.getElementById("mode-icon").textContent = m.icon;
+  document.getElementById("mode-title").textContent = m.title;
+  resetLbTabs("mode-lb");
+  loadGameLeaderboard(game, "mode-lb-list", "all");
+  showScreen("gameMode");
+}
+function enterSolo(game) {
+  hapticMedium();
+  if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
+  else if (game === "numguess") showScreen("numguessSetup");
+  else if (game === "fastmath") showScreen("fastmathSetup");
+  else if (game === "infomath") showScreen("infomathSetup");
+}
+function enterDuelFor(game) {
+  hapticMedium();
+  setDuelFormat(game);
+  showScreen("duelSetup");
+}
+(function wireGameMode() {
+  const solo = document.getElementById("btn-mode-solo");
+  const du = document.getElementById("btn-mode-duel");
+  const ru = document.getElementById("btn-mode-rules");
+  if (solo) solo.addEventListener("click", () => enterSolo(currentGame));
+  if (du) du.addEventListener("click", () => enterDuelFor(currentGame));
+  if (ru) ru.addEventListener("click", () => { hapticLight(); openGameInfo(currentGame); });
+  const wrap = document.getElementById("mode-lb");
+  if (wrap) wrap.querySelectorAll(".game-lb-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      wrap.querySelectorAll(".game-lb-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active"); hapticLight();
+      loadGameLeaderboard(currentGame, "mode-lb-list", tab.dataset.period);
+    });
+  });
+})();
+
 function initMenuExtras() {
   applyUnlocks();
   installBackArrows();
-  setupGameLeaderboard("sprint", "sprint-lb", "sprint-lb-list");
   setupGameLeaderboard("marathon", "marathon-lb", "marathon-lb-list");
-  setupGameLeaderboard("numguess", "numguess-lb", "numguess-lb-list");
-  setupGameLeaderboard("fastmath", "fastmath-lb", "fastmath-lb-list");
-  setupGameLeaderboard("infomath", "infomath-lb", "infomath-lb-list");
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initMenuExtras);
 else initMenuExtras();
@@ -331,12 +375,10 @@ document.body.addEventListener("click", (e) => {
   if (game === "league") { showScreen("league"); return; }
   if (game === "party") showScreen("party");
   if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); }
-  if (game === "sprint") { renderSprintRecord(); resetLbTabs("sprint-lb"); loadGameLeaderboard("sprint", "sprint-lb-list", "all"); showScreen("sprintSetup"); }
+  // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
+  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath") { openGameMode(game); return; }
   if (game === "alias") showScreen("aliasSetup");
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); }
-  if (game === "numguess") { resetLbTabs("numguess-lb"); loadGameLeaderboard("numguess", "numguess-lb-list", "all"); showScreen("numguessSetup"); }
-  if (game === "fastmath") { resetLbTabs("fastmath-lb"); loadGameLeaderboard("fastmath", "fastmath-lb-list", "all"); showScreen("fastmathSetup"); }
-  if (game === "infomath") { resetLbTabs("infomath-lb"); loadGameLeaderboard("infomath", "infomath-lb-list", "all"); showScreen("infomathSetup"); }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); }
   if (game === "spy") showScreen("spySetup");
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); }
@@ -1658,9 +1700,7 @@ function numguessEnd(win) {
     fb.className = "tb-num-feedback down";
   }
   setTimeout(() => {
-    resetLbTabs("numguess-lb");
-    loadGameLeaderboard("numguess", "numguess-lb-list", "all");
-    showScreen("numguessSetup");
+    openGameMode("numguess");
   }, 1700);
 }
 
@@ -3400,13 +3440,14 @@ const DUEL_FMT_TITLES = {
 
 setupPills("duel-difficulty", (v) => (duel.difficulty = v));
 setupPillsMulti("duel-topic", (arr) => (duel.topics = arr));
-setupPills("duel-format", (v) => {
-  duel.format = v;
+// Формат дуэли задаётся игрой, из которой зашли (пикера формата нет)
+function setDuelFormat(fmt) {
+  duel.format = fmt;
   const topicWrap = document.getElementById("duel-topic-wrap");
-  if (topicWrap) topicWrap.style.display = (v === "sprint") ? "" : "none";
+  if (topicWrap) topicWrap.style.display = (fmt === "sprint") ? "" : "none";
   const sub = document.getElementById("duel-subtitle");
-  if (sub) sub.textContent = DUEL_FMT_TITLES[v] || "Вызови соперника в игре на выбор";
-});
+  if (sub) sub.textContent = DUEL_FMT_TITLES[fmt] || "Вызови соперника";
+}
 
 // Собираем 10 MCQ для форматов Быстрый счёт / IT-разминка
 function duelBuildItems(format, difficulty) {

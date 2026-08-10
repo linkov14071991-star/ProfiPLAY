@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=37">
+<link rel="stylesheet" href="/style.css?v=38">
 </head>
 <body>
 
@@ -137,7 +137,7 @@
       <div class="icon">⚔</div>
       <div class="info">
         <div class="title">Соревнования</div>
-        <div class="desc">Блиц-дуэль, Кубок Профика, Лига. Сражайся за рейтинг.</div>
+        <div class="desc">Кубок Профика и Лига. Сражайся за рейтинг.</div>
       </div>
     </div>
   </div>
@@ -238,16 +238,8 @@
   </div>
   <h1 style="text-align:center; margin-bottom:6px;">⚔ Соревнования</h1>
   <p class="subtitle" style="text-align:center;">Сражайся за рейтинг</p>
+  <p style="font-size:13px; opacity:0.7; text-align:center; margin:-2px 0 10px;">💡 Дуэли теперь внутри каждой игры Спринта — жми на игру и выбирай «Дуэль».</p>
   <div class="games-grid">
-    <div class="game-card" data-game="duel">
-      <button class="game-info-btn" data-info="duel" aria-label="Правила">?</button>
-      <div class="icon">⚡⚔</div>
-      <div class="info">
-        <div class="title">Блиц-дуэль</div>
-        <div class="desc">1×1 асинхронно. Формат «Профи-блиц». Вызови друга или соперника по рейтингу.</div>
-        <div class="card-stat" id="card-duel-stat"></div>
-      </div>
-    </div>
     <div class="game-card" data-game="cup">
       <div class="icon" style="background:#B6A9D9;">🥇</div>
       <div class="info">
@@ -599,6 +591,33 @@
 </section>
 
 <!-- ==== Экран: настройка Спринта ==== -->
+<!-- ==== Экран выбора режима игры (Спринт) ==== -->
+<section id="screen-game-mode" class="screen">
+  <div class="brand-header">
+    <img src="/profik.svg" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div style="text-align:center; margin-bottom:8px;">
+    <div style="font-size:52px; line-height:1;" id="mode-icon">🎯</div>
+    <h1 id="mode-title" style="margin:8px 0 2px;">Профи-блиц</h1>
+    <p class="subtitle" id="mode-sub">Выбери режим</p>
+  </div>
+  <div class="card" style="display:flex; flex-direction:column; gap:10px;">
+    <button id="btn-mode-solo" class="btn btn-primary btn-big" style="margin:0;">🎮 Одиночная игра</button>
+    <button id="btn-mode-duel" class="btn btn-secondary btn-big" style="margin:0;">⚔ Дуэль</button>
+    <button id="btn-mode-rules" class="btn btn-link" style="margin:0;">❓ Правила</button>
+  </div>
+  <div class="game-lb" id="mode-lb">
+    <div class="game-lb-head">🏆 Лучшие <span style="font-size:12px; opacity:0.7; font-weight:600;">· одиночная + дуэль</span></div>
+    <div class="game-lb-tabs">
+      <button class="game-lb-tab active" data-period="all">За всё время</button>
+      <button class="game-lb-tab" data-period="week">За неделю</button>
+    </div>
+    <div class="game-lb-list" id="mode-lb-list"></div>
+  </div>
+  <button class="btn btn-link btn-back" data-back="sprintHub">← Назад</button>
+</section>
+
 <section id="screen-sprint-setup" class="screen">
   <div class="brand-header">
     <img src="/profik.svg" alt="Профик" class="profik">
@@ -615,8 +634,8 @@
 
     <label class="field">Темы <span class="field-hint">— можно несколько</span></label>
     <div class="pills pills-multi" id="sprint-topic">
-      <button class="pill active" data-value="informatika">💻 Информатика</button>
-      <button class="pill active" data-value="mathematics">📐 Математика</button>
+      <button class="pill active" data-value="informatika">💻 Инфа</button>
+      <button class="pill active" data-value="mathematics">📐 Матеша</button>
       <button class="pill active" data-value="physics">⚛️ Физика</button>
     </div>
 
@@ -638,14 +657,6 @@
     <button id="btn-sprint-start" class="btn btn-primary btn-big">Начать</button>
     <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
 
-    <div class="game-lb" id="sprint-lb">
-      <div class="game-lb-head">🏆 Лучшие</div>
-      <div class="game-lb-tabs">
-        <button class="game-lb-tab active" data-period="all">За всё время</button>
-        <button class="game-lb-tab" data-period="week">За неделю</button>
-      </div>
-      <div class="game-lb-list" id="sprint-lb-list"></div>
-    </div>
   </div>
 </section>
 
@@ -962,19 +973,11 @@
       <div class="profik-chip-msg" data-profik-context="duel_start"></div>
     </div>
 
-    <label class="field">Формат</label>
-    <div class="pills" id="duel-format">
-      <button class="pill active" data-value="sprint">🎯 Профи-блиц</button>
-      <button class="pill" data-value="fastmath">🧮 Быстрый счёт</button>
-      <button class="pill" data-value="infomath">🖥️ IT-разминка</button>
-      <button class="pill" data-value="numguess">🔢 Угадай число</button>
-    </div>
-
     <div id="duel-topic-wrap">
-      <label class="field">Темы вопросов <span class="field-hint">— можно несколько</span></label>
+      <label class="field">Темы <span class="field-hint">— можно несколько</span></label>
       <div class="pills pills-multi" id="duel-topic">
-        <button class="pill active" data-value="informatika">💻 Информатика</button>
-        <button class="pill active" data-value="mathematics">📐 Математика</button>
+        <button class="pill active" data-value="informatika">💻 Инфа</button>
+        <button class="pill active" data-value="mathematics">📐 Матеша</button>
         <button class="pill active" data-value="physics">⚛️ Физика</button>
       </div>
     </div>
@@ -1302,14 +1305,6 @@
     <button id="btn-numguess-start" class="btn btn-primary btn-big">Начать</button>
     <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
 
-    <div class="game-lb" id="numguess-lb">
-      <div class="game-lb-head">🏆 Лучшие</div>
-      <div class="game-lb-tabs">
-        <button class="game-lb-tab active" data-period="all">За всё время</button>
-        <button class="game-lb-tab" data-period="week">За неделю</button>
-      </div>
-      <div class="game-lb-list" id="numguess-lb-list"></div>
-    </div>
   </div>
 </section>
 
@@ -1367,14 +1362,6 @@
     <button id="btn-fastmath-start" class="btn btn-primary btn-big">Начать</button>
     <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
 
-    <div class="game-lb" id="fastmath-lb">
-      <div class="game-lb-head">🏆 Лучшие</div>
-      <div class="game-lb-tabs">
-        <button class="game-lb-tab active" data-period="all">За всё время</button>
-        <button class="game-lb-tab" data-period="week">За неделю</button>
-      </div>
-      <div class="game-lb-list" id="fastmath-lb-list"></div>
-    </div>
   </div>
 </section>
 
@@ -1442,14 +1429,6 @@
     <button id="btn-infomath-start" class="btn btn-primary btn-big">Начать</button>
     <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
 
-    <div class="game-lb" id="infomath-lb">
-      <div class="game-lb-head">🏆 Лучшие</div>
-      <div class="game-lb-tabs">
-        <button class="game-lb-tab active" data-period="all">За всё время</button>
-        <button class="game-lb-tab" data-period="week">За неделю</button>
-      </div>
-      <div class="game-lb-list" id="infomath-lb-list"></div>
-    </div>
   </div>
 </section>
 
@@ -2076,6 +2055,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=37"></script>
+<script src="/script.js?v=38"></script>
 </body>
 </html>

@@ -951,6 +951,18 @@ async def get_weekly_leaderboard(limit: int = Query(50)):
     return {"leaders": leaders}
 
 
+# Источники рейтинга для таблицы лидеров игры.
+# У игр Спринта таблица = одиночная + дуэль (до 200 очков в день: 100 + 100).
+GAME_LB_SOURCES = {
+    "sprint":   ["sprint", "duel_sprint"],
+    "numguess": ["numguess", "duel_numguess"],
+    "fastmath": ["fastmath", "duel_fastmath"],
+    "infomath": ["infomath", "duel_infomath"],
+    "marathon": ["marathon"],
+    "python":   ["python"],
+}
+
+
 @app.get("/api/leaderboard/game")
 async def get_game_leaderboard(
     game: str = Query(...),
@@ -958,24 +970,26 @@ async def get_game_leaderboard(
     limit: int = Query(10),
 ):
     """Топ игроков по суммарному рейтингу, заработанному в конкретной игре.
-    game: sprint / marathon / python / numguess / fastmath / infomath. period: all / week."""
-    if game not in ("sprint", "marathon", "python", "numguess", "fastmath", "infomath"):
+    Для игр Спринта считается одиночная + дуэль. period: all / week."""
+    sources = GAME_LB_SOURCES.get(game)
+    if not sources:
         raise HTTPException(status_code=400, detail="Bad game")
     limit = max(1, min(50, limit))
     where_time = "AND rl.created_at >= datetime('now', '-7 days')" if period == "week" else ""
+    placeholders = ",".join("?" * len(sources))
     with get_db() as db:
         rows = db.execute(
             f"""
             SELECT u.first_name, u.username, COALESCE(SUM(rl.delta), 0) AS total
             FROM rating_log rl
             JOIN users u ON u.telegram_id = rl.user_id
-            WHERE rl.source = ? {where_time}
+            WHERE rl.source IN ({placeholders}) {where_time}
             GROUP BY rl.user_id
             HAVING total > 0
             ORDER BY total DESC, MIN(rl.created_at) ASC
             LIMIT ?
             """,
-            (game, limit),
+            (*sources, limit),
         ).fetchall()
     leaders = []
     for i, r in enumerate(rows, start=1):
@@ -1642,7 +1656,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "sprint60-v39"
+BUILD_TAG = "game-modes-v40"
 
 
 @app.get("/api/version")
