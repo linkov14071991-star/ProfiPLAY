@@ -112,6 +112,31 @@ function applyUnlocks() {
     }
   });
 }
+// ===== Доступ по аккаунту =====
+// «Спринт» открыт всем. «Марафоны», «Командная игра», «Соревнования» — только
+// для аккаунтов из ADMIN_IDS. Впиши свой Telegram id (число) — увидишь его в
+// Профиле внизу или у бота @userinfobot. Пустой список = гейт выключен (всё открыто).
+const ADMIN_IDS = [];
+const GATED_SECTIONS = ["sec-marathon", "sec-team", "sec-comp"];
+function isAdminUser() {
+  if (!ADMIN_IDS.length) return true;
+  const id = tg?.initDataUnsafe?.user?.id;
+  return ADMIN_IDS.includes(id);
+}
+function applyAccessGate() {
+  if (isAdminUser()) return;
+  GATED_SECTIONS.forEach((g) => {
+    const card = document.querySelector(`.game-card[data-game="${g}"]`);
+    if (!card || card.classList.contains("locked")) return;
+    card.classList.add("locked");
+    if (!card.querySelector(".badge-soon")) {
+      const b = document.createElement("div");
+      b.className = "badge-soon";
+      b.textContent = "🔒 Скоро";
+      card.appendChild(b);
+    }
+  });
+}
 // ===== Таблицы лучших по игре (общий тотал / за неделю) =====
 async function loadGameLeaderboard(game, listId, period) {
   const el = document.getElementById(listId);
@@ -245,6 +270,7 @@ function enterDuelFor(game) {
 
 function initMenuExtras() {
   applyUnlocks();
+  applyAccessGate();
   installBackArrows();
   setupGameLeaderboard("marathon", "marathon-lb", "marathon-lb-list");
 }
@@ -3009,6 +3035,8 @@ function renderCardStats(profile) {
 
 
 async function loadProfileScreen() {
+  const idEl = document.getElementById("profile-tg-id");
+  if (idEl) { const tgid = tg?.initDataUnsafe?.user?.id; idEl.textContent = tgid ? `Telegram ID: ${tgid}` : ""; }
   const p = await apiPost("/api/profile", {init_data: INIT_DATA});
   if (!p || !p.rating) return;
   currentProfile = p;

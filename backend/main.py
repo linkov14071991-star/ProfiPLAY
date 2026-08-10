@@ -1656,7 +1656,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "sprint-unify-v41"
+BUILD_TAG = "account-gate-v42"
 
 
 @app.get("/api/version")
