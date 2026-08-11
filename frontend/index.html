@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=59">
+<link rel="stylesheet" href="/style.css?v=60">
 </head>
 <body>
 
@@ -107,6 +107,9 @@
     <button class="btn btn-secondary" onclick="openLeaderboard()" style="margin-top:0; font-size:13px; padding:12px 6px;">🏆 Топ</button>
     <button class="btn btn-secondary" onclick="showScreen('rules')" style="margin-top:0; font-size:13px; padding:12px 6px;">📖 Правила</button>
   </div>
+
+  <!-- Баннер «Вызов недели» — виден всем, кто ещё не проходил активный вызов -->
+  <div id="weekly-banner" style="display:none; margin:8px 0 4px;"></div>
 
   <h3 style="padding-left:4px;" id="modes-anchor">🎮 Разделы</h3>
   <div class="games-grid">
@@ -300,8 +303,8 @@
     <h1 id="weekly-res-title">Результат</h1>
     <div style="font-size:18px; margin:8px 0;">Ты: <b id="weekly-res-you">0</b> · Соперник: <b id="weekly-res-admin">0</b></div>
     <p class="subtitle" id="weekly-res-sub"></p>
-    <button class="btn btn-primary" onclick="showScreen('compHub')">В соревнования</button>
-    <button class="btn btn-link btn-back" data-back="compHub">← Назад</button>
+    <button class="btn btn-primary" onclick="showScreen('menu')">На главную</button>
+    <button class="btn btn-link btn-back" data-back="menu">← Назад</button>
   </div>
 </section>
 
@@ -2102,6 +2105,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=59"></script>
+<script src="/script.js?v=60"></script>
 </body>
 </html>

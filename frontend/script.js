@@ -86,7 +86,7 @@ function showScreen(name) {
   document.getElementById(SCREENS[name]).classList.add("active");
   window.scrollTo(0, 0);
   // при возврате на меню — обновим плашку рейтинга
-  if (name === "menu") refreshProfile();
+  if (name === "menu") { refreshProfile(); loadWeeklyBanner(); }
   if (name === "profile") loadProfileScreen();
   if (name === "compHub") loadWeekly();
   // Рандомная реплика Профика на любом экране с data-profik-context
@@ -4185,6 +4185,25 @@ async function loadWeekly() {
       <div class="weekly-title">🔥 Вызов недели от ${escapeHtml(a.admin_name)}</div>
       <div class="weekly-sub">Формат: <b>${WEEKLY_FMT_TITLES_JS[a.format] || a.format}</b> · побей <b>${a.admin_score}</b> → <b style="color:var(--brand-lime);">+50</b></div>
       ${status}${btn}
+    </div>`;
+}
+
+// Баннер вызова на главном экране — виден всем, кто ещё не играл активный вызов
+async function loadWeeklyBanner() {
+  const el = document.getElementById("weekly-banner");
+  if (!el) return;
+  let res = null;
+  try { res = await apiPost("/api/weekly/active", { init_data: INIT_DATA }); } catch (e) {}
+  weeklyActive = (res && res.active) ? res : null;
+  const a = weeklyActive;
+  // Показываем только если вызов активен, игрок его ещё не проходил и он не автор
+  if (!a || a.is_admin || a.my_attempt) { el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "";
+  el.innerHTML = `
+    <div class="weekly-card" onclick="openWeeklyPlay()" style="cursor:pointer;">
+      <div class="weekly-title">🔥 Вызов недели от ${escapeHtml(a.admin_name)}</div>
+      <div class="weekly-sub">Обгони <b>${a.admin_score}</b> в «${WEEKLY_FMT_TITLES_JS[a.format] || a.format}» → <b style="color:var(--brand-lime);">+50</b> к рейтингу</div>
+      <button class="btn btn-primary" style="margin-top:8px;">⚔ Принять вызов</button>
     </div>`;
 }
 
