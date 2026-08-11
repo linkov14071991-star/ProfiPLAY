@@ -1877,7 +1877,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "mascot-png-v60"
+BUILD_TAG = "mascot-head-v61"
 
 
 @app.get("/api/version")
