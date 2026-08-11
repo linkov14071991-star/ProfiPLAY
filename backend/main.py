@@ -604,6 +604,16 @@ async def _resolve_bot_username() -> str:
     return BOT_USERNAME or "your_bot"
 
 
+@app.post("/api/whoami")
+async def whoami(init_data: str = Body("", embed=True)):
+    """Диагностика авторизации: проходит ли initData проверку по токену бота."""
+    verified = verify_telegram_init_data(init_data)
+    if verified and isinstance(verified.get("user"), dict):
+        u = verified["user"]
+        return {"ok": True, "id": u.get("id"), "name": u.get("first_name", "")}
+    return {"ok": False, "has_init": bool(init_data), "token_set": bool(BOT_TOKEN)}
+
+
 @app.get("/api/config")
 async def get_config():
     """Небольшой конфиг для фронтенда (публичные данные + множители)."""
@@ -1863,7 +1873,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "debug-all-v55"
+BUILD_TAG = "debug-auth-v56"
 
 
 @app.get("/api/version")

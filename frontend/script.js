@@ -4288,17 +4288,19 @@ function _readStartParam() {
 
 window._maybeOpenIncomingDuel = async function() {
   const p = _readStartParam();
-  let pendingId = null, pendErr = "";
+  let pendingId = null;
   try {
     const res = await apiPost("/api/duel/pending", { init_data: INIT_DATA });
     pendingId = res && res.duel_id;
-  } catch (e) { pendErr = String(e); }
+  } catch (e) {}
+  let who = null;
+  try { who = await apiPost("/api/whoami", { init_data: INIT_DATA }); } catch (e) {}
   // ВРЕМЕННО: показываем всем — диагностика приёма дуэли у игрока
   alert(
     "🔧 DEBUG\n" +
-    "search: " + (window.location.search || "(пусто)") + "\n" +
-    "из URL: " + (p ? (p.type + " " + (p.value || "")) : "нет") + "\n" +
-    "с сервера: " + (pendingId || "нет") + (pendErr ? ("\nошибка: " + pendErr) : "")
+    "initData: " + (INIT_DATA ? ("есть, " + INIT_DATA.length + " симв.") : "НЕТ") + "\n" +
+    "авторизация: " + (who ? (who.ok ? ("OK, id=" + who.id) : ("НЕ ПРОШЛА (has_init=" + who.has_init + ", token=" + who.token_set + ")")) : "нет ответа") + "\n" +
+    "приглашение с сервера: " + (pendingId || "нет")
   );
   if (p && p.type === "duel") { await duelOpenIncoming(p.value); return; }
   if (p && p.type === "weekly") { await openWeeklyFromDeepLink(); return; }
