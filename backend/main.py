@@ -1873,7 +1873,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "debug-auth-v56"
+BUILD_TAG = "initdata-race-fix-v57"
 
 
 @app.get("/api/version")

@@ -2650,7 +2650,7 @@ document.getElementById("btn-spy-to-vote").addEventListener("click", spyShowVote
 // ==============================
 // ==== ФУНДАМЕНТ РЕЙТИНГА ======
 // ==============================
-const INIT_DATA = tg?.initData || "";
+let INIT_DATA = tg?.initData || "";  // обновляется в boot(), когда SDK готов
 let currentProfile = null;
 
 async function apiPost(path, body) {
@@ -4293,15 +4293,6 @@ window._maybeOpenIncomingDuel = async function() {
     const res = await apiPost("/api/duel/pending", { init_data: INIT_DATA });
     pendingId = res && res.duel_id;
   } catch (e) {}
-  let who = null;
-  try { who = await apiPost("/api/whoami", { init_data: INIT_DATA }); } catch (e) {}
-  // ВРЕМЕННО: показываем всем — диагностика приёма дуэли у игрока
-  alert(
-    "🔧 DEBUG\n" +
-    "initData: " + (INIT_DATA ? ("есть, " + INIT_DATA.length + " симв.") : "НЕТ") + "\n" +
-    "авторизация: " + (who ? (who.ok ? ("OK, id=" + who.id) : ("НЕ ПРОШЛА (has_init=" + who.has_init + ", token=" + who.token_set + ")")) : "нет ответа") + "\n" +
-    "приглашение с сервера: " + (pendingId || "нет")
-  );
   if (p && p.type === "duel") { await duelOpenIncoming(p.value); return; }
   if (p && p.type === "weekly") { await openWeeklyFromDeepLink(); return; }
   if (pendingId) await duelOpenIncoming(pendingId);
@@ -4431,6 +4422,9 @@ function boot() {
     if (wa || waited >= 2500) {
       clearInterval(iv);
       if (wa && !tg) { tg = wa; try { tg.ready(); tg.expand(); } catch (e) {} }
+      // ВАЖНО: считываем initData уже после готовности SDK (иначе на медленных
+      // устройствах он пустой → авторизация не проходит).
+      INIT_DATA = (tg && tg.initData) || INIT_DATA;
       loadRecordsFromCloud();
       loadCrocoRecordsFromCloud();
       loadGromkoRecordsFromCloud();
