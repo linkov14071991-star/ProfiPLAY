@@ -1863,7 +1863,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "duel-invite-ready-v54"
+BUILD_TAG = "debug-all-v55"
 
 
 @app.get("/api/version")

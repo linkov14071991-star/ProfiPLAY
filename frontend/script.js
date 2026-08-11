@@ -4288,14 +4288,21 @@ function _readStartParam() {
 
 window._maybeOpenIncomingDuel = async function() {
   const p = _readStartParam();
-  if (p && p.type === "duel") { await duelOpenIncoming(p.value); return; }
-  if (p && p.type === "weekly") { await openWeeklyFromDeepLink(); return; }
-  // Фолбэк: сервер хранит «приглашение», записанное ботом по клику на ссылку —
-  // сработает, даже если клиент не донёс параметр в URL (частая беда на iOS).
+  let pendingId = null, pendErr = "";
   try {
     const res = await apiPost("/api/duel/pending", { init_data: INIT_DATA });
-    if (res && res.duel_id) await duelOpenIncoming(res.duel_id);
-  } catch (e) {}
+    pendingId = res && res.duel_id;
+  } catch (e) { pendErr = String(e); }
+  // ВРЕМЕННО: показываем всем — диагностика приёма дуэли у игрока
+  alert(
+    "🔧 DEBUG\n" +
+    "search: " + (window.location.search || "(пусто)") + "\n" +
+    "из URL: " + (p ? (p.type + " " + (p.value || "")) : "нет") + "\n" +
+    "с сервера: " + (pendingId || "нет") + (pendErr ? ("\nошибка: " + pendErr) : "")
+  );
+  if (p && p.type === "duel") { await duelOpenIncoming(p.value); return; }
+  if (p && p.type === "weekly") { await openWeeklyFromDeepLink(); return; }
+  if (pendingId) await duelOpenIncoming(pendingId);
 };
 
 // ==== Проверка подписки: кнопка ====
