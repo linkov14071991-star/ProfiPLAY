@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=57">
+<link rel="stylesheet" href="/style.css?v=58">
 </head>
 <body>
 
 <!-- ==== Экран: проверка подписки ==== -->
 <section id="screen-check" class="screen active">
-  <img src="/profik.svg" alt="Профик" class="profik profik-xl">
+  <img src="/profik-cat.png" alt="Профик" class="profik profik-xl">
   <div class="loader"></div>
   <p>Профик проверяет подписку...</p>
 </section>
@@ -19,12 +19,12 @@
 <!-- ==== Экран: нужна подписка ==== -->
 <section id="screen-need-sub" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
     <div style="text-align:center; margin-bottom:8px;">
-      <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+      <img src="/profik-cat.png" alt="Профик" class="profik profik-lg">
     </div>
     <h1 style="text-align:center;">📢 Подпишитесь на канал</h1>
     <p>Профик пускает на <b>Профик Arena</b> только подписчиков канала <b>@profimatika_inf</b>. Присоединяйся!</p>
@@ -35,10 +35,9 @@
 
 <!-- ==== Экран: главное меню (дашборд) ==== -->
 <section id="screen-menu" class="screen">
-  <!-- Крупный герой: Profik + название -->
+  <!-- Крупный герой: полный логотип -->
   <div class="hero-brand">
-    <img src="/profik.svg" alt="Профик" class="hero-cat">
-    <h1 class="hero-title">Профик <span class="hero-title-accent">Arena</span></h1>
+    <img src="/profik-logo.png" alt="Профик Arena" class="hero-logo" style="max-width:82%; height:auto; display:block; margin:6px auto 0;">
   </div>
 
   <!-- Мотивирующая строка (цель дня/уровня) -->
@@ -68,7 +67,7 @@
 
   <!-- Приветственная карточка от Профика -->
   <div class="profik-hello" id="profik-hello" style="display:none;">
-    <img src="/profik.svg" alt="Профик" class="profik-hello-img">
+    <img src="/profik-cat.png" alt="Профик" class="profik-hello-img">
     <div class="profik-hello-bubble">
       <div class="profik-hello-title" id="profik-hello-title">Привет!</div>
       <div class="profik-hello-msg" id="profik-hello-msg">Готов сегодня?</div>
@@ -146,7 +145,7 @@
 <!-- ==== Экран-хаб: СПРИНТ ==== -->
 <section id="screen-sprint-hub" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <h1 style="text-align:center; margin-bottom:6px;">⚡ Спринт</h1>
@@ -195,7 +194,7 @@
 <!-- ==== Экран-хаб: МАРАФОНЫ ==== -->
 <section id="screen-marathon-hub" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <h1 style="text-align:center; margin-bottom:6px;">📚 Марафоны</h1>
@@ -233,7 +232,7 @@
 <!-- ==== Экран-хаб: СОРЕВНОВАНИЯ ==== -->
 <section id="screen-comp-hub" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <h1 style="text-align:center; margin-bottom:6px;">⚔ Соревнования</h1>
@@ -265,7 +264,7 @@
 <!-- ==== Вызов недели: создание (только админ) ==== -->
 <section id="screen-weekly-admin" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -293,11 +292,11 @@
 <!-- ==== Вызов недели: результат ==== -->
 <section id="screen-weekly-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card" style="text-align:center;">
-    <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+    <img src="/profik-cat.png" alt="Профик" class="profik profik-lg">
     <h1 id="weekly-res-title">Результат</h1>
     <div style="font-size:18px; margin:8px 0;">Ты: <b id="weekly-res-you">0</b> · Соперник: <b id="weekly-res-admin">0</b></div>
     <p class="subtitle" id="weekly-res-sub"></p>
@@ -309,11 +308,11 @@
 <!-- ==== Экраны-заглушки «в разработке» ==== -->
 <section id="screen-finderr" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card" style="text-align:center;">
-    <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+    <img src="/profik-cat.png" alt="Профик" class="profik profik-lg">
     <h1>🔎 Найди ошибку</h1>
     <p class="subtitle">В разработке</p>
     <p style="opacity:0.75;">Скоро здесь появится игра: ищи ошибки в коде и примерах. Профик уже готовит задания!</p>
@@ -323,11 +322,11 @@
 
 <section id="screen-cup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card" style="text-align:center;">
-    <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+    <img src="/profik-cat.png" alt="Профик" class="profik profik-lg">
     <h1>🥇 Кубок Профика</h1>
     <p class="subtitle">В разработке</p>
     <p style="opacity:0.75;">Недельный турнир на выбывание: Пн–Пт квалификация, Сб–Вс плей-офф. Скоро запустим!</p>
@@ -337,11 +336,11 @@
 
 <section id="screen-league" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card" style="text-align:center;">
-    <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+    <img src="/profik-cat.png" alt="Профик" class="profik profik-lg">
     <h1>📈 Лига</h1>
     <p class="subtitle">В разработке</p>
     <p style="opacity:0.75;">Сезонный рейтинг с дивизионами. Топ недели — в канале профиматика. Скоро!</p>
@@ -352,7 +351,7 @@
 <!-- ==== Экран: Тусовка (сабменю командных игр) ==== -->
 <section id="screen-party" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <h1 style="text-align:center; margin-bottom:6px;">🤝 Командная игра</h1>
@@ -407,7 +406,7 @@
 <!-- ==== Экран: настройка Крокодила ==== -->
 <section id="screen-croco-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -483,7 +482,7 @@
 <!-- ==== Экран: итоги Крокодила ==== -->
 <section id="screen-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -507,7 +506,7 @@
 <!-- ==== Экран: настройка «Громкий вопрос» ==== -->
 <section id="screen-gromko-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -614,7 +613,7 @@
 <!-- ==== Экран: итоги «Громкий вопрос» ==== -->
 <section id="screen-gromko-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -640,7 +639,7 @@
 <!-- ==== Экран выбора режима игры (Спринт) ==== -->
 <section id="screen-game-mode" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div style="text-align:center; margin-bottom:8px;">
@@ -666,7 +665,7 @@
 
 <section id="screen-sprint-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -674,7 +673,7 @@
     <p class="subtitle">Как можно больше правильных за 60 секунд</p>
 
     <div class="profik-chip">
-      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <img src="/profik-cat.png" alt="Профик" class="profik-chip-img">
       <div class="profik-chip-msg" data-profik-context="sprint_start"></div>
     </div>
 
@@ -727,7 +726,7 @@
 <!-- ==== Экран: итоги Спринта ==== -->
 <section id="screen-sprint-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -754,7 +753,7 @@
     </div>
 
     <div class="profik-chip reveal" id="sprint-profik-chip" style="display:none;">
-      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <img src="/profik-cat.png" alt="Профик" class="profik-chip-img">
       <div class="profik-chip-msg" id="sprint-profik-msg"></div>
     </div>
 
@@ -781,7 +780,7 @@
 <!-- ==== Экран: настройка Марафона ==== -->
 <section id="screen-marathon-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -789,7 +788,7 @@
     <p class="subtitle">Отвечай, пока есть жизни. Ошибка = −1 ❤️</p>
 
     <div class="profik-chip">
-      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <img src="/profik-cat.png" alt="Профик" class="profik-chip-img">
       <div class="profik-chip-msg" data-profik-context="marathon_start"></div>
     </div>
 
@@ -861,7 +860,7 @@
 <!-- ==== Экран: итоги Марафона ==== -->
 <section id="screen-marathon-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -888,7 +887,7 @@
     </div>
 
     <div class="profik-chip reveal" id="marathon-profik-chip" style="display:none;">
-      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <img src="/profik-cat.png" alt="Профик" class="profik-chip-img">
       <div class="profik-chip-msg" id="marathon-profik-msg"></div>
     </div>
 
@@ -914,7 +913,7 @@
 <!-- ==== Экран: настройка Alias ==== -->
 <section id="screen-alias-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -982,7 +981,7 @@
 <!-- ==== Экран: итоги Alias ==== -->
 <section id="screen-alias-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1007,7 +1006,7 @@
 <!-- ==== Блиц-дуэль: настройка ==== -->
 <section id="screen-duel-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1015,7 +1014,7 @@
     <p class="subtitle" id="duel-subtitle">Вызови соперника в игре на выбор</p>
 
     <div class="profik-chip">
-      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <img src="/profik-cat.png" alt="Профик" class="profik-chip-img">
       <div class="profik-chip-msg" data-profik-context="duel_start"></div>
     </div>
 
@@ -1047,7 +1046,7 @@
 <!-- ==== Блиц-дуэль: история ==== -->
 <section id="screen-duel-history" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1061,12 +1060,12 @@
 <!-- ==== Блиц-дуэль: приём вызова ==== -->
 <section id="screen-duel-accept" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
     <div style="text-align:center;">
-      <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+      <img src="/profik-cat.png" alt="Профик" class="profik profik-lg">
     </div>
     <h1 style="text-align:center;">⚔ Вызов на дуэль!</h1>
     <p style="text-align:center; font-size:18px;">Тебя вызвал:</p>
@@ -1106,12 +1105,12 @@
 <!-- ==== Блиц-дуэль: ожидание соперника ==== -->
 <section id="screen-duel-waiting" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
     <div style="text-align:center;">
-      <img src="/profik.svg" alt="Профик" class="profik profik-lg">
+      <img src="/profik-cat.png" alt="Профик" class="profik profik-lg">
     </div>
     <h1 style="text-align:center;">✅ Ты сдал!</h1>
     <div class="result-stats" style="grid-template-columns: 1fr;">
@@ -1132,7 +1131,7 @@
 <!-- ==== Блиц-дуэль: результат ==== -->
 <section id="screen-duel-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1156,7 +1155,7 @@
     </div>
 
     <div class="profik-chip reveal" id="duel-profik-chip" style="display:none;">
-      <img src="/profik.svg" alt="Профик" class="profik-chip-img">
+      <img src="/profik-cat.png" alt="Профик" class="profik-chip-img">
       <div class="profik-chip-msg" id="duel-profik-msg"></div>
     </div>
 
@@ -1188,7 +1187,7 @@
 <!-- ==== Экран: Мой профиль ==== -->
 <section id="screen-profile" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
 
@@ -1284,7 +1283,7 @@
 <!-- ==== Экран: Ачивки ==== -->
 <section id="screen-achievements" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1309,7 +1308,7 @@
 <!-- ==== Экран: Лидерборд ==== -->
 <section id="screen-leaderboard" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1333,7 +1332,7 @@
 <!-- ==== Экраны: Угадай число (отдельная игра) ==== -->
 <section id="screen-numguess-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1390,7 +1389,7 @@
 <!-- ==== Экраны: Быстрый счёт (отдельная игра) ==== -->
 <section id="screen-fastmath-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1428,7 +1427,7 @@
 
 <section id="screen-fastmath-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1457,7 +1456,7 @@
 <!-- ==== Экраны: IT-разминка (отдельная игра) ==== -->
 <section id="screen-infomath-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1495,7 +1494,7 @@
 
 <section id="screen-infomath-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1524,7 +1523,7 @@
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1632,7 +1631,7 @@
 <!-- Экран проверки слов после попытки -->
 <section id="screen-tb-review" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1703,7 +1702,7 @@
 <!-- Итоги -->
 <section id="screen-tb-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1720,7 +1719,7 @@
 <!-- ==== Экраны: Шпион ==== -->
 <section id="screen-spy-setup" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1786,7 +1785,7 @@
 <!-- Экран обсуждения -->
 <section id="screen-spy-discuss" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div style="text-align:center; margin-top:20px;">
@@ -1800,7 +1799,7 @@
 <!-- Голосование -->
 <section id="screen-spy-vote" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1813,7 +1812,7 @@
 <!-- Экран догадки шпиона (если поймали) -->
 <section id="screen-spy-guess" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1826,7 +1825,7 @@
 <!-- Итог -->
 <section id="screen-spy-result" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -1854,7 +1853,7 @@
 <!-- ==== Экран: Правила ==== -->
 <section id="screen-rules" class="screen">
   <div class="brand-header">
-    <img src="/profik.svg" alt="Профик" class="profik">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
@@ -2103,6 +2102,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=57"></script>
+<script src="/script.js?v=58"></script>
 </body>
 </html>
