@@ -1074,7 +1074,7 @@ DUEL_NG = {
     "hard":   {"maxN": 1000, "time_ms": 60000},
 }
 # Рейтинг за бой в общий зачёт: победа / ничья / поражение
-DUEL_RATING = {"win": 15, "draw": 0, "loss": -15}
+DUEL_RATING = {"win": 20, "draw": 0, "loss": -20}
 
 
 def _validate_client_questions(qs) -> list:
@@ -1246,7 +1246,7 @@ def _try_finalize_duel(db, duel_id: str):
     else:
         score_a, winner, is_draw = 0.5, None, 1
 
-    # Рейтинг за бой: фикс +15 / 0 / −15, свой кап 100/день на каждый формат
+    # Рейтинг за бой: фикс +20 / 0 / −20, свой кап 100/день на каждый формат
     fmt = d["format"] or "sprint"
     src = f"duel_{fmt}"
     res_a = "win" if score_a == 1.0 else ("draw" if is_draw else "loss")
@@ -1877,7 +1877,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "release-audit-v58"
+BUILD_TAG = "duel20-v59"
 
 
 @app.get("/api/version")
