@@ -3231,10 +3231,15 @@ async function renderLeaderboardTab(tab) {
 
   let leaders = [];
   let showWeekly = false;
+  const statsEl = document.getElementById("lb-stats");
+  if (statsEl) statsEl.innerHTML = "";
   if (tab === "top") {
     sub.textContent = "Топ игроков по рейтингу";
     const r = await fetch("/api/leaderboard?limit=100");
-    leaders = (await r.json()).leaders || [];
+    const data = await r.json();
+    leaders = data.leaders || [];
+    if (statsEl) statsEl.innerHTML =
+      `👥 Всего игроков: <b>${data.total_players ?? 0}</b> · 🟢 активных за неделю: <b>${data.active_players ?? 0}</b>`;
   } else if (tab === "neighbors") {
     sub.textContent = "Твоё окружение — 5 сверху, 5 снизу";
     const data = await apiPost("/api/leaderboard/neighbors", {init_data: INIT_DATA, radius: 5});

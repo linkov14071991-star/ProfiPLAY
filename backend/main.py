@@ -901,13 +901,17 @@ async def get_leaderboard(limit: int = Query(50)):
             """,
             (limit,),
         ).fetchall()
+        total = db.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+        active = db.execute(
+            "SELECT COUNT(*) AS c FROM users WHERE last_seen_at >= datetime('now', '-7 days')"
+        ).fetchone()["c"]
     leaders = []
     for i, r in enumerate(rows, start=1):
         d = dict(r)
         d["place"] = i
         d["league"] = get_league(d["rating"])
         leaders.append(d)
-    return {"leaders": leaders}
+    return {"leaders": leaders, "total_players": total, "active_players": active}
 
 
 @app.post("/api/leaderboard/neighbors")
@@ -1873,7 +1877,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "initdata-race-fix-v57"
+BUILD_TAG = "release-audit-v58"
 
 
 @app.get("/api/version")
