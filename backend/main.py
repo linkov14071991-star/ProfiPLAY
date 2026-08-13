@@ -1770,6 +1770,7 @@ async def duel_challenge(
         from_rating = me["rating"]
         from_league = get_league(from_rating)
         target_name = _display_name(target)
+        _notify(db, target_id, f"⚔ {from_name} вызвал тебя на Блиц-дуэль! Прими вызов во «Входящих».")
     t = asyncio.create_task(_notify_challenge(target_id, from_name, from_league, from_rating))
     _bg_tasks.add(t)
     t.add_done_callback(_bg_tasks.discard)
@@ -2061,7 +2062,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "notif-weekly-ach-v66"
+BUILD_TAG = "notif-challenge-v67"
 
 
 @app.get("/api/version")
