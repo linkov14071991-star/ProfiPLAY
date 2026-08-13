@@ -1169,6 +1169,35 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .pick-btn { margin: 0 !important; padding: 8px 16px !important; font-size: 14px; width: auto !important; flex-shrink: 0; }
 .incoming-title { font-weight: 800; font-size: 14px; margin: 10px 0 2px; color: var(--brand-lime); }
 
+/* Уведомления */
+.notif-bell {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: 12px;
+  z-index: 40;
+  width: 40px; height: 40px;
+  border: none; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 20px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.notif-badge {
+  position: absolute; top: -3px; right: -3px;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px;
+  background: var(--danger, #FF4D6D); color: #fff;
+  font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+}
+.notif-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px; padding: 10px 12px; margin: 6px 0;
+  border-left: 3px solid transparent;
+}
+.notif-item.unread { border-left-color: var(--brand-lime); background: rgba(180, 242, 77, 0.08); }
+.notif-item .notif-text { font-size: 14px; font-weight: 600; }
+.notif-item .notif-time { font-size: 11px; opacity: 0.55; margin-top: 2px; }
+.notif-empty { text-align: center; opacity: 0.7; padding: 24px; }
+
 /* Мини-плашка множителя в панели игры */
 .mult-badge {
   position: absolute;

@@ -134,6 +134,19 @@ def init_db():
         )
         """
     )
+    # Уведомления в приложении (например, результаты дуэлей)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notification (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            text       TEXT NOT NULL,
+            read       INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notification (user_id)")
 
     conn.execute(
         """

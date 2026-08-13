@@ -626,6 +626,33 @@ async def get_config():
     }
 
 
+@app.post("/api/notifications")
+async def get_notifications(init_data: str = Body(..., embed=True)):
+    """Список уведомлений игрока (результаты дуэлей и т.п.) + число непрочитанных."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        rows = db.execute(
+            "SELECT id, text, read, created_at FROM notification WHERE user_id = ? ORDER BY id DESC LIMIT 30",
+            (me["telegram_id"],),
+        ).fetchall()
+        unread = db.execute(
+            "SELECT COUNT(*) AS c FROM notification WHERE user_id = ? AND read = 0",
+            (me["telegram_id"],),
+        ).fetchone()["c"]
+    return {"items": [dict(r) for r in rows], "unread": unread}
+
+
+@app.post("/api/notifications/read")
+async def mark_notifications_read(init_data: str = Body(..., embed=True)):
+    """Отметить все уведомления игрока прочитанными."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        db.execute("UPDATE notification SET read = 1 WHERE user_id = ?", (me["telegram_id"],))
+    return {"ok": True}
+
+
 # ==============================
 # ==== ФУНДАМЕНТ РЕЙТИНГА =====
 # ==============================
@@ -1231,8 +1258,22 @@ def _display_name(row) -> str:
     return row["first_name"] or row["username"] or "Игрок"
 
 
+def _duel_outcome_line(won, is_draw, my_score, opp_score, delta, opp_name):
+    """Короткая строка результата дуэли для уведомления."""
+    if is_draw:
+        head = f"🤝 Ничья с {opp_name}"
+    elif won:
+        head = f"🎉 Победа над {opp_name}"
+    else:
+        head = f"😞 Поражение от {opp_name}"
+    sign = "+" if delta > 0 else ""
+    line = f"{head} · {my_score}:{opp_score} · рейтинг {sign}{delta}"
+    return head, line
+
+
 def _try_finalize_duel(db, duel_id: str):
-    """Если оба игрока сдали — считаем ELO, фиксируем результат."""
+    """Если оба игрока сдали — считаем результат, фиксируем, пишем уведомления.
+    Возвращает список сообщений (chat_id, text) для отправки ботом в чат."""
     d = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
     if not d or d["status"] == "complete":
         return
@@ -1312,6 +1353,34 @@ def _try_finalize_duel(db, duel_id: str):
         """,
         (winner, is_draw, d_a, d_b, duel_id),
     )
+
+    # --- Уведомления обоим игрокам (в приложение) + сообщения для бота ---
+    msgs = []
+    for uid, won_flag, my_s, opp_s, dlt, opp_nm in (
+        (creator["telegram_id"], winner == creator["telegram_id"], cs, os_, d_a, _display_name(opponent)),
+        (opponent["telegram_id"], winner == opponent["telegram_id"], os_, cs, d_b, _display_name(creator)),
+    ):
+        head, line = _duel_outcome_line(won_flag, is_draw, my_s, opp_s, dlt, opp_nm)
+        db.execute("INSERT INTO notification (user_id, text) VALUES (?, ?)", (uid, line))
+        sign = "+" if dlt > 0 else ""
+        msgs.append((uid, f"⚔ <b>Блиц-дуэль завершена!</b>\n\n{head}\nСчёт: <b>{my_s}:{opp_s}</b> · рейтинг: <b>{sign}{dlt}</b>"))
+    return msgs
+
+
+async def _send_bot_messages(messages):
+    """Отправляет список (chat_id, text) через Bot API (для результатов дуэлей)."""
+    if not BOT_TOKEN:
+        return
+    async with httpx.AsyncClient(timeout=15) as client:
+        for chat_id, text in messages:
+            try:
+                await client.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                    json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+                )
+            except Exception:
+                pass
+            await asyncio.sleep(0.03)
 
 
 def _duel_public_view(db, duel, viewer_id: int) -> dict:
@@ -1531,9 +1600,15 @@ async def duel_submit(
                 (my_id, my_score, duel_id),
             )
 
-        _try_finalize_duel(db, duel_id)
+        _duel_msgs = _try_finalize_duel(db, duel_id)
         duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
-        return _duel_public_view(db, duel, my_id)
+        view = _duel_public_view(db, duel, my_id)
+    # дубль результата в чат обоим игрокам (в фоне, не держим ответ)
+    if _duel_msgs:
+        _t = asyncio.create_task(_send_bot_messages(_duel_msgs))
+        _bg_tasks.add(_t)
+        _t.add_done_callback(_bg_tasks.discard)
+    return view
 
 
 @app.post("/api/duels/history")
@@ -1970,7 +2045,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "daily-record-v64"
+BUILD_TAG = "notifications-v65"
 
 
 @app.get("/api/version")

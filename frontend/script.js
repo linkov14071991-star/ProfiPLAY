@@ -23,6 +23,7 @@ const SCREENS = {
   party: "screen-party",
   profile: "screen-profile",
   leaderboard: "screen-leaderboard",
+  notifications: "screen-notifications",
   achievements: "screen-achievements",
   rules: "screen-rules",
   duelSetup: "screen-duel-setup",
@@ -87,7 +88,7 @@ function showScreen(name) {
   document.getElementById(SCREENS[name]).classList.add("active");
   window.scrollTo(0, 0);
   // при возврате на меню — обновим плашку рейтинга
-  if (name === "menu") { refreshProfile(); loadWeeklyBanner(); }
+  if (name === "menu") { refreshProfile(); loadWeeklyBanner(); refreshNotifBadge(); }
   if (name === "profile") loadProfileScreen();
   if (name === "compHub") loadWeekly();
   if (name === "duelSetup") loadDuelIncoming();
@@ -142,6 +143,42 @@ function applyAccessGate() {
     }
   });
 }
+// ===== Уведомления (результаты дуэлей) =====
+async function refreshNotifBadge() {
+  const badge = document.getElementById("notif-badge");
+  if (!badge) return;
+  try {
+    const res = await apiPost("/api/notifications", { init_data: INIT_DATA });
+    const n = (res && res.unread) || 0;
+    if (n > 0) { badge.textContent = n > 9 ? "9+" : String(n); badge.style.display = ""; }
+    else badge.style.display = "none";
+  } catch (e) {}
+}
+async function openNotifications() {
+  hapticLight();
+  showScreen("notifications");
+  const wrap = document.getElementById("notif-list");
+  wrap.innerHTML = '<p class="notif-empty">Загружаем…</p>';
+  const res = await apiPost("/api/notifications", { init_data: INIT_DATA });
+  const items = (res && res.items) || [];
+  wrap.innerHTML = items.length
+    ? items.map((it) => `
+      <div class="notif-item${it.read ? "" : " unread"}">
+        <div class="notif-text">${escapeHtml(it.text)}</div>
+        <div class="notif-time">${fmtNotifTime(it.created_at)}</div>
+      </div>`).join("")
+    : '<p class="notif-empty">Пока пусто. Здесь появятся результаты твоих дуэлей.</p>';
+  apiPost("/api/notifications/read", { init_data: INIT_DATA }).catch(() => {});
+  const badge = document.getElementById("notif-badge");
+  if (badge) badge.style.display = "none";
+}
+function fmtNotifTime(s) {
+  try {
+    const d = new Date(String(s).replace(" ", "T") + "Z");
+    return d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  } catch (e) { return ""; }
+}
+
 // ===== Таблицы лучших по игре (общий тотал / за неделю) =====
 async function loadGameLeaderboard(game, listId, period) {
   const el = document.getElementById(listId);
