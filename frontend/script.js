@@ -298,16 +298,24 @@ function enterSolo(game) {
 
 const DAILY_REC_MEDALS = ["🥇", "🥈", "🥉"];
 const DAILY_REC_MULT = { easy: "×1", medium: "×1.5", hard: "×2" };
-// Рекорд дня: топ-3 лучших результата по каждому уровню (за сегодня)
-async function loadDailyRecords(game) {
+const DAILY_REC_PERIOD = {};  // выбранная вкладка по каждой игре
+// Рекорды: топ-3 лучших результата по каждому уровню. period: "day" | "all"
+async function loadDailyRecords(game, period) {
   const el = document.getElementById(`${game}-daily-records`);
   if (!el) return;
-  el.innerHTML = "";
+  period = period || DAILY_REC_PERIOD[game] || "day";
+  DAILY_REC_PERIOD[game] = period;
+  const title = period === "all" ? "🏆 Рекорд за всё время" : "🔥 Рекорд дня";
+  const tabs = `<div class="dr-tabs">
+    <button class="dr-tab ${period === "day" ? "active" : ""}" onclick="loadDailyRecords('${game}','day')">Сегодня</button>
+    <button class="dr-tab ${period === "all" ? "active" : ""}" onclick="loadDailyRecords('${game}','all')">За всё время</button>
+  </div>`;
+  el.innerHTML = `<div class="daily-rec-title">${title}</div>${tabs}<div class="daily-rec-empty">Загрузка…</div>`;
   let data;
   try {
-    const r = await fetch(`/api/sprint/records?game=${game}`);
+    const r = await fetch(`/api/sprint/records?game=${game}&period=${period}`);
     data = await r.json();
-  } catch (e) { return; }
+  } catch (e) { el.innerHTML = ""; return; }
   const recs = (data && data.records) || {};
   const labels = (data && data.labels) || { easy: "Простая", medium: "Средняя", hard: "Сложная" };
   const unit = (data && data.unit) ? (" " + data.unit) : "";
@@ -315,7 +323,10 @@ async function loadDailyRecords(game) {
     ? `<div class="daily-rec-hint">меньше попыток — выше в топе</div>` : "";
   const hasAny = ["easy", "medium", "hard"].some((d) => (recs[d] || []).length);
   if (!hasAny) {
-    el.innerHTML = `<div class="daily-rec-title">🔥 Рекорд дня</div><div class="daily-rec-empty">Сегодня ещё никто не играл — будь первым!</div>`;
+    const empty = period === "all"
+      ? "Пока никто не играл — будь первым!"
+      : "Сегодня ещё никто не играл — будь первым!";
+    el.innerHTML = `<div class="daily-rec-title">${title}</div>${tabs}<div class="daily-rec-empty">${empty}</div>`;
     return;
   }
   const rows = ["easy", "medium", "hard"].map((d) => {
@@ -328,7 +339,7 @@ async function loadDailyRecords(game) {
       <span class="drl-list">${items}</span>
     </div>`;
   }).join("");
-  el.innerHTML = `<div class="daily-rec-title">🔥 Рекорд дня</div>${hint}${rows}`;
+  el.innerHTML = `<div class="daily-rec-title">${title}</div>${tabs}${hint}${rows}`;
 }
 function enterDuelFor(game) {
   hapticMedium();

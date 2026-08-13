@@ -1098,15 +1098,16 @@ async def get_game_leaderboard(
 
 
 @app.get("/api/sprint/records")
-async def sprint_daily_records(game: str = Query(...)):
-    """Рекорд дня по каждому уровню: топ-3 лучших результата (за сегодня)
-    для одиночных спринт-игр. Один игрок — один (лучший) результат в уровне.
-    numguess: лучший = наименьшее число попыток (сортировка по возрастанию)."""
+async def sprint_daily_records(game: str = Query(...), period: str = Query("day")):
+    """Рекорды по каждому уровню: топ-3 лучших результата для одиночных спринт-игр.
+    period: day (за сегодня) или all (за всё время). Один игрок — один (лучший)
+    результат. numguess: лучший = наименьшее число попыток (сортировка по возрастанию)."""
     if game not in DAILY_RECORD_GAMES and game != "numguess":
         raise HTTPException(status_code=400, detail="Bad game")
     asc = (game == "numguess")            # для numguess меньше попыток — лучше
     agg = "MIN" if asc else "MAX"
     order = "ASC" if asc else "DESC"
+    where_time = "" if period == "all" else "AND date(ds.created_at) = date('now')"
     out = {}
     with get_db() as db:
         for diff in ("easy", "medium", "hard"):
@@ -1115,8 +1116,7 @@ async def sprint_daily_records(game: str = Query(...)):
                 SELECT u.first_name, u.username, {agg}(ds.score) AS best
                 FROM daily_score ds
                 JOIN users u ON u.telegram_id = ds.user_id
-                WHERE ds.game = ? AND ds.difficulty = ?
-                  AND date(ds.created_at) = date('now')
+                WHERE ds.game = ? AND ds.difficulty = ? {where_time}
                 GROUP BY ds.user_id
                 ORDER BY best {order}, MIN(ds.created_at) ASC
                 LIMIT 3
@@ -1135,6 +1135,7 @@ async def sprint_daily_records(game: str = Query(...)):
         "labels": DIFF_LABELS,
         "order": "asc" if asc else "desc",
         "unit": "поп." if asc else "",
+        "period": "all" if period == "all" else "day",
     }
 
 
@@ -2136,7 +2137,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "numguess-record-v73"
+BUILD_TAG = "records-alltime-v74"
 
 
 @app.get("/api/version")
