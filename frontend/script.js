@@ -4299,7 +4299,7 @@ async function loadWeekly() {
   const res = await apiPost("/api/weekly/active", { init_data: INIT_DATA });
   weeklyActive = (res && res.active) ? res : null;
   if (!weeklyActive) {
-    block.innerHTML = '<div class="weekly-card weekly-empty">Пока нет активного вызова недели.</div>';
+    block.innerHTML = '<div class="weekly-card weekly-empty">Сейчас активного Вызова от Игоря нет.</div>';
     return;
   }
   const a = weeklyActive;
@@ -4316,7 +4316,7 @@ async function loadWeekly() {
     ? `<button class="btn btn-primary" onclick="openWeeklyPlay()" style="margin-top:10px;">⚔ Принять вызов</button>` : "";
   block.innerHTML = `
     <div class="weekly-card">
-      <div class="weekly-title">🔥 Вызов недели от ${escapeHtml(a.admin_name)}</div>
+      <div class="weekly-title">🔥 Вызов от Игоря</div>
       <div class="weekly-sub">Формат: <b>${WEEKLY_FMT_TITLES_JS[a.format] || a.format}</b> · побей <b>${a.admin_score}</b> → <b style="color:var(--brand-lime);">+50</b></div>
       ${status}${btn}
     </div>`;
@@ -4335,7 +4335,7 @@ async function loadWeeklyBanner() {
   el.style.display = "";
   el.innerHTML = `
     <div class="weekly-card" onclick="openWeeklyPlay()" style="cursor:pointer;">
-      <div class="weekly-title">🔥 Вызов недели от ${escapeHtml(a.admin_name)}</div>
+      <div class="weekly-title">🔥 Вызов от Игоря</div>
       <div class="weekly-sub">Обгони <b>${a.admin_score}</b> в «${WEEKLY_FMT_TITLES_JS[a.format] || a.format}» → <b style="color:var(--brand-lime);">+50</b> к рейтингу</div>
       <button class="btn btn-primary" style="margin-top:8px;">⚔ Принять вызов</button>
     </div>`;
@@ -4384,7 +4384,7 @@ async function weeklyUserFinish(payload) {
   showScreen("weeklyResult");
 }
 
-// --- Админ создаёт вызов недели ---
+// --- Админ создаёт Вызов от Игоря ---
 setupPills("wa-format", (v) => (weeklyAdmin.format = v));
 setupPills("wa-difficulty", (v) => (weeklyAdmin.difficulty = v));
 document.getElementById("btn-weekly-create").addEventListener("click", () => { hapticMedium(); showScreen("weeklyAdmin"); });
@@ -4409,7 +4409,7 @@ async function weeklyAdminFinish(payload) {
   const title = document.getElementById("weekly-res-title");
   const sub = document.getElementById("weekly-res-sub");
   if (prom) {
-    title.textContent = "🚀 Вызов недели создан!";
+    title.textContent = "🚀 Вызов от Игоря создан!";
     sub.textContent = "Разослан всем ученикам. Кто тебя обгонит — получит +50.";
     hapticSuccess();
   } else {

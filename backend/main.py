@@ -79,9 +79,9 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BOT_USERNAME = os.environ.get("BOT_USERNAME", "")  # без @, например 'profikarena_bot'
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@profimatika_inf")
 
-# Админы (могут создавать «Вызов недели»). Можно переопределить через env ADMIN_IDS="123,456".
+# Админы (могут создавать «Вызов от Игоря»). Можно переопределить через env ADMIN_IDS="123,456".
 ADMIN_IDS = {int(x) for x in os.environ.get("ADMIN_IDS", "1388800589").replace(" ", "").split(",") if x}
-WEBAPP_URL = os.environ.get("WEBAPP_URL", "")  # для рассылки вызова недели (кнопка + картинка)
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "")  # для рассылки Вызова от Игоря (кнопка + картинка)
 
 BASE_DIR = Path(__file__).parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
@@ -1862,17 +1862,19 @@ WEEKLY_BONUS = 50
 _bg_tasks: set = set()
 
 
-async def _broadcast_weekly(fmt: str, admin_score: int):
-    """Рассылает вызов недели всем пользователям (sendPhoto + web_app кнопка)."""
+async def _broadcast_weekly(fmt: str, admin_score: int, exclude_id: int = 0):
+    """Рассылает «Вызов от Игоря» всем пользователям (sendPhoto + web_app кнопка)."""
     if not (BOT_TOKEN and WEBAPP_URL):
         return
     with get_db() as db:
-        ids = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
+        ids = [r["telegram_id"] for r in db.execute(
+            "SELECT telegram_id FROM users WHERE telegram_id != ?", (exclude_id,)
+        ).fetchall()]
     fmt_title = WEEKLY_FMT_TITLES.get(fmt, fmt)
     caption = (
-        f"⚔ <b>Вызов недели уже здесь!</b>\n\n"
+        f"⚔ <b>Новый Вызов от Игоря!</b>\n\n"
         f"Формат: <b>{fmt_title}</b>. Счёт, который надо побить: <b>{admin_score}</b>.\n"
-        f"Обгони — и получи <b>+{WEEKLY_BONUS}</b> к рейтингу. Попытка одна, успеть можно всю неделю.\n\n"
+        f"Обгони — и получи <b>+{WEEKLY_BONUS}</b> к рейтингу. Попытка одна.\n\n"
         f"Жми «Принять вызов» 👇"
     )
     photo = f"{WEBAPP_URL.rstrip('/')}/profik-weekly.png"
@@ -1892,7 +1894,7 @@ async def _broadcast_weekly(fmt: str, admin_score: int):
 
 @app.post("/api/weekly/promote")
 async def weekly_promote(init_data: str = Body(...), duel_id: str = Body(...)):
-    """Админ: делает свою сыгранную дуэль активным вызовом недели и рассылает его."""
+    """Админ: делает свою сыгранную дуэль активным «Вызовом от Игоря» и рассылает его."""
     tg_user = get_verified_user(init_data)
     if tg_user["id"] not in ADMIN_IDS:
         raise HTTPException(status_code=403, detail="Not admin")
@@ -1918,10 +1920,10 @@ async def weekly_promote(init_data: str = Body(...), duel_id: str = Body(...)):
         # уведомление всем игрокам в приложении (кроме автора)
         db.execute(
             "INSERT INTO notification (user_id, text) SELECT telegram_id, ? FROM users WHERE telegram_id != ?",
-            (f"🔥 Новый вызов недели! Обгони {admin_score} в «{WEEKLY_FMT_TITLES.get(fmt, fmt)}» → +50",
+            (f"🔥 Новый Вызов от Игоря! Обгони {admin_score} в «{WEEKLY_FMT_TITLES.get(fmt, fmt)}» → +50",
              me["telegram_id"]),
         )
-    t = asyncio.create_task(_broadcast_weekly(fmt, admin_score))
+    t = asyncio.create_task(_broadcast_weekly(fmt, admin_score, me["telegram_id"]))
     _bg_tasks.add(t)
     t.add_done_callback(_bg_tasks.discard)
     return {"id": challenge_id, "admin_score": admin_score}
@@ -1929,7 +1931,7 @@ async def weekly_promote(init_data: str = Body(...), duel_id: str = Body(...)):
 
 @app.post("/api/weekly/active")
 async def weekly_active(init_data: str = Body(..., embed=True)):
-    """Текущий активный вызов недели + моя попытка (если играл)."""
+    """Текущий активный Вызов от Игоря + моя попытка (если играл)."""
     tg_user = get_verified_user(init_data)
     with get_db() as db:
         me = upsert_user(db, tg_user)
@@ -2006,7 +2008,7 @@ async def weekly_attempt(
                 "INSERT INTO rating_log (user_id, delta, source, balance_after) VALUES (?, ?, 'weekly', ?)",
                 (my_id, bonus, nr),
             )
-            _notify(db, my_id, f"🎉 Ты обыграл Вызов недели! +{bonus} к рейтингу")
+            _notify(db, my_id, f"🎉 Ты обыграл Вызов от Игоря! +{bonus} к рейтингу")
         db.execute(
             "INSERT INTO weekly_attempt (challenge_id, user_id, score, beat, bonus) VALUES (?, ?, ?, ?, ?)",
             (challenge_id, my_id, score, 1 if beat else 0, bonus),
@@ -2118,7 +2120,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "daily-records-v70"
+BUILD_TAG = "challenge-from-igor-v71"
 
 
 @app.get("/api/version")

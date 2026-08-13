@@ -37,7 +37,7 @@ _IMG_DIR = Path(__file__).resolve().parent.parent / "frontend"
 HERO_IMG = _IMG_DIR / "profik-hero.png"   # приветствие /start
 DUEL_IMG = _IMG_DIR / "profik-duel.png"   # приглашение на дуэль
 
-# Админы — им бот раз в неделю напоминает создать «Вызов недели»
+# Админы — им бот раз в неделю напоминает создать «Вызов от Игоря»
 ADMIN_IDS = {int(x) for x in os.environ.get("ADMIN_IDS", "1388800589").replace(" ", "").split(",") if x}
 # Username бота (для startapp-ссылок). Заполняется на старте через getMe.
 BOT_ME_USERNAME = os.environ.get("BOT_USERNAME", "")
@@ -134,7 +134,8 @@ async def start(message: Message, command: CommandObject):
 
 
 async def _weekly_reminder_loop():
-    """Раз в неделю (Пн 10:00 МСК) напоминает админам создать «Вызов недели»."""
+    """Раз в неделю (Пн 10:00 МСК) напоминает админам про «Вызов от Игоря».
+    Создавать можно в любой момент — это лишь необязательный нудж."""
     while True:
         now = datetime.datetime.utcnow() + datetime.timedelta(hours=3)  # МСК
         days_ahead = (0 - now.weekday()) % 7  # понедельник = 0
@@ -147,9 +148,9 @@ async def _weekly_reminder_loop():
             try:
                 await bot.send_message(
                     uid,
-                    "🗓 Пора запустить <b>Вызов недели</b>!\n\n"
-                    "Зайди в приложение → <b>Соревнования</b> → «Создать вызов недели», "
-                    "сыграй партию — и вызов улетит всем ученикам.",
+                    "⚔ Можно запустить новый <b>Вызов от Игоря</b>!\n\n"
+                    "Зайди в приложение → <b>Соревнования</b> → «Создать Вызов от Игоря», "
+                    "сыграй партию — и вызов улетит всем ученикам. Создавать можно в любой момент.",
                     reply_markup=_kb_open_app(WEBAPP_URL, "🎮 Открыть приложение"),
                     parse_mode="HTML",
                 )
