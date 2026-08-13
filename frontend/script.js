@@ -29,6 +29,7 @@ const SCREENS = {
   duelAccept: "screen-duel-accept",
   duelPlay: "screen-duel-play",
   duelWaiting: "screen-duel-waiting",
+  duelPick: "screen-duel-pick",
   duelResult: "screen-duel-result",
   duelHistory: "screen-duel-history",
   duelNg: "screen-duel-ng",
@@ -89,6 +90,7 @@ function showScreen(name) {
   if (name === "menu") { refreshProfile(); loadWeeklyBanner(); }
   if (name === "profile") loadProfileScreen();
   if (name === "compHub") loadWeekly();
+  if (name === "duelSetup") loadDuelIncoming();
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
@@ -3828,6 +3830,64 @@ async function duelCheckResult() {
   } else {
     alert("Соперник ещё не сыграл. Загляни позже.");
   }
+}
+
+// ===== Матчмейкинг: вызов игрока по рейтингу + входящие =====
+document.getElementById("btn-duel-challenge-player").addEventListener("click", openDuelPick);
+
+async function openDuelPick() {
+  hapticMedium();
+  showScreen("duelPick");
+  const wrap = document.getElementById("duel-pick-list");
+  wrap.innerHTML = '<p style="text-align:center; opacity:0.6;">Загружаем соперников…</p>';
+  const data = await apiPost("/api/leaderboard/neighbors", { init_data: INIT_DATA, radius: 5 });
+  const list = (data && data.leaders || []).filter((p) => !p.is_me);
+  if (!list.length) {
+    wrap.innerHTML = '<p style="text-align:center; opacity:0.7; padding:16px;">Пока нет соперников рядом по рейтингу. Позови друга по ссылке!</p>';
+    return;
+  }
+  wrap.innerHTML = list.map((p) => {
+    const name = p.first_name || (p.username ? "@" + p.username : "Игрок");
+    const lg = p.league ? (p.league.emoji + " " + (p.league.display || p.league.name)) : "";
+    return `<div class="pick-row">
+      <div class="pick-info">
+        <div class="pick-name">${p.place}. ${escapeHtml(name)}</div>
+        <div class="pick-sub">${lg} · рейтинг ${p.rating}</div>
+      </div>
+      <button class="btn btn-primary pick-btn" onclick="duelChallengePlayer(${p.telegram_id})">Вызвать</button>
+    </div>`;
+  }).join("");
+}
+
+async function duelChallengePlayer(targetId) {
+  hapticMedium();
+  const res = await apiPost(`/api/duel/${duel.duelId}/challenge`, { init_data: INIT_DATA, target_id: targetId });
+  if (res && res.ok) {
+    hapticSuccess();
+    alert(`⚔ Вызов отправлен игроку ${res.name || "сопернику"}!\n\nОн получит уведомление и сыграет те же вопросы. Итог узнаешь в «Проверить результат» или придёт уведомлением.`);
+    showScreen("menu");
+  } else {
+    alert("Не удалось отправить вызов. Возможно, дуэль уже кому-то отправлена.");
+  }
+}
+
+async function loadDuelIncoming() {
+  const el = document.getElementById("duel-incoming");
+  if (!el) return;
+  el.innerHTML = "";
+  const data = await apiPost("/api/duel/incoming", { init_data: INIT_DATA });
+  const list = (data && data.incoming) || [];
+  if (!list.length) return;
+  el.innerHTML = `<div class="incoming-title">📥 Тебя вызвали (${list.length}):</div>` + list.map((d) => {
+    const lg = d.from_league ? (d.from_league.emoji + " " + (d.from_league.display || d.from_league.name)) : "";
+    return `<div class="pick-row">
+      <div class="pick-info">
+        <div class="pick-name">${escapeHtml(d.from_name)}</div>
+        <div class="pick-sub">${lg} · ${WEEKLY_FMT_TITLES_JS[d.format] || d.format}</div>
+      </div>
+      <button class="btn btn-primary pick-btn" onclick="duelOpenIncoming('${d.duel_id}')">Принять</button>
+    </div>`;
+  }).join("");
 }
 
 function duelGetShareLink() {

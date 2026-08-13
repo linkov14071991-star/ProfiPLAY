@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=60">
+<link rel="stylesheet" href="/style.css?v=61">
 </head>
 <body>
 
@@ -1021,6 +1021,9 @@
       <div class="profik-chip-msg" data-profik-context="duel_start"></div>
     </div>
 
+    <!-- Входящие вызовы (кто позвал тебя на дуэль) -->
+    <div id="duel-incoming"></div>
+
     <div id="duel-topic-wrap">
       <label class="field">Темы <span class="field-hint">— можно несколько</span></label>
       <div class="pills pills-multi" id="duel-topic">
@@ -1122,12 +1125,27 @@
         <div class="stat-label">твой счёт</div>
       </div>
     </div>
-    <p style="text-align:center;"><b>Отправь ссылку сопернику</b> — как сыграет, узнаете кто победил.</p>
+    <p style="text-align:center;">Кинь вызов сопернику — как сыграет, узнаете кто победил.</p>
 
-    <button id="btn-duel-share" class="btn btn-primary btn-big">📤 Отправить в Telegram</button>
+    <button id="btn-duel-challenge-player" class="btn btn-primary btn-big">⚔ Вызвать игрока из рейтинга</button>
+    <button id="btn-duel-share" class="btn btn-secondary">🔗 Позвать друга (ссылка)</button>
     <button id="btn-duel-copy" class="btn btn-secondary">📋 Скопировать ссылку</button>
     <button id="btn-duel-check" class="btn btn-secondary">🔄 Проверить результат</button>
     <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+  </div>
+</section>
+
+<!-- ==== Блиц-дуэль: выбор соперника по рейтингу ==== -->
+<section id="screen-duel-pick" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>⚔ Вызвать игрока</h1>
+    <p class="subtitle">Соперники рядом с тобой по рейтингу — выбери, кому бросить вызов</p>
+    <div id="duel-pick-list"></div>
+    <button class="btn btn-link btn-back" data-back="duelWaiting">← Назад</button>
   </div>
 </section>
 
@@ -2105,6 +2123,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=60"></script>
+<script src="/script.js?v=61"></script>
 </body>
 </html>

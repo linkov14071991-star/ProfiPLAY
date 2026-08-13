@@ -1599,6 +1599,94 @@ async def duel_pending(init_data: str = Body(..., embed=True)):
         return {"duel_id": row["duel_id"]}
 
 
+async def _notify_challenge(target_id: int, from_name: str, league: dict, rating: int):
+    """Личное сообщение игроку от бота: тебя вызвали на дуэль."""
+    if not (BOT_TOKEN and WEBAPP_URL):
+        return
+    lg = f"{league.get('emoji', '')} {league.get('display') or league.get('name', '')}".strip()
+    text = (
+        f"🔥 <b>{from_name}</b> ({lg}, рейтинг {rating}) вызвал тебя на Блиц-дуэль!\n\n"
+        f"Прими вызов — сыграешь те же вопросы. Победа <b>+20</b> к рейтингу."
+    )
+    markup = {"inline_keyboard": [[{"text": "⚔ Принять вызов", "web_app": {"url": WEBAPP_URL}}]]}
+    async with httpx.AsyncClient(timeout=15) as client:
+        try:
+            await client.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                json={"chat_id": target_id, "text": text, "parse_mode": "HTML", "reply_markup": markup},
+            )
+        except Exception:
+            pass
+
+
+@app.post("/api/duel/incoming")
+async def duel_incoming(init_data: str = Body(..., embed=True)):
+    """Входящие вызовы: дуэли, где меня назначили соперником и я ещё не сыграл."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        rows = db.execute(
+            """
+            SELECT id, creator_id, creator_score, format, difficulty, created_at
+            FROM duels
+            WHERE opponent_id = ? AND status != 'complete' AND opponent_finished_at IS NULL
+            ORDER BY created_at DESC LIMIT 20
+            """,
+            (me["telegram_id"],),
+        ).fetchall()
+        out = []
+        for d in rows:
+            c = db.execute("SELECT * FROM users WHERE telegram_id = ?", (d["creator_id"],)).fetchone()
+            out.append({
+                "duel_id": d["id"],
+                "from_name": _display_name(c),
+                "from_rating": c["rating"] if c else 0,
+                "from_league": get_league(c["rating"]) if c else None,
+                "format": d["format"] or "sprint",
+                "score": d["creator_score"] or 0,
+            })
+    return {"incoming": out}
+
+
+@app.post("/api/duel/{duel_id}/challenge")
+async def duel_challenge(
+    duel_id: str,
+    init_data: str = Body(...),
+    target_id: int = Body(...),
+):
+    """Назначить сыгранную дуэль конкретному игроку (вызов по рейтингу) + уведомить его."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+        if not duel or duel["creator_id"] != me["telegram_id"]:
+            raise HTTPException(status_code=404, detail="Duel not found")
+        if duel["status"] == "complete":
+            raise HTTPException(status_code=400, detail="Already complete")
+        if duel["opponent_id"]:
+            raise HTTPException(status_code=400, detail="Already assigned")
+        if duel["creator_score"] is None:
+            raise HTTPException(status_code=400, detail="Play the duel first")
+        if target_id == me["telegram_id"]:
+            raise HTTPException(status_code=400, detail="Cannot challenge yourself")
+        target = db.execute("SELECT * FROM users WHERE telegram_id = ?", (target_id,)).fetchone()
+        if not target:
+            raise HTTPException(status_code=404, detail="Player not found")
+        db.execute("UPDATE duels SET opponent_id = ? WHERE id = ?", (target_id, duel_id))
+        db.execute(
+            "INSERT OR REPLACE INTO pending_duel (user_id, duel_id, created_at) VALUES (?, ?, datetime('now'))",
+            (target_id, duel_id),
+        )
+        from_name = _display_name(me)
+        from_rating = me["rating"]
+        from_league = get_league(from_rating)
+        target_name = _display_name(target)
+    t = asyncio.create_task(_notify_challenge(target_id, from_name, from_league, from_rating))
+    _bg_tasks.add(t)
+    t.add_done_callback(_bg_tasks.discard)
+    return {"ok": True, "name": target_name}
+
+
 @app.post("/api/duel/{duel_id}")
 async def duel_info(
     duel_id: str,
@@ -1877,7 +1965,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "weekly-banner-v62"
+BUILD_TAG = "matchmaking-v63"
 
 
 @app.get("/api/version")
