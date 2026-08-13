@@ -1220,33 +1220,24 @@ def _question_sig(q: dict) -> str:
 
 
 def _spread_questions(questions: list) -> list:
-    """Раскладывает вопросы так, чтобы одинаковые подтипы не шли подряд.
-    Жадно берём самую крупную группу, отличную от предыдущей (классический
-    алгоритм «reorganize»). Если ни одна группа не больше половины — соседних
-    одинаковых не будет вовсе."""
-    import heapq
-    from collections import defaultdict
-    groups = defaultdict(list)
-    for q in questions:
-        groups[_question_sig(q)].append(q)
-    for g in groups.values():
-        random.shuffle(g)
-    heap = [(-len(v), k) for k, v in groups.items()]
-    heapq.heapify(heap)
-    result = []
-    prev = None
-    while heap:
-        item = heapq.heappop(heap)
-        if item[1] == prev and heap:
-            alt = heapq.heappop(heap)
-            heapq.heappush(heap, item)
-            item = alt
-        cnt, key = item
-        result.append(groups[key].pop())
-        prev = key
-        if cnt + 1 < 0:
-            heapq.heappush(heap, (cnt + 1, key))
-    return result
+    """Честно перемешивает вопросы случайным образом и разводит соседние
+    одинаковые подтипы (шаблоны), чтобы вопросы одного типа не шли друг за
+    другом. В отличие от жадного «reorganize» не кластеризует по темам —
+    даёт по-настоящему случайный, разнообразный порядок каждый раз."""
+    sigged = [[_question_sig(q), q] for q in questions]
+    random.shuffle(sigged)
+    n = len(sigged)
+    for i in range(1, n):
+        if sigged[i][0] != sigged[i - 1][0]:
+            continue
+        # текущий совпал с предыдущим — ищем впереди вопрос другого подтипа,
+        # который не конфликтует ни слева (i-1), ни справа (i+1), и меняем местами
+        for j in range(i + 1, n):
+            sj = sigged[j][0]
+            if sj != sigged[i - 1][0] and (i + 1 >= n or sj != sigged[i + 1][0]):
+                sigged[i], sigged[j] = sigged[j], sigged[i]
+                break
+    return [q for _, q in sigged]
 
 
 def shuffle_question(q: dict) -> dict:
@@ -2137,7 +2128,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "records-alltime-v74"
+BUILD_TAG = "shuffle-questions-v75"
 
 
 @app.get("/api/version")
