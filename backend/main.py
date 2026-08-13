@@ -63,6 +63,9 @@ LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
 # Тусовка (party) = 0 очков, потому что играется на своей честности —
 # слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
 BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1}
+# Игры Спринта, где партия за 60 сек = один результат (для «Рекорда дня» по уровням)
+DAILY_RECORD_GAMES = ("sprint", "fastmath", "infomath")
+DIFF_LABELS = {"easy": "Простая", "medium": "Средняя", "hard": "Сложная"}
 # Duel XP
 XP_DUEL_WIN = 50
 XP_DUEL_DRAW = 30
@@ -798,6 +801,13 @@ async def add_training_points(
         xp_amount = round(points * XP_PER_RATING.get(source, 2.0))
         new_xp, level_info, leveled_up = award_xp(db, user_id, xp_amount, source)
 
+        # --- Рекорд дня по уровням (одиночные спринт-игры: партия = один результат) ---
+        if source in DAILY_RECORD_GAMES and correct is not None and correct > 0:
+            db.execute(
+                "INSERT INTO daily_score (user_id, game, difficulty, score) VALUES (?, ?, ?, ?)",
+                (user_id, source, difficulty, int(correct)),
+            )
+
         # --- Прогресс ежедневных квестов ---
         # Считаем правильные ответы: sprint(1:1), marathon(points/2), party — нет ответов
         if source == "sprint":
@@ -1078,6 +1088,38 @@ async def get_game_leaderboard(
         name = r["first_name"] or (f"@{r['username']}" if r["username"] else "Игрок")
         leaders.append({"place": i, "name": name, "score": r["total"]})
     return {"leaders": leaders}
+
+
+@app.get("/api/sprint/records")
+async def sprint_daily_records(game: str = Query(...)):
+    """Рекорд дня по каждому уровню: топ-3 лучших результата (за сегодня)
+    для одиночных спринт-игр. Один игрок — один (лучший) результат в уровне."""
+    if game not in DAILY_RECORD_GAMES:
+        raise HTTPException(status_code=400, detail="Bad game")
+    out = {}
+    with get_db() as db:
+        for diff in ("easy", "medium", "hard"):
+            rows = db.execute(
+                """
+                SELECT u.first_name, u.username, MAX(ds.score) AS best
+                FROM daily_score ds
+                JOIN users u ON u.telegram_id = ds.user_id
+                WHERE ds.game = ? AND ds.difficulty = ?
+                  AND date(ds.created_at) = date('now')
+                GROUP BY ds.user_id
+                ORDER BY best DESC, MIN(ds.created_at) ASC
+                LIMIT 3
+                """,
+                (game, diff),
+            ).fetchall()
+            out[diff] = [
+                {
+                    "name": r["first_name"] or (f"@{r['username']}" if r["username"] else "Игрок"),
+                    "score": r["best"],
+                }
+                for r in rows
+            ]
+    return {"records": out, "labels": DIFF_LABELS}
 
 
 @app.post("/api/leaderboard/me")
@@ -2076,7 +2118,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "bright-top3-v69"
+BUILD_TAG = "daily-records-v70"
 
 
 @app.get("/api/version")

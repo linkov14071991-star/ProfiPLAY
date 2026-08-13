@@ -148,6 +148,21 @@ def init_db():
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notification (user_id)")
 
+    # Рекорды одиночных спринт-игр: один результат = одна партия (для «Рекорда дня» по уровням)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS daily_score (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            game       TEXT NOT NULL,
+            difficulty TEXT NOT NULL,
+            score      INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_dscore_lookup ON daily_score (game, difficulty, created_at)")
+
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS xp_log (

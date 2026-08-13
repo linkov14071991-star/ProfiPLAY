@@ -286,10 +286,42 @@ function openGameMode(game) {
 }
 function enterSolo(game) {
   hapticMedium();
-  if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); }
+  if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); loadDailyRecords("sprint"); }
   else if (game === "numguess") showScreen("numguessSetup");
-  else if (game === "fastmath") showScreen("fastmathSetup");
-  else if (game === "infomath") showScreen("infomathSetup");
+  else if (game === "fastmath") { showScreen("fastmathSetup"); loadDailyRecords("fastmath"); }
+  else if (game === "infomath") { showScreen("infomathSetup"); loadDailyRecords("infomath"); }
+}
+
+const DAILY_REC_MEDALS = ["🥇", "🥈", "🥉"];
+const DAILY_REC_MULT = { easy: "×1", medium: "×1.5", hard: "×2" };
+// Рекорд дня: топ-3 лучших результата по каждому уровню (за сегодня)
+async function loadDailyRecords(game) {
+  const el = document.getElementById(`${game}-daily-records`);
+  if (!el) return;
+  el.innerHTML = "";
+  let data;
+  try {
+    const r = await fetch(`/api/sprint/records?game=${game}`);
+    data = await r.json();
+  } catch (e) { return; }
+  const recs = (data && data.records) || {};
+  const labels = (data && data.labels) || { easy: "Простая", medium: "Средняя", hard: "Сложная" };
+  const hasAny = ["easy", "medium", "hard"].some((d) => (recs[d] || []).length);
+  if (!hasAny) {
+    el.innerHTML = `<div class="daily-rec-title">🔥 Рекорд дня</div><div class="daily-rec-empty">Сегодня ещё никто не играл — будь первым!</div>`;
+    return;
+  }
+  const rows = ["easy", "medium", "hard"].map((d) => {
+    const list = recs[d] || [];
+    const items = list.length
+      ? list.map((p, i) => `<span class="drl-item">${DAILY_REC_MEDALS[i]} ${escapeHtml(p.name)} <b>${p.score}</b></span>`).join("")
+      : `<span class="drl-empty">—</span>`;
+    return `<div class="drl-row">
+      <span class="drl-lvl">${DAILY_REC_MULT[d]} ${labels[d] || ""}</span>
+      <span class="drl-list">${items}</span>
+    </div>`;
+  }).join("");
+  el.innerHTML = `<div class="daily-rec-title">🔥 Рекорд дня</div>${rows}`;
 }
 function enterDuelFor(game) {
   hapticMedium();
