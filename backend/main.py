@@ -2076,7 +2076,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "no-double-challenge-v68"
+BUILD_TAG = "bright-top3-v69"
 
 
 @app.get("/api/version")

@@ -189,12 +189,15 @@ async function loadGameLeaderboard(game, listId, period) {
     const d = await r.json();
     const leaders = d.leaders || [];
     if (!leaders.length) { el.innerHTML = '<div class="game-lb-empty">Пока пусто — будь первым!</div>'; return; }
-    el.innerHTML = leaders.map((l) => `
-      <div class="game-lb-row${l.place <= 3 ? " top" : ""}">
+    el.innerHTML = leaders.map((l) => {
+      const medal = l.place === 1 ? " top1" : l.place === 2 ? " top2" : l.place === 3 ? " top3" : "";
+      return `
+      <div class="game-lb-row${medal}">
         <span class="game-lb-place">${l.place}</span>
         <span class="game-lb-name">${escapeHtml(l.name)}</span>
         <span class="game-lb-score">${l.score}</span>
-      </div>`).join("");
+      </div>`;
+    }).join("");
   } catch (e) { el.innerHTML = '<div class="game-lb-empty">Не удалось загрузить</div>'; }
 }
 function setupGameLeaderboard(game, wrapId, listId) {
