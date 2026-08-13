@@ -92,6 +92,9 @@ function showScreen(name) {
   if (name === "profile") loadProfileScreen();
   if (name === "compHub") loadWeekly();
   if (name === "duelSetup") loadDuelIncoming();
+  if (name === "sprintSetup") loadDailyRecords("sprint");
+  if (name === "fastmathSetup") loadDailyRecords("fastmath");
+  if (name === "infomathSetup") loadDailyRecords("infomath");
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
