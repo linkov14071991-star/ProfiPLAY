@@ -1016,7 +1016,12 @@ async def get_game_leaderboard(
     if not sources:
         raise HTTPException(status_code=400, detail="Bad game")
     limit = max(1, min(50, limit))
-    where_time = "AND rl.created_at >= datetime('now', '-7 days')" if period == "week" else ""
+    if period == "week":
+        where_time = "AND rl.created_at >= datetime('now', '-7 days')"
+    elif period == "day":
+        where_time = "AND date(rl.created_at) = date('now')"
+    else:
+        where_time = ""
     placeholders = ",".join("?" * len(sources))
     with get_db() as db:
         rows = db.execute(
@@ -1965,7 +1970,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "matchmaking-v63"
+BUILD_TAG = "daily-record-v64"
 
 
 @app.get("/api/version")
