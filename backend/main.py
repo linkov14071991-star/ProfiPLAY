@@ -744,6 +744,7 @@ async def add_training_points(
     difficulty: str = Body("easy"),
     lives: int = Body(None),         # только для марафона
     game: str = Body(None),          # конкретная командная игра (croco/gromko/alias/spy/whoami/timebank)
+    tries: int = Body(None),         # только для numguess: число попыток (для «Рекорда дня»)
 ):
     """
     Начисляем очки от тренировки с учётом множителей и дневного капа.
@@ -806,6 +807,12 @@ async def add_training_points(
             db.execute(
                 "INSERT INTO daily_score (user_id, game, difficulty, score) VALUES (?, ?, ?, ?)",
                 (user_id, source, difficulty, int(correct)),
+            )
+        # numguess: рекорд дня = наименьшее число попыток (score = tries, сортировка по возрастанию)
+        elif source == "numguess" and tries and tries > 0:
+            db.execute(
+                "INSERT INTO daily_score (user_id, game, difficulty, score) VALUES (?, ?, ?, ?)",
+                (user_id, "numguess", difficulty, int(tries)),
             )
 
         # --- Прогресс ежедневных квестов ---
@@ -1093,21 +1100,25 @@ async def get_game_leaderboard(
 @app.get("/api/sprint/records")
 async def sprint_daily_records(game: str = Query(...)):
     """Рекорд дня по каждому уровню: топ-3 лучших результата (за сегодня)
-    для одиночных спринт-игр. Один игрок — один (лучший) результат в уровне."""
-    if game not in DAILY_RECORD_GAMES:
+    для одиночных спринт-игр. Один игрок — один (лучший) результат в уровне.
+    numguess: лучший = наименьшее число попыток (сортировка по возрастанию)."""
+    if game not in DAILY_RECORD_GAMES and game != "numguess":
         raise HTTPException(status_code=400, detail="Bad game")
+    asc = (game == "numguess")            # для numguess меньше попыток — лучше
+    agg = "MIN" if asc else "MAX"
+    order = "ASC" if asc else "DESC"
     out = {}
     with get_db() as db:
         for diff in ("easy", "medium", "hard"):
             rows = db.execute(
-                """
-                SELECT u.first_name, u.username, MAX(ds.score) AS best
+                f"""
+                SELECT u.first_name, u.username, {agg}(ds.score) AS best
                 FROM daily_score ds
                 JOIN users u ON u.telegram_id = ds.user_id
                 WHERE ds.game = ? AND ds.difficulty = ?
                   AND date(ds.created_at) = date('now')
                 GROUP BY ds.user_id
-                ORDER BY best DESC, MIN(ds.created_at) ASC
+                ORDER BY best {order}, MIN(ds.created_at) ASC
                 LIMIT 3
                 """,
                 (game, diff),
@@ -1119,7 +1130,12 @@ async def sprint_daily_records(game: str = Query(...)):
                 }
                 for r in rows
             ]
-    return {"records": out, "labels": DIFF_LABELS}
+    return {
+        "records": out,
+        "labels": DIFF_LABELS,
+        "order": "asc" if asc else "desc",
+        "unit": "поп." if asc else "",
+    }
 
 
 @app.post("/api/leaderboard/me")
@@ -2120,7 +2136,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "daily-records-fix-v72"
+BUILD_TAG = "numguess-record-v73"
 
 
 @app.get("/api/version")

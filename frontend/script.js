@@ -95,6 +95,7 @@ function showScreen(name) {
   if (name === "sprintSetup") loadDailyRecords("sprint");
   if (name === "fastmathSetup") loadDailyRecords("fastmath");
   if (name === "infomathSetup") loadDailyRecords("infomath");
+  if (name === "numguessSetup") loadDailyRecords("numguess");
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
@@ -290,7 +291,7 @@ function openGameMode(game) {
 function enterSolo(game) {
   hapticMedium();
   if (game === "sprint") { renderSprintRecord(); showScreen("sprintSetup"); loadDailyRecords("sprint"); }
-  else if (game === "numguess") showScreen("numguessSetup");
+  else if (game === "numguess") { showScreen("numguessSetup"); loadDailyRecords("numguess"); }
   else if (game === "fastmath") { showScreen("fastmathSetup"); loadDailyRecords("fastmath"); }
   else if (game === "infomath") { showScreen("infomathSetup"); loadDailyRecords("infomath"); }
 }
@@ -309,6 +310,9 @@ async function loadDailyRecords(game) {
   } catch (e) { return; }
   const recs = (data && data.records) || {};
   const labels = (data && data.labels) || { easy: "Простая", medium: "Средняя", hard: "Сложная" };
+  const unit = (data && data.unit) ? (" " + data.unit) : "";
+  const hint = (data && data.order === "asc")
+    ? `<div class="daily-rec-hint">меньше попыток — выше в топе</div>` : "";
   const hasAny = ["easy", "medium", "hard"].some((d) => (recs[d] || []).length);
   if (!hasAny) {
     el.innerHTML = `<div class="daily-rec-title">🔥 Рекорд дня</div><div class="daily-rec-empty">Сегодня ещё никто не играл — будь первым!</div>`;
@@ -317,14 +321,14 @@ async function loadDailyRecords(game) {
   const rows = ["easy", "medium", "hard"].map((d) => {
     const list = recs[d] || [];
     const items = list.length
-      ? list.map((p, i) => `<span class="drl-item">${DAILY_REC_MEDALS[i]} ${escapeHtml(p.name)} <b>${p.score}</b></span>`).join("")
+      ? list.map((p, i) => `<span class="drl-item">${DAILY_REC_MEDALS[i]} ${escapeHtml(p.name)} <b>${p.score}${unit}</b></span>`).join("")
       : `<span class="drl-empty">—</span>`;
     return `<div class="drl-row">
       <span class="drl-lvl">${DAILY_REC_MULT[d]} ${labels[d] || ""}</span>
       <span class="drl-list">${items}</span>
     </div>`;
   }).join("");
-  el.innerHTML = `<div class="daily-rec-title">🔥 Рекорд дня</div>${rows}`;
+  el.innerHTML = `<div class="daily-rec-title">🔥 Рекорд дня</div>${hint}${rows}`;
 }
 function enterDuelFor(game) {
   hapticMedium();
@@ -1830,7 +1834,7 @@ function numguessEnd(win) {
     hapticSuccess();
     fb.textContent = `✅ Это ${numguess.target}! За ${numguess.tries} попыток`;
     fb.className = "tb-num-feedback win";
-    awardTraining("numguess", 1, { correct: 1, difficulty: numguess.difficulty }).then(showRatingToast);
+    awardTraining("numguess", 1, { correct: 1, difficulty: numguess.difficulty, tries: numguess.tries }).then(showRatingToast);
   } else {
     hapticError();
     fb.textContent = `⌛ Время! Было ${numguess.target}`;
