@@ -256,6 +256,14 @@ def _compute_user_stats(db, user_id: int) -> dict:
     return stats
 
 
+def _notify(db, user_id: int, text: str):
+    """Записать уведомление игроку (появится в колокольчике на главной)."""
+    try:
+        db.execute("INSERT INTO notification (user_id, text) VALUES (?, ?)", (user_id, text))
+    except Exception:
+        pass
+
+
 def _check_and_grant_achievements(db, user_id: int) -> list:
     """
     Проверяет все ачивки для игрока, выдаёт новые.
@@ -282,6 +290,7 @@ def _check_and_grant_achievements(db, user_id: int) -> list:
                     (user_id, ach["id"]),
                 )
                 award_xp(db, user_id, ach["xp"], f"ach:{ach['id']}")
+                _notify(db, user_id, f"🏆 Новая ачивка: {ach['icon']} {ach['title']}")
                 newly.append({
                     "id": ach["id"], "title": ach["title"], "desc": ach["desc"],
                     "icon": ach["icon"], "xp": ach["xp"],
@@ -1849,6 +1858,12 @@ async def weekly_promote(init_data: str = Body(...), duel_id: str = Body(...)):
         challenge_id = cur.lastrowid
         fmt = duel["format"] or "sprint"
         admin_score = duel["creator_score"]
+        # уведомление всем игрокам в приложении (кроме автора)
+        db.execute(
+            "INSERT INTO notification (user_id, text) SELECT telegram_id, ? FROM users WHERE telegram_id != ?",
+            (f"🔥 Новый вызов недели! Обгони {admin_score} в «{WEEKLY_FMT_TITLES.get(fmt, fmt)}» → +50",
+             me["telegram_id"]),
+        )
     t = asyncio.create_task(_broadcast_weekly(fmt, admin_score))
     _bg_tasks.add(t)
     t.add_done_callback(_bg_tasks.discard)
@@ -1934,6 +1949,7 @@ async def weekly_attempt(
                 "INSERT INTO rating_log (user_id, delta, source, balance_after) VALUES (?, ?, 'weekly', ?)",
                 (my_id, bonus, nr),
             )
+            _notify(db, my_id, f"🎉 Ты обыграл Вызов недели! +{bonus} к рейтингу")
         db.execute(
             "INSERT INTO weekly_attempt (challenge_id, user_id, score, beat, bonus) VALUES (?, ?, ?, ?, ?)",
             (challenge_id, my_id, score, 1 if beat else 0, bonus),
@@ -2045,7 +2061,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "notifications-v65"
+BUILD_TAG = "notif-weekly-ach-v66"
 
 
 @app.get("/api/version")
