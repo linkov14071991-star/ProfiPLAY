@@ -1761,6 +1761,20 @@ async def duel_challenge(
         target = db.execute("SELECT * FROM users WHERE telegram_id = ?", (target_id,)).fetchone()
         if not target:
             raise HTTPException(status_code=404, detail="Player not found")
+        # нельзя звать того же игрока повторно в ту же игру, пока он не принял первый вызов
+        pending = db.execute(
+            """SELECT 1 FROM duels
+               WHERE creator_id = ? AND opponent_id = ? AND format = ?
+                 AND status != 'complete' AND opponent_finished_at IS NULL
+                 AND id != ?
+               LIMIT 1""",
+            (me["telegram_id"], target_id, duel["format"], duel_id),
+        ).fetchone()
+        if pending:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{_display_name(target)} ещё не принял твой прошлый вызов в этой игре. Дождись ответа.",
+            )
         db.execute("UPDATE duels SET opponent_id = ? WHERE id = ?", (target_id, duel_id))
         db.execute(
             "INSERT OR REPLACE INTO pending_duel (user_id, duel_id, created_at) VALUES (?, ?, datetime('now'))",
@@ -2062,7 +2076,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "notif-challenge-v67"
+BUILD_TAG = "no-double-challenge-v68"
 
 
 @app.get("/api/version")

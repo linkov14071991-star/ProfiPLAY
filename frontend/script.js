@@ -3903,6 +3903,8 @@ async function duelChallengePlayer(targetId) {
     hapticSuccess();
     alert(`⚔ Вызов отправлен игроку ${res.name || "сопернику"}!\n\nОн получит уведомление и сыграет те же вопросы. Итог узнаешь в «Проверить результат» или придёт уведомлением.`);
     showScreen("menu");
+  } else if (res && res.detail) {
+    alert("⏳ " + res.detail);
   } else {
     alert("Не удалось отправить вызов. Возможно, дуэль уже кому-то отправлена.");
   }
