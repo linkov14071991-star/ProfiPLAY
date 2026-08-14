@@ -2128,7 +2128,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "python-cloud-timeout-v80"
+BUILD_TAG = "python-onboard-nowait-v81"
 
 
 @app.get("/api/version")

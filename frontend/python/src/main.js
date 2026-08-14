@@ -243,17 +243,24 @@ const onboarding = new Onboarding(els.onboardWrap, tg);
 
 function startOnboarding() {
   show('onboard');
-  onboarding.start(async (profile) => {
-    state.profile = profile;
-    telemetry.emit('onboarding_done', { goal: profile.goal, experience: profile.experience, exam: !!profile.examMonth });
-    // Пометим все уроки в юнитах ДО стартового как пройденные (по рекомендации теста)
-    if (profile.startUnitIndex > 0) {
-      for (let i = 0; i < profile.startUnitIndex; i++) {
-        for (const l of CURRICULUM[i].lessons) state.done.add(l.id);
+  onboarding.start((profile) => {
+    try {
+      state.profile = profile;
+      telemetry.emit('onboarding_done', { goal: profile.goal, experience: profile.experience, exam: !!profile.examMonth });
+      // Пометим все уроки в юнитах ДО стартового как пройденные (по рекомендации теста)
+      if (profile.startUnitIndex > 0) {
+        for (let i = 0; i < profile.startUnitIndex; i++) {
+          for (const l of CURRICULUM[i].lessons) state.done.add(l.id);
+        }
       }
+      goToTree();     // переходим в курс сразу — не ждём облачное сохранение
+      saveState();    // сохраняем в фоне (в localStorage пишется синхронно внутри set)
+    } catch (e) {
+      const d = document.createElement('div');
+      d.style.cssText = 'position:fixed;inset:0;background:#15161b;color:#ffd9d9;padding:18px;font:13px/1.5 sans-serif;overflow:auto;z-index:99999;white-space:pre-wrap';
+      d.textContent = '⚠️ Не удалось открыть курс.\n\n' + String((e && e.stack) || e) + '\n\nСкриншот пришли — починим.';
+      document.body.appendChild(d);
     }
-    await saveState();
-    goToTree();
   });
 }
 
