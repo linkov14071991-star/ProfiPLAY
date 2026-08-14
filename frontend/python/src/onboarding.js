@@ -34,7 +34,7 @@ export class Onboarding {
   // Шаг 0 — приветствие
   renderWelcome() {
     this.wrap.innerHTML = `
-      <img class="onboard-cat-img" src="profik.svg" alt="Профик">
+      <img class="onboard-cat-img" src="profik-cat.png" alt="Профик">
       <div class="onboard-title">Привет! Я Профик.</div>
       <div class="onboard-sub">Помогу тебе подготовиться к экзамену по информатике.<br>Пройдём Python шаг за шагом.</div>
       <div class="onboard-options"></div>

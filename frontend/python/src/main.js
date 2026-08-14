@@ -3,7 +3,7 @@
 import { sound } from './audio/sound_engine.js';
 import { cloud } from './state/cloud_storage.js';
 import { telemetry } from './telemetry/client.js';
-import { Onboarding } from './onboarding.js';
+import { Onboarding } from './onboarding.js?v=2';
 import { TreeScreen } from './tree.js';
 import { LessonPlayer } from './lesson.js';
 import { TheoryScreen } from './theory_screen.js';
@@ -546,7 +546,7 @@ function renderProfikBanner() {
   else msg = profikMessage(state, todayKey(), shiftDay);
   els.profikBanner.classList.remove('hidden');
   els.profikBanner.innerHTML = `
-    <img class="pb-cat" src="profik.svg" alt="Профик">
+    <img class="pb-cat" src="profik-cat.png" alt="Профик">
     <div class="pb-body">
       <div class="pb-text">${escapeHtml(msg.text)}</div>
       ${msg.action ? `<button class="pb-action" id="pb-action">${
@@ -972,7 +972,7 @@ function showResult(result) {
   if (lastMastery) {
     growthHtml = `<div class="result-growth mastery">🎓 ${escapeHtml(lastMastery.text)}</div>`;
   } else if (unitDone && IDENTITY[lastCompletedUnit]) {
-    growthHtml = `<div class="result-growth with-cat"><img class="growth-cat" src="profik.svg" alt="Профик">${escapeHtml(IDENTITY[lastCompletedUnit])}</div>`;
+    growthHtml = `<div class="result-growth with-cat"><img class="growth-cat" src="profik-cat.png" alt="Профик">${escapeHtml(IDENTITY[lastCompletedUnit])}</div>`;
   }
   // предложение видео/канала: при «застрял» — видео, при закрытии темы — иногда канал
   let extraBtn = '';
