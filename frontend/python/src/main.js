@@ -3,7 +3,7 @@
 import { sound } from './audio/sound_engine.js';
 import { cloud } from './state/cloud_storage.js';
 import { telemetry } from './telemetry/client.js';
-import { Onboarding } from './onboarding.js?v=2';
+import { Onboarding } from './onboarding.js';
 import { TreeScreen } from './tree.js';
 import { LessonPlayer } from './lesson.js';
 import { TheoryScreen } from './theory_screen.js';
@@ -1051,10 +1051,18 @@ els.treeBack.addEventListener('click', () => {
 
 // ── boot ──
 (async () => {
-  await loadState();
-  emitAppOpen();
-  if (state.profile) goToTree();
-  else startOnboarding();
+  try {
+    await loadState();
+    emitAppOpen();
+    if (state.profile) goToTree();
+    else startOnboarding();
+  } catch (e) {
+    // не оставляем чёрный экран — показываем причину
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;inset:0;background:#15161b;color:#ffd9d9;padding:18px;font:13px/1.5 sans-serif;overflow:auto;z-index:99999;white-space:pre-wrap';
+    d.textContent = '⚠️ Курс не загрузился.\n\n' + String((e && e.stack) || e) + '\n\nСделай скриншот и пришли — починим.';
+    document.body.appendChild(d);
+  }
 })();
 
 // Воронка: открытие приложения с когортой и возвратом (для D1/D7).

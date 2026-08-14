@@ -2128,7 +2128,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "cache-static-v78"
+BUILD_TAG = "python-boot-guard-v79"
 
 
 @app.get("/api/version")
@@ -2149,9 +2149,11 @@ _NO_CACHE = {
     "Pragma": "no-cache",
     "Expires": "0",
 }
-# JS и CSS версионируются через ?v=… в index.html → при обновлении меняется URL,
-# поэтому их можно кэшировать надолго (immutable) — браузер не качает их каждый раз.
-_ASSET_CACHE = {"Cache-Control": "public, max-age=31536000, immutable"}
+# JS и CSS: кэшируем, но с обязательной ревалидацией (no-cache = условный запрос,
+# сервер отвечает 304 без тела, если файл не менялся). Так браузер не качает
+# заново тяжёлый script.js каждый раз, но всегда получает свежую версию —
+# безопасно даже для неверсионированных модулей (Python-курс импортирует их без ?v=).
+_ASSET_CACHE = {"Cache-Control": "no-cache"}
 # Картинки/шрифты не версионируются — кэшируем на час (обновления доезжают быстро).
 _MEDIA_CACHE = {"Cache-Control": "public, max-age=3600"}
 
