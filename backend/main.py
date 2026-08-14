@@ -2128,7 +2128,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "python-boot-guard-v79"
+BUILD_TAG = "python-cloud-timeout-v80"
 
 
 @app.get("/api/version")

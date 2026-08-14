@@ -12,20 +12,28 @@ function lsSet(key, val) {
   try { localStorage.setItem(key, val); } catch { /* переполнение — не критично */ }
 }
 
+// На некоторых клиентах Telegram колбэк CloudStorage не вызывается вовсе —
+// без таймаута промис висит вечно и приложение застревает на чёрном экране.
 function cloudGet(key) {
   if (!hasCloud) return Promise.resolve(null);
   return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    const t = setTimeout(() => finish(null), 1500);
     try {
-      tg.CloudStorage.getItem(key, (err, val) => resolve(err ? null : (val || null)));
-    } catch { resolve(null); }
+      tg.CloudStorage.getItem(key, (err, val) => { clearTimeout(t); finish(err ? null : (val || null)); });
+    } catch { clearTimeout(t); finish(null); }
   });
 }
 function cloudSet(key, val) {
   if (!hasCloud) return Promise.resolve(false);
   return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    const t = setTimeout(() => finish(false), 1500);
     try {
-      tg.CloudStorage.setItem(key, val, (err, ok) => resolve(!err && ok !== false));
-    } catch { resolve(false); }
+      tg.CloudStorage.setItem(key, val, (err, ok) => { clearTimeout(t); finish(!err && ok !== false); });
+    } catch { clearTimeout(t); finish(false); }
   });
 }
 

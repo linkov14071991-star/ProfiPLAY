@@ -1052,7 +1052,8 @@ els.treeBack.addEventListener('click', () => {
 // ── boot ──
 (async () => {
   try {
-    await loadState();
+    // не ждём вечно, если хранилище зависнет — максимум 2.5 сек, потом идём дальше
+    await Promise.race([loadState(), new Promise((r) => setTimeout(r, 2500))]);
     emitAppOpen();
     if (state.profile) goToTree();
     else startOnboarding();
