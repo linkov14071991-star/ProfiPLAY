@@ -2128,7 +2128,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "python-mascot-v77"
+BUILD_TAG = "cache-static-v78"
 
 
 @app.get("/api/version")
@@ -2143,13 +2143,27 @@ async def version():
 # Всё, что не /api/*, отдаём как статику
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
-# Запрет кэширования: чтобы Telegram/браузер всегда брали свежие index.html/script.js/style.css
-# после каждого деплоя, а не показывали старую версию из кэша.
+# HTML всегда свежий (в нём ссылки с ?v=… на js/css) — иначе после деплоя покажется старая версия.
 _NO_CACHE = {
     "Cache-Control": "no-cache, no-store, must-revalidate",
     "Pragma": "no-cache",
     "Expires": "0",
 }
+# JS и CSS версионируются через ?v=… в index.html → при обновлении меняется URL,
+# поэтому их можно кэшировать надолго (immutable) — браузер не качает их каждый раз.
+_ASSET_CACHE = {"Cache-Control": "public, max-age=31536000, immutable"}
+# Картинки/шрифты не версионируются — кэшируем на час (обновления доезжают быстро).
+_MEDIA_CACHE = {"Cache-Control": "public, max-age=3600"}
+
+
+def _cache_headers(path: str) -> dict:
+    p = path.lower()
+    if p.endswith((".js", ".css")):
+        return _ASSET_CACHE
+    if p.endswith((".png", ".jpg", ".jpeg", ".svg", ".webp", ".gif", ".ico",
+                   ".woff", ".woff2", ".ttf", ".mp3", ".wav")):
+        return _MEDIA_CACHE
+    return _NO_CACHE  # html и всё остальное — без кэша, всегда свежее
 
 
 @app.get("/")
@@ -2161,7 +2175,7 @@ async def root():
 async def spa(path: str):
     file_path = FRONTEND_DIR / path
     if file_path.exists() and file_path.is_file():
-        return FileResponse(file_path, headers=_NO_CACHE)
+        return FileResponse(file_path, headers=_cache_headers(path))
     return FileResponse(FRONTEND_DIR / "index.html", headers=_NO_CACHE)
 
 
