@@ -34,6 +34,7 @@ const SCREENS = {
   duelResult: "screen-duel-result",
   duelHistory: "screen-duel-history",
   duelNg: "screen-duel-ng",
+  duelSchulte: "screen-duel-schulte",
   gameMode: "screen-game-mode",
   crocoSetup: "screen-croco-setup",
   crocoTheme: "screen-croco-theme", // выбор темы (перед словом)
@@ -284,6 +285,7 @@ const GAME_MODE_META = {
   numguess: { icon: "🔢", title: "Угадай число" },
   fastmath: { icon: "🧮", title: "Быстрый счёт" },
   infomath: { icon: "🖥️", title: "IT-разминка" },
+  schulte:  { icon: "🧠", title: "Таблица Шульте" },
 };
 function openGameMode(game) {
   currentGame = game;
@@ -300,6 +302,7 @@ function enterSolo(game) {
   else if (game === "numguess") { showScreen("numguessSetup"); loadDailyRecords("numguess"); }
   else if (game === "fastmath") { showScreen("fastmathSetup"); loadDailyRecords("fastmath"); }
   else if (game === "infomath") { showScreen("infomathSetup"); loadDailyRecords("infomath"); }
+  else if (game === "schulte") { resetLbTabs("schulte-lb"); showScreen("schulteSetup"); }
 }
 
 const DAILY_REC_MEDALS = ["🥇", "🥈", "🥉"];
@@ -499,8 +502,7 @@ function routeToGame(game) {
   if (game === "party") { showScreen("party"); return; }
   if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); return; }
   // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
-  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath") { openGameMode(game); return; }
-  if (game === "schulte") { currentGame = "schulte"; resetLbTabs("schulte-lb"); showScreen("schulteSetup"); return; }
+  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath" || game === "schulte") { openGameMode(game); return; }
   if (game === "alias") { showScreen("aliasSetup"); return; }
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); return; }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
@@ -3707,6 +3709,7 @@ const DUEL_FMT_TITLES = {
   fastmath: "🧮 Быстрый счёт · 10 примеров × 15 сек",
   infomath: "🖥️ IT-разминка · 10 вопросов × 15 сек",
   numguess: "🔢 Угадай число · кто быстрее и точнее",
+  schulte: "🧠 Таблица Шульте · один расклад, кто быстрее",
 };
 
 setupPills("duel-difficulty", (v) => (duel.difficulty = v));
@@ -3751,6 +3754,7 @@ async function duelStartCreate() {
   duel.duelId = res.duel_id;
   duel.role = "creator";
   if (duel.format === "numguess") { duelNgStart(res); return; }
+  if (duel.format === "schulte") { duelSchulteStart(res); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;
@@ -3827,6 +3831,54 @@ document.getElementById("btn-duel-ng-guess").addEventListener("click", duelNgGue
 document.getElementById("duel-ng-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); duelNgGuess(); }
 });
+
+// ===== Дуэль «Таблица Шульте» (оба играют один расклад, кто быстрее) =====
+function duelSchulteStart(info) {
+  duel.schSize = info.size || 5;
+  duel.schOrder = info.order || [];
+  duel.schN = duel.schOrder.length;
+  duel.schTarget = 1;
+  duel.schLocked = false;
+  const grid = document.getElementById("duel-schulte-grid");
+  grid.style.gridTemplateColumns = `repeat(${duel.schSize}, 1fr)`;
+  grid.innerHTML = duel.schOrder.map((x) => `<button class="schulte-cell" data-n="${x}">${x}</button>`).join("");
+  grid.querySelectorAll(".schulte-cell").forEach((c) => { c.onclick = () => duelSchulteTap(c); });
+  document.getElementById("duel-schulte-target").textContent = 1;
+  document.getElementById("duel-schulte-timer").textContent = "0.0";
+  showScreen("duelSchulte");
+  duel.schStart = performance.now();
+  clearInterval(duel.schTimer);
+  duel.schTimer = setInterval(() => {
+    document.getElementById("duel-schulte-timer").textContent = fmtSec(performance.now() - duel.schStart);
+  }, 100);
+}
+function duelSchulteTap(cell) {
+  if (duel.schLocked) return;
+  const n = parseInt(cell.dataset.n, 10);
+  if (n === duel.schTarget) {
+    cell.classList.add("found"); cell.disabled = true; hapticLight();
+    duel.schTarget++;
+    if (duel.schTarget > duel.schN) { duelSchulteEnd(true); return; }
+    document.getElementById("duel-schulte-target").textContent = duel.schTarget;
+  } else {
+    hapticError(); cell.classList.add("wrong");
+    setTimeout(() => cell.classList.remove("wrong"), 300);
+  }
+}
+async function duelSchulteEnd(solved) {
+  if (duel.schLocked) return;
+  duel.schLocked = true;
+  clearInterval(duel.schTimer);
+  const elapsed = Math.round(performance.now() - duel.schStart);
+  duel.schLastMs = solved ? elapsed : 0;
+  if (solved) hapticSuccess(); else hapticError();
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch: { solved: solved, elapsed_ms: elapsed } });
+  if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
+  refreshProfile();
+  if (res.status === "complete") duelShowResult(res);
+  else duelShowWaiting(res);
+}
+document.getElementById("btn-duel-schulte-stop").addEventListener("click", () => duelSchulteEnd(false));
 
 function duelRenderQ() {
   const q = duel.questions[duel.qIndex];
@@ -3914,8 +3966,15 @@ async function duelSubmit() {
 }
 
 function duelShowWaiting(info) {
-  const myScore = duel.role === "creator" ? info.creator_score : info.opponent_score;
-  document.getElementById("duel-wait-score").textContent = myScore;
+  const scoreEl = document.getElementById("duel-wait-score");
+  const labelEl = scoreEl.nextElementSibling;
+  if (duel.format === "schulte") {
+    scoreEl.textContent = duel.schLastMs ? (fmtSec(duel.schLastMs) + " с") : "—";
+    if (labelEl) labelEl.textContent = "твоё время";
+  } else {
+    scoreEl.textContent = duel.role === "creator" ? info.creator_score : info.opponent_score;
+    if (labelEl) labelEl.textContent = "твой счёт";
+  }
   showScreen("duelWaiting");
   hapticSuccess();
 }
@@ -4286,8 +4345,13 @@ async function duelOpenIncoming(duelId) {
   const fmtEl = document.getElementById("duel-accept-fmt");
   if (fmtEl) fmtEl.textContent = (DUEL_FMT_TITLES[info.format] || "Блиц-дуэль") + ". Готов?";
   if (info.creator_score) {
-    document.getElementById("duel-accept-opp-score").textContent = info.creator_score;
-    document.getElementById("duel-accept-opp-score-wrap").style.display = "block";
+    const wrap = document.getElementById("duel-accept-opp-score-wrap");
+    if (info.format === "schulte") {
+      wrap.querySelector(".record-badge").innerHTML = `Соперник прошёл за: <b>${fmtSec(10000000 - info.creator_score)} с</b>`;
+    } else {
+      document.getElementById("duel-accept-opp-score").textContent = info.creator_score;
+    }
+    wrap.style.display = "block";
   }
   showScreen("duelAccept");
 }
@@ -4296,13 +4360,14 @@ async function duelAcceptChallenge() {
   hapticMedium();
   duel.mode = "duel";
   const res = await apiPost(`/api/duel/${duel.duelId}/join`, {init_data: INIT_DATA});
-  if (!res || res.error || (res.format !== "numguess" && !res.questions)) {
+  if (!res || res.error || (res.format !== "numguess" && res.format !== "schulte" && !res.questions)) {
     alert("Не смог присоединиться. Возможно, дуэль уже занята.");
     showScreen("menu");
     return;
   }
   duel.format = res.format || "sprint";
   if (duel.format === "numguess") { duelNgStart(res); return; }
+  if (duel.format === "schulte") { duelSchulteStart(res); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;
@@ -4413,7 +4478,7 @@ document.getElementById("btn-duel-history").addEventListener("click", openDuelHi
 // ==============================
 // ======= ВЫЗОВ НЕДЕЛИ =========
 // ==============================
-const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число" };
+const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте" };
 let weeklyActive = null;
 const weeklyAdmin = { format: "sprint", difficulty: "medium" };
 

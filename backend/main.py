@@ -1062,7 +1062,7 @@ GAME_LB_SOURCES = {
     "numguess": ["numguess", "duel_numguess"],
     "fastmath": ["fastmath", "duel_fastmath"],
     "infomath": ["infomath", "duel_infomath"],
-    "schulte":  ["schulte"],
+    "schulte":  ["schulte", "duel_schulte"],
     "marathon": ["marathon"],
     "python":   ["python"],
 }
@@ -1177,13 +1177,15 @@ DUEL_QUESTIONS_COUNT = 10
 DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
 
 # Форматы дуэли = игры Спринта
-DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess")
+DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte")
 # Дуэль «Угадай число»: диапазон и время (как в соло — 60 сек на всех уровнях)
 DUEL_NG = {
     "easy":   {"maxN": 10,   "time_ms": 60000},
     "medium": {"maxN": 100,  "time_ms": 60000},
     "hard":   {"maxN": 1000, "time_ms": 60000},
 }
+# Дуэль «Таблица Шульте»: сторона поля по сложности (оба играют один расклад, кто быстрее)
+DUEL_SCHULTE = {"easy": 4, "medium": 5, "hard": 6}
 # Рейтинг за бой в общий зачёт: победа / ничья / поражение
 DUEL_RATING = {"win": 20, "draw": 0, "loss": -20}
 
@@ -1215,6 +1217,15 @@ def _score_numguess(payload: dict) -> int:
     elapsed_ms = max(0, int(payload.get("elapsed_ms", 0)))
     score = 1000 - (guesses - 1) * 80 - (elapsed_ms // 1000) * 5
     return max(100, score)
+
+
+def _score_schulte(payload: dict) -> int:
+    """Очки за дуэль «Таблица Шульте»: прошёл таблицу → тем больше, чем быстрее.
+    Инвертируем время, чтобы работало общее сравнение «больше очков = победа»."""
+    if not payload or not payload.get("solved"):
+        return 0
+    elapsed_ms = max(1, int(payload.get("elapsed_ms", 0)))
+    return max(1, 10_000_000 - elapsed_ms)
 
 
 def _gen_duel_id() -> str:
@@ -1328,7 +1339,17 @@ def _display_name(row) -> str:
     return row["first_name"] or row["username"] or "Игрок"
 
 
-def _duel_outcome_line(won, is_draw, my_score, opp_score, delta, opp_name):
+def _fmt_duel_score(fmt: str, score: int) -> str:
+    """Человекочитаемый счёт дуэли. Для schulte очки инвертированы из времени
+    (10_000_000 − мс) → показываем секунды; 0 = не прошёл."""
+    if fmt == "schulte":
+        if not score or score <= 0:
+            return "—"
+        return f"{(10_000_000 - score) / 1000:.1f} с"
+    return str(score)
+
+
+def _duel_outcome_line(won, is_draw, my_score, opp_score, delta, opp_name, fmt="sprint"):
     """Короткая строка результата дуэли для уведомления."""
     if is_draw:
         head = f"🤝 Ничья с {opp_name}"
@@ -1337,7 +1358,8 @@ def _duel_outcome_line(won, is_draw, my_score, opp_score, delta, opp_name):
     else:
         head = f"😞 Поражение от {opp_name}"
     sign = "+" if delta > 0 else ""
-    line = f"{head} · {my_score}:{opp_score} · рейтинг {sign}{delta}"
+    ms, os_ = _fmt_duel_score(fmt, my_score), _fmt_duel_score(fmt, opp_score)
+    line = f"{head} · {ms}:{os_} · рейтинг {sign}{delta}"
     return head, line
 
 
@@ -1430,10 +1452,11 @@ def _try_finalize_duel(db, duel_id: str):
         (creator["telegram_id"], winner == creator["telegram_id"], cs, os_, d_a, _display_name(opponent)),
         (opponent["telegram_id"], winner == opponent["telegram_id"], os_, cs, d_b, _display_name(creator)),
     ):
-        head, line = _duel_outcome_line(won_flag, is_draw, my_s, opp_s, dlt, opp_nm)
+        head, line = _duel_outcome_line(won_flag, is_draw, my_s, opp_s, dlt, opp_nm, fmt)
         db.execute("INSERT INTO notification (user_id, text) VALUES (?, ?)", (uid, line))
         sign = "+" if dlt > 0 else ""
-        msgs.append((uid, f"⚔ <b>Блиц-дуэль завершена!</b>\n\n{head}\nСчёт: <b>{my_s}:{opp_s}</b> · рейтинг: <b>{sign}{dlt}</b>"))
+        _sc = f"{_fmt_duel_score(fmt, my_s)}:{_fmt_duel_score(fmt, opp_s)}"
+        msgs.append((uid, f"⚔ <b>Блиц-дуэль завершена!</b>\n\n{head}\nСчёт: <b>{_sc}</b> · рейтинг: <b>{sign}{dlt}</b>"))
     return msgs
 
 
@@ -1550,6 +1573,19 @@ async def duel_create(
                 "maxN": cfg["maxN"], "secret": secret, "time_limit_ms": cfg["time_ms"],
             }
 
+        if format == "schulte":
+            size = DUEL_SCHULTE.get(difficulty)
+            if not size:
+                raise HTTPException(status_code=400, detail="Bad difficulty")
+            order = list(range(1, size * size + 1))
+            random.shuffle(order)
+            payload = {"format": "schulte", "size": size, "order": order}
+            db.execute(
+                "INSERT INTO duels (id, creator_id, difficulty, questions_json, format) VALUES (?, ?, ?, ?, ?)",
+                (duel_id, creator["telegram_id"], difficulty, json.dumps(payload), format),
+            )
+            return {"duel_id": duel_id, "format": "schulte", "size": size, "order": order}
+
         if format == "sprint":
             pool = _pool_for(difficulty, topic)
             if len(pool) < DUEL_QUESTIONS_COUNT:
@@ -1611,6 +1647,8 @@ async def duel_join(
     if fmt == "numguess":
         return {**common, "maxN": payload["maxN"], "secret": payload["secret"],
                 "time_limit_ms": payload["time_ms"]}
+    if fmt == "schulte":
+        return {**common, "size": payload["size"], "order": payload["order"]}
     public_questions = [{"q": q["q"], "options": q["options"]} for q in payload]
     return {
         **common,
@@ -1625,6 +1663,7 @@ async def duel_submit(
     init_data: str = Body(...),
     answers: list = Body(None),      # MCQ-форматы (sprint/fastmath/infomath)
     ng: dict = Body(None),           # результат «Угадай число»
+    sch: dict = Body(None),          # результат «Таблица Шульте» {solved, elapsed_ms}
 ):
     """Сдать результат. Считаем очки, если оба сдали — финализируем."""
     tg_user = get_verified_user(init_data)
@@ -1637,8 +1676,11 @@ async def duel_submit(
         if duel["status"] == "complete":
             raise HTTPException(status_code=400, detail="Duel already complete")
 
-        if (duel["format"] or "sprint") == "numguess":
+        _fmt = duel["format"] or "sprint"
+        if _fmt == "numguess":
             my_score = _score_numguess(ng or {})
+        elif _fmt == "schulte":
+            my_score = _score_schulte(sch or {})
         else:
             questions = json.loads(duel["questions_json"])
             my_score = _score_answers(questions, answers or [])
@@ -2139,7 +2181,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "schulte-game-v82"
+BUILD_TAG = "schulte-duel-v83"
 
 
 @app.get("/api/version")
