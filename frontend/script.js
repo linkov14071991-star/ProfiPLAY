@@ -67,6 +67,9 @@ const SCREENS = {
   schulteSetup: "screen-schulte-setup",
   schultePlay: "screen-schulte-play",
   schulteResult: "screen-schulte-result",
+  gorbovSetup: "screen-gorbov-setup",
+  gorbovPlay: "screen-gorbov-play",
+  gorbovResult: "screen-gorbov-result",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -101,6 +104,7 @@ function showScreen(name) {
   if (name === "infomathSetup") loadDailyRecords("infomath");
   if (name === "numguessSetup") loadDailyRecords("numguess");
   if (name === "schulteSetup") { loadDailyRecords("schulte"); loadGameLeaderboard("schulte", "schulte-lb-list", "all"); }
+  if (name === "gorbovSetup") { loadDailyRecords("gorbov"); loadGameLeaderboard("gorbov", "gorbov-lb-list", "all"); }
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
@@ -237,6 +241,7 @@ const BACK_PARENT = {
   fastmathResult: "fastmathSetup",
   infomathResult: "infomathSetup",
   schulteResult: "schulteSetup",
+  gorbovResult: "gorbovSetup",
   aliasResult: "aliasSetup",
   gromkoResult: "gromkoSetup",
   tbResult: "tbSetup",
@@ -249,7 +254,8 @@ const BACK_PARENT = {
   numguessSetup: "gameMode",
   fastmathSetup: "gameMode",
   infomathSetup: "gameMode",
-  schulteSetup: "sprintHub",
+  schulteSetup: "gameMode",
+  gorbovSetup: "sprintHub",
   duelSetup: "gameMode",
   marathonSetup: "marathonHub",
   crocoSetup: "party",
@@ -327,17 +333,18 @@ async function loadDailyRecords(game, period) {
   } catch (e) { el.innerHTML = ""; return; }
   const recs = (data && data.records) || {};
   const labels = (data && data.labels) || { easy: "Простая", medium: "Средняя", hard: "Сложная" };
-  // форматирование результата по игре: schulte — время в секундах, numguess — попытки
+  const isTimeGame = (game === "schulte" || game === "gorbov");
+  // форматирование результата по игре: время-игры — секунды, numguess — попытки
   const fmtScore = (score) => {
-    if (game === "schulte") return fmtSec(score) + " с";
+    if (isTimeGame) return fmtSec(score) + " с";
     if (game === "numguess") return score + " поп.";
     return String(score);
   };
-  const hintText = game === "schulte" ? "меньше времени — выше в топе" : "меньше попыток — выше в топе";
+  const hintText = isTimeGame ? "меньше времени — выше в топе" : "меньше попыток — выше в топе";
   const hint = (data && data.order === "asc") ? `<div class="daily-rec-hint">${hintText}</div>` : "";
-  // подписи уровней: у Шульте — размер поля
-  const lvlLabels = game === "schulte" ? { easy: "4×4", medium: "5×5", hard: "6×6" } : labels;
-  const lvlMult = game === "schulte" ? { easy: "", medium: "", hard: "" } : DAILY_REC_MULT;
+  // подписи уровней: у таблиц — размер поля
+  const lvlLabels = isTimeGame ? { easy: "4×4", medium: "5×5", hard: "6×6" } : labels;
+  const lvlMult = isTimeGame ? { easy: "", medium: "", hard: "" } : DAILY_REC_MULT;
   const hasAny = ["easy", "medium", "hard"].some((d) => (recs[d] || []).length);
   if (!hasAny) {
     const empty = period === "all"
@@ -503,6 +510,7 @@ function routeToGame(game) {
   if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); return; }
   // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
   if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath" || game === "schulte") { openGameMode(game); return; }
+  if (game === "gorbov") { currentGame = "gorbov"; resetLbTabs("gorbov-lb"); showScreen("gorbovSetup"); return; }
   if (game === "alias") { showScreen("aliasSetup"); return; }
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); return; }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
@@ -566,6 +574,12 @@ const GAME_INFO = {
     body: `<p>Классический тренажёр памяти, скорости и внимания. Перед тобой поле с числами вразнобой — находи и тапай их <b>по порядку</b>: 1, 2, 3… до конца.</p>
       <p>Играешь <b>на время</b>: чем быстрее пройдёшь таблицу — тем лучше рекорд. Размер поля выбираешь сам: 4×4 (×1), 5×5 (×1.5), 6×6 (×2).</p>
       <p>За каждую пройденную таблицу — рейтинг × множитель, <b>кап 100 очков в день</b>. «Рекорд дня» и таблица лучших — по лучшему времени (меньше — выше).</p>`,
+  },
+  gorbov: {
+    title: "🔴 Чёрно-красная таблица",
+    body: `<p>Усложнённая Шульте на <b>переключение внимания</b> (проба Горбова). В поле — <span style="color:#e5484d;font-weight:700;">красные</span> и чёрные числа вперемешку.</p>
+      <p>Находи их <b>по очереди, чередуя цвет</b>: <span style="color:#e5484d;font-weight:700;">красную 1</span> → чёрную самую большую → <span style="color:#e5484d;font-weight:700;">красную 2</span> → следующую чёрную по убыванию — и так до конца. Сверху всегда подсказка, что искать.</p>
+      <p>На время: быстрее пройдёшь — лучше рекорд. Размер: 4×4 (×1), 5×5 (×1.5), 6×6 (×2). За таблицу — рейтинг × множитель, <b>кап 100/день</b>.</p>`,
   },
   infomath: {
     title: "🖥️ IT-разминка",
@@ -1971,6 +1985,107 @@ document.getElementById("btn-schulte-start").addEventListener("click", schulteSt
 document.getElementById("btn-schulte-again").addEventListener("click", schulteStart);
 document.getElementById("btn-schulte-stop").addEventListener("click", schulteStop);
 setupGameLeaderboard("schulte", "schulte-lb", "schulte-lb-list");
+
+// ==============================
+// === ЧЁРНО-КРАСНАЯ ТАБЛИЦА (Горбов–Шульте) ===
+// ==============================
+// Переключение внимания: красные по возрастанию (1,2,3…) и чёрные по убыванию
+// (…,3,2,1), чередуя цвет каждый шаг. На время, рекорд = лучшее время.
+const GORBOV_SIZE = { easy: 4, medium: 5, hard: 6 };
+const gorbov = { difficulty: "easy", size: 4, n: 16, redN: 8, blackN: 8, redNext: 1, blackNext: 8, color: "red", found: 0, startTime: 0, timer: null, locked: false };
+const gorbovBestMs = {};
+
+setupPills("gorbov-difficulty", (v) => { gorbov.difficulty = v; updateGorbovMult(); });
+function updateGorbovMult() {
+  const dm = { easy: 1, medium: 1.5, hard: 2 }[gorbov.difficulty] || 1;
+  const el = document.getElementById("gorbov-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
+}
+updateGorbovMult();
+
+function gorbovRenderTarget() {
+  const el = document.getElementById("gorbov-target");
+  if (!el) return;
+  if (gorbov.color === "red") { el.className = "gorbov-target red"; el.textContent = "🔴 " + gorbov.redNext; }
+  else { el.className = "gorbov-target black"; el.textContent = "⚫ " + gorbov.blackNext; }
+}
+
+function gorbovStart() {
+  hapticMedium();
+  gorbov.size = GORBOV_SIZE[gorbov.difficulty] || 4;
+  gorbov.n = gorbov.size * gorbov.size;
+  gorbov.redN = Math.ceil(gorbov.n / 2);
+  gorbov.blackN = Math.floor(gorbov.n / 2);
+  gorbov.redNext = 1;
+  gorbov.blackNext = gorbov.blackN;
+  gorbov.color = "red";
+  gorbov.found = 0;
+  gorbov.locked = false;
+  const cells = [];
+  for (let i = 1; i <= gorbov.redN; i++) cells.push({ color: "red", num: i });
+  for (let i = 1; i <= gorbov.blackN; i++) cells.push({ color: "black", num: i });
+  for (let k = cells.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [cells[k], cells[j]] = [cells[j], cells[k]]; }
+  const grid = document.getElementById("gorbov-grid");
+  grid.style.gridTemplateColumns = `repeat(${gorbov.size}, 1fr)`;
+  grid.innerHTML = cells.map((c) => `<button class="gs-cell ${c.color}" data-color="${c.color}" data-n="${c.num}">${c.num}</button>`).join("");
+  grid.querySelectorAll(".gs-cell").forEach((el) => { el.onclick = () => gorbovTap(el); });
+  gorbovRenderTarget();
+  document.getElementById("gorbov-timer").textContent = "0.0";
+  showScreen("gorbovPlay");
+  gorbov.startTime = performance.now();
+  gorbov.timer = setInterval(() => {
+    document.getElementById("gorbov-timer").textContent = fmtSec(performance.now() - gorbov.startTime);
+  }, 100);
+}
+
+function gorbovTap(cell) {
+  if (gorbov.locked) return;
+  const color = cell.dataset.color;
+  const num = parseInt(cell.dataset.n, 10);
+  const wantNum = gorbov.color === "red" ? gorbov.redNext : gorbov.blackNext;
+  if (color === gorbov.color && num === wantNum) {
+    cell.classList.add("found"); cell.disabled = true; hapticLight();
+    gorbov.found++;
+    if (gorbov.color === "red") gorbov.redNext++; else gorbov.blackNext--;
+    if (gorbov.found >= gorbov.n) { gorbovFinish(); return; }
+    if (gorbov.color === "red") gorbov.color = (gorbov.blackNext >= 1) ? "black" : "red";
+    else gorbov.color = (gorbov.redNext <= gorbov.redN) ? "red" : "black";
+    gorbovRenderTarget();
+  } else {
+    hapticError(); cell.classList.add("wrong");
+    setTimeout(() => cell.classList.remove("wrong"), 300);
+  }
+}
+
+async function gorbovFinish() {
+  gorbov.locked = true;
+  if (gorbov.timer) { clearInterval(gorbov.timer); gorbov.timer = null; }
+  const ms = Math.round(performance.now() - gorbov.startTime);
+  hapticSuccess();
+  const prevBest = gorbovBestMs[gorbov.difficulty];
+  const isRecord = prevBest == null || ms < prevBest;
+  if (isRecord) gorbovBestMs[gorbov.difficulty] = ms;
+  document.getElementById("gorbov-r-time").textContent = fmtSec(ms);
+  document.getElementById("gorbov-r-best").textContent = fmtSec(gorbovBestMs[gorbov.difficulty]) + " с";
+  document.getElementById("gorbov-new-record").style.display = isRecord ? "block" : "none";
+  const res = await awardTraining("gorbov", 1, { correct: 1, difficulty: gorbov.difficulty, ms });
+  document.getElementById("gorbov-r-rating").textContent = (res && res.delta_awarded) || 0;
+  document.getElementById("gorbov-r-xp").textContent = (res && res.xp_awarded) || 0;
+  showScreen("gorbovResult");
+}
+
+function gorbovStop() {
+  if (gorbov.timer) { clearInterval(gorbov.timer); gorbov.timer = null; }
+  gorbov.locked = true;
+  currentGame = "gorbov";
+  resetLbTabs("gorbov-lb");
+  showScreen("gorbovSetup");
+}
+
+document.getElementById("btn-gorbov-start").addEventListener("click", gorbovStart);
+document.getElementById("btn-gorbov-again").addEventListener("click", gorbovStart);
+document.getElementById("btn-gorbov-stop").addEventListener("click", gorbovStop);
+setupGameLeaderboard("gorbov", "gorbov-lb", "gorbov-lb-list");
 
 // ==============================
 // ======= БЫСТРЫЙ СЧЁТ =========

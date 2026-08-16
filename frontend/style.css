@@ -2371,6 +2371,25 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .schulte-cell.found { background: var(--brand-lime); color: #14210a; border-color: var(--brand-lime); opacity: 0.5; }
 .schulte-cell.wrong { background: #e5484d; border-color: #e5484d; color: #fff; animation: schulteShake 0.3s; }
 @keyframes schulteShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+/* Чёрно-красная таблица (Горбов–Шульте) — светлые ячейки, красный/чёрный текст */
+.gs-grid { display: grid; gap: 8px; width: 100%; max-width: 440px; margin: 14px auto; padding: 0 4px; }
+.gs-cell {
+  aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(17px, 5.5vw, 28px); font-weight: 800;
+  background: #f3f1fa; border: 2px solid rgba(0, 0, 0, 0.06); border-radius: 12px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+.gs-cell.red { color: #e5484d; }
+.gs-cell.black { color: #1a1a1a; }
+.gs-cell:active { transform: scale(0.94); }
+.gs-cell.found { background: var(--brand-lime); opacity: 0.45; }
+.gs-cell.wrong { background: #ffd5d5; border-color: #e5484d; animation: schulteShake 0.3s; }
+.gorbov-target { font-weight: 800; }
+.gorbov-target.red { color: #ff8a8a; }
+.gorbov-target.black { color: #fff; }
 .drl-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px dashed rgba(102,54,233,0.15); }
 .drl-row:first-of-type { border-top: none; }
 .drl-lvl { flex-shrink: 0; width: 92px; font-weight: 700; font-size: 12.5px; color: var(--brand-purple); }

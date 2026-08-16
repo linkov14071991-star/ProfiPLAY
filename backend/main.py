@@ -54,6 +54,7 @@ XP_PER_RATING = {
     "fastmath": 2.0,  # быстрый счёт: как спринт
     "infomath": 2.0,  # IT-разминка: как спринт
     "schulte": 2.0,   # таблица Шульте: как спринт
+    "gorbov": 2.0,    # чёрно-красная таблица (Горбов–Шульте): как спринт
 }
 
 # Множитель по сложности вопросов
@@ -63,11 +64,13 @@ LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
 # Базовая ставка рейтинга за один правильный ответ.
 # Тусовка (party) = 0 очков, потому что играется на своей честности —
 # слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
-BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10}
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12}
 # Игры Спринта, где партия за 60 сек = один результат (для «Рекорда дня» по уровням)
 DAILY_RECORD_GAMES = ("sprint", "fastmath", "infomath")
-# Игры, где рекорд = МЕНЬШЕ лучше (сортировка по возрастанию): numguess — попытки, schulte — время
-ASC_RECORD_GAMES = ("numguess", "schulte")
+# Игры «на время»: партия = прохождение таблицы, рекорд = мс (лог времени в daily_score)
+TIME_RECORD_GAMES = ("schulte", "gorbov")
+# Игры, где рекорд = МЕНЬШЕ лучше (сортировка по возрастанию): numguess — попытки, время-игры — мс
+ASC_RECORD_GAMES = ("numguess", "schulte", "gorbov")
 DIFF_LABELS = {"easy": "Простая", "medium": "Средняя", "hard": "Сложная"}
 # Duel XP
 XP_DUEL_WIN = 50
@@ -818,11 +821,11 @@ async def add_training_points(
                 "INSERT INTO daily_score (user_id, game, difficulty, score) VALUES (?, ?, ?, ?)",
                 (user_id, "numguess", difficulty, int(tries)),
             )
-        # schulte: рекорд дня = наименьшее время прохождения таблицы (score = мс)
-        elif source == "schulte" and ms and ms > 0:
+        # игры «на время» (schulte/gorbov): рекорд = наименьшее время таблицы (score = мс)
+        elif source in TIME_RECORD_GAMES and ms and ms > 0:
             db.execute(
                 "INSERT INTO daily_score (user_id, game, difficulty, score) VALUES (?, ?, ?, ?)",
-                (user_id, "schulte", difficulty, int(ms)),
+                (user_id, source, difficulty, int(ms)),
             )
 
         # --- Прогресс ежедневных квестов ---
@@ -1063,6 +1066,7 @@ GAME_LB_SOURCES = {
     "fastmath": ["fastmath", "duel_fastmath"],
     "infomath": ["infomath", "duel_infomath"],
     "schulte":  ["schulte", "duel_schulte"],
+    "gorbov":   ["gorbov"],
     "marathon": ["marathon"],
     "python":   ["python"],
 }
@@ -1145,7 +1149,7 @@ async def sprint_daily_records(game: str = Query(...), period: str = Query("day"
         "records": out,
         "labels": DIFF_LABELS,
         "order": "asc" if asc else "desc",
-        "unit": {"numguess": "поп.", "schulte": "мс"}.get(game, ""),
+        "unit": {"numguess": "поп.", "schulte": "мс", "gorbov": "мс"}.get(game, ""),
         "period": "all" if period == "all" else "day",
     }
 
@@ -2181,7 +2185,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "schulte-duel-v83"
+BUILD_TAG = "gorbov-game-v84"
 
 
 @app.get("/api/version")

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=72">
+<link rel="stylesheet" href="/style.css?v=74">
 </head>
 <body>
 
@@ -202,6 +202,15 @@
         <div class="title">Таблица Шульте</div>
         <div class="desc">Находи числа по порядку на скорость. Память и внимание.</div>
         <div class="card-stat" id="card-schulte-stat"></div>
+      </div>
+    </div>
+    <div class="game-card" data-game="gorbov">
+      <button class="game-info-btn" data-info="gorbov" aria-label="Правила">?</button>
+      <div class="icon">🔴</div>
+      <div class="info">
+        <div class="title">Чёрно-красная таблица</div>
+        <div class="desc">Красные вверх, чёрные вниз — чередуя. Переключение внимания.</div>
+        <div class="card-stat" id="card-gorbov-stat"></div>
       </div>
     </div>
   </div>
@@ -1658,6 +1667,75 @@
   </div>
 </section>
 
+<!-- ==== Экраны: Чёрно-красная таблица (Горбов–Шульте) ==== -->
+<section id="screen-gorbov-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🔴 Чёрно-красная таблица</h1>
+    <p class="subtitle">Красные по возрастанию, чёрные по убыванию — по очереди. На время.</p>
+
+    <label class="field">Размер поля</label>
+    <div class="pills" id="gorbov-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>4×4</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>5×5</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>6×6</span><span class="pill-hint">×2</span></button>
+    </div>
+
+    <div id="gorbov-daily-records" class="daily-rec"></div>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">За пройденную таблицу — рейтинг <b id="gorbov-mult">×1</b> · макс 100/день</div>
+    </div>
+
+    <button id="btn-gorbov-start" class="btn btn-primary btn-big">Начать</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+
+    <div class="game-lb" id="gorbov-lb">
+      <div class="game-lb-tabs">
+        <button class="game-lb-tab active" data-period="all">За всё время</button>
+        <button class="game-lb-tab" data-period="week">За неделю</button>
+      </div>
+      <div class="game-lb-list" id="gorbov-lb-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-gorbov-play" class="screen">
+  <div class="sprint-topbar">
+    <div class="timer" id="gorbov-timer">0.0</div>
+    <div class="score-big">Найди <span id="gorbov-target" class="gorbov-target red">🔴 1</span></div>
+  </div>
+  <div class="gs-grid" id="gorbov-grid"></div>
+  <button id="btn-gorbov-stop" class="btn btn-link">Сдаться</button>
+</section>
+
+<section id="screen-gorbov-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1 id="gorbov-result-title">🏁 Таблица пройдена!</h1>
+    <div id="gorbov-new-record" class="new-record-badge" style="display:none;">🎉 Твой рекорд дня!</div>
+    <div class="result-stats">
+      <div class="stat stat-ok">
+        <div class="stat-num"><span id="gorbov-r-time">0.0</span> с</div>
+        <div class="stat-label">Твоё время</div>
+      </div>
+    </div>
+    <div class="reward-strip">
+      <div class="reward-chip rating pos">🏆 <span id="gorbov-r-rating">0</span></div>
+      <div class="reward-chip xp pos">💎 <span id="gorbov-r-xp">0</span> XP</div>
+    </div>
+    <p style="text-align:center; opacity:0.7; margin:12px 0 8px;">Лучшее время сегодня: <b id="gorbov-r-best">—</b></p>
+    <button id="btn-gorbov-again" class="btn btn-primary btn-big">🚀 Ещё раз</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
@@ -2240,6 +2318,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=73"></script>
+<script src="/script.js?v=74"></script>
 </body>
 </html>
