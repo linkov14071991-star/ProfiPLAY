@@ -63,6 +63,9 @@ const SCREENS = {
   infomathSetup: "screen-infomath-setup",
   infomathPlay: "screen-infomath-play",
   infomathResult: "screen-infomath-result",
+  schulteSetup: "screen-schulte-setup",
+  schultePlay: "screen-schulte-play",
+  schulteResult: "screen-schulte-result",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -96,6 +99,7 @@ function showScreen(name) {
   if (name === "fastmathSetup") loadDailyRecords("fastmath");
   if (name === "infomathSetup") loadDailyRecords("infomath");
   if (name === "numguessSetup") loadDailyRecords("numguess");
+  if (name === "schulteSetup") { loadDailyRecords("schulte"); loadGameLeaderboard("schulte", "schulte-lb-list", "all"); }
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
@@ -231,6 +235,7 @@ const BACK_PARENT = {
   marathonResult: "marathonSetup",
   fastmathResult: "fastmathSetup",
   infomathResult: "infomathSetup",
+  schulteResult: "schulteSetup",
   aliasResult: "aliasSetup",
   gromkoResult: "gromkoSetup",
   tbResult: "tbSetup",
@@ -243,6 +248,7 @@ const BACK_PARENT = {
   numguessSetup: "gameMode",
   fastmathSetup: "gameMode",
   infomathSetup: "gameMode",
+  schulteSetup: "sprintHub",
   duelSetup: "gameMode",
   marathonSetup: "marathonHub",
   crocoSetup: "party",
@@ -318,9 +324,17 @@ async function loadDailyRecords(game, period) {
   } catch (e) { el.innerHTML = ""; return; }
   const recs = (data && data.records) || {};
   const labels = (data && data.labels) || { easy: "Простая", medium: "Средняя", hard: "Сложная" };
-  const unit = (data && data.unit) ? (" " + data.unit) : "";
-  const hint = (data && data.order === "asc")
-    ? `<div class="daily-rec-hint">меньше попыток — выше в топе</div>` : "";
+  // форматирование результата по игре: schulte — время в секундах, numguess — попытки
+  const fmtScore = (score) => {
+    if (game === "schulte") return fmtSec(score) + " с";
+    if (game === "numguess") return score + " поп.";
+    return String(score);
+  };
+  const hintText = game === "schulte" ? "меньше времени — выше в топе" : "меньше попыток — выше в топе";
+  const hint = (data && data.order === "asc") ? `<div class="daily-rec-hint">${hintText}</div>` : "";
+  // подписи уровней: у Шульте — размер поля
+  const lvlLabels = game === "schulte" ? { easy: "4×4", medium: "5×5", hard: "6×6" } : labels;
+  const lvlMult = game === "schulte" ? { easy: "", medium: "", hard: "" } : DAILY_REC_MULT;
   const hasAny = ["easy", "medium", "hard"].some((d) => (recs[d] || []).length);
   if (!hasAny) {
     const empty = period === "all"
@@ -332,10 +346,10 @@ async function loadDailyRecords(game, period) {
   const rows = ["easy", "medium", "hard"].map((d) => {
     const list = recs[d] || [];
     const items = list.length
-      ? list.map((p, i) => `<span class="drl-item">${DAILY_REC_MEDALS[i]} ${escapeHtml(p.name)} <b>${p.score}${unit}</b></span>`).join("")
+      ? list.map((p, i) => `<span class="drl-item">${DAILY_REC_MEDALS[i]} ${escapeHtml(p.name)} <b>${fmtScore(p.score)}</b></span>`).join("")
       : `<span class="drl-empty">—</span>`;
     return `<div class="drl-row">
-      <span class="drl-lvl">${DAILY_REC_MULT[d]} ${labels[d] || ""}</span>
+      <span class="drl-lvl">${(lvlMult[d] ? lvlMult[d] + " " : "")}${lvlLabels[d] || ""}</span>
       <span class="drl-list">${items}</span>
     </div>`;
   }).join("");
@@ -486,6 +500,7 @@ function routeToGame(game) {
   if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); return; }
   // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
   if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath") { openGameMode(game); return; }
+  if (game === "schulte") { currentGame = "schulte"; resetLbTabs("schulte-lb"); showScreen("schulteSetup"); return; }
   if (game === "alias") { showScreen("aliasSetup"); return; }
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); return; }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
@@ -543,6 +558,12 @@ const GAME_INFO = {
     body: `<p>Решай короткие примеры и мини-уравнения (сложение, вычитание, умножение, деление, «x + 7 = 12»). 4 варианта ответа, автопереход.</p>
       <p>За <b>60 секунд</b> реши как можно больше. Сложность влияет на размер чисел и множитель наград: ×1 / ×1.5 / ×2.</p>
       <p>Тренировочная игра: рейтинг в общий зачёт, у игры <b>свой кап 100 очков в день</b>. Есть своя таблица лучших.</p>`,
+  },
+  schulte: {
+    title: "🧠 Таблица Шульте",
+    body: `<p>Классический тренажёр памяти, скорости и внимания. Перед тобой поле с числами вразнобой — находи и тапай их <b>по порядку</b>: 1, 2, 3… до конца.</p>
+      <p>Играешь <b>на время</b>: чем быстрее пройдёшь таблицу — тем лучше рекорд. Размер поля выбираешь сам: 4×4 (×1), 5×5 (×1.5), 6×6 (×2).</p>
+      <p>За каждую пройденную таблицу — рейтинг × множитель, <b>кап 100 очков в день</b>. «Рекорд дня» и таблица лучших — по лучшему времени (меньше — выше).</p>`,
   },
   infomath: {
     title: "🖥️ IT-разминка",
@@ -1860,6 +1881,94 @@ document.getElementById("btn-numguess-start").addEventListener("click", numguess
 document.getElementById("btn-numguess-guess").addEventListener("click", numguessGuess);
 document.getElementById("numguess-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); numguessGuess(); } });
 document.getElementById("btn-numguess-stop").addEventListener("click", () => numguessEnd(false));
+
+// ==============================
+// ======= ТАБЛИЦА ШУЛЬТЕ ========
+// ==============================
+// Память + скорость: находи числа по порядку 1→N на время. Рекорд = лучшее время.
+const SCHULTE_SIZE = { easy: 4, medium: 5, hard: 6 };  // сторона поля → N = size²
+const schulte = { difficulty: "easy", size: 4, n: 16, target: 1, startTime: 0, timer: null, locked: false };
+const schulteBestMs = {};  // лучшее время за сессию по сложности (мс)
+
+setupPills("schulte-difficulty", (v) => { schulte.difficulty = v; updateSchulteMult(); });
+function updateSchulteMult() {
+  const dm = { easy: 1, medium: 1.5, hard: 2 }[schulte.difficulty] || 1;
+  const el = document.getElementById("schulte-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
+}
+updateSchulteMult();
+
+function fmtSec(ms) { return (ms / 1000).toFixed(1); }
+
+function schulteStart() {
+  hapticMedium();
+  schulte.size = SCHULTE_SIZE[schulte.difficulty] || 4;
+  schulte.n = schulte.size * schulte.size;
+  schulte.target = 1;
+  schulte.locked = false;
+  // перемешанный массив 1..n
+  const nums = Array.from({ length: schulte.n }, (_, i) => i + 1);
+  for (let k = nums.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [nums[k], nums[j]] = [nums[j], nums[k]]; }
+  const grid = document.getElementById("schulte-grid");
+  grid.style.gridTemplateColumns = `repeat(${schulte.size}, 1fr)`;
+  grid.innerHTML = nums.map((x) => `<button class="schulte-cell" data-n="${x}">${x}</button>`).join("");
+  grid.querySelectorAll(".schulte-cell").forEach((c) => { c.onclick = () => schulteTap(c); });
+  document.getElementById("schulte-target").textContent = 1;
+  document.getElementById("schulte-timer").textContent = "0.0";
+  showScreen("schultePlay");
+  schulte.startTime = performance.now();
+  schulte.timer = setInterval(() => {
+    document.getElementById("schulte-timer").textContent = fmtSec(performance.now() - schulte.startTime);
+  }, 100);
+}
+
+function schulteTap(cell) {
+  if (schulte.locked) return;
+  const n = parseInt(cell.dataset.n, 10);
+  if (n === schulte.target) {
+    cell.classList.add("found");
+    cell.disabled = true;
+    hapticLight();
+    schulte.target++;
+    if (schulte.target > schulte.n) { schulteFinish(); return; }
+    document.getElementById("schulte-target").textContent = schulte.target;
+  } else {
+    // неверно — красная вспышка, прогресс не двигаем
+    hapticError();
+    cell.classList.add("wrong");
+    setTimeout(() => cell.classList.remove("wrong"), 300);
+  }
+}
+
+async function schulteFinish() {
+  schulte.locked = true;
+  if (schulte.timer) { clearInterval(schulte.timer); schulte.timer = null; }
+  const ms = Math.round(performance.now() - schulte.startTime);
+  hapticSuccess();
+  const prevBest = schulteBestMs[schulte.difficulty];
+  const isRecord = prevBest == null || ms < prevBest;
+  if (isRecord) schulteBestMs[schulte.difficulty] = ms;
+  document.getElementById("schulte-r-time").textContent = fmtSec(ms);
+  document.getElementById("schulte-r-best").textContent = fmtSec(schulteBestMs[schulte.difficulty]) + " с";
+  document.getElementById("schulte-new-record").style.display = isRecord ? "block" : "none";
+  const res = await awardTraining("schulte", 1, { correct: 1, difficulty: schulte.difficulty, ms });
+  document.getElementById("schulte-r-rating").textContent = (res && res.delta_awarded) || 0;
+  document.getElementById("schulte-r-xp").textContent = (res && res.xp_awarded) || 0;
+  showScreen("schulteResult");
+}
+
+function schulteStop() {
+  if (schulte.timer) { clearInterval(schulte.timer); schulte.timer = null; }
+  schulte.locked = true;
+  currentGame = "schulte";
+  resetLbTabs("schulte-lb");
+  showScreen("schulteSetup");
+}
+
+document.getElementById("btn-schulte-start").addEventListener("click", schulteStart);
+document.getElementById("btn-schulte-again").addEventListener("click", schulteStart);
+document.getElementById("btn-schulte-stop").addEventListener("click", schulteStop);
+setupGameLeaderboard("schulte", "schulte-lb", "schulte-lb-list");
 
 // ==============================
 // ======= БЫСТРЫЙ СЧЁТ =========

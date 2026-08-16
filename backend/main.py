@@ -53,6 +53,7 @@ XP_PER_RATING = {
     "numguess": 2.0,  # угадай число: как спринт
     "fastmath": 2.0,  # быстрый счёт: как спринт
     "infomath": 2.0,  # IT-разминка: как спринт
+    "schulte": 2.0,   # таблица Шульте: как спринт
 }
 
 # Множитель по сложности вопросов
@@ -62,9 +63,11 @@ LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
 # Базовая ставка рейтинга за один правильный ответ.
 # Тусовка (party) = 0 очков, потому что играется на своей честности —
 # слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
-BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1}
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10}
 # Игры Спринта, где партия за 60 сек = один результат (для «Рекорда дня» по уровням)
 DAILY_RECORD_GAMES = ("sprint", "fastmath", "infomath")
+# Игры, где рекорд = МЕНЬШЕ лучше (сортировка по возрастанию): numguess — попытки, schulte — время
+ASC_RECORD_GAMES = ("numguess", "schulte")
 DIFF_LABELS = {"easy": "Простая", "medium": "Средняя", "hard": "Сложная"}
 # Duel XP
 XP_DUEL_WIN = 50
@@ -745,6 +748,7 @@ async def add_training_points(
     lives: int = Body(None),         # только для марафона
     game: str = Body(None),          # конкретная командная игра (croco/gromko/alias/spy/whoami/timebank)
     tries: int = Body(None),         # только для numguess: число попыток (для «Рекорда дня»)
+    ms: int = Body(None),            # только для schulte: время прохождения таблицы в мс
 ):
     """
     Начисляем очки от тренировки с учётом множителей и дневного капа.
@@ -813,6 +817,12 @@ async def add_training_points(
             db.execute(
                 "INSERT INTO daily_score (user_id, game, difficulty, score) VALUES (?, ?, ?, ?)",
                 (user_id, "numguess", difficulty, int(tries)),
+            )
+        # schulte: рекорд дня = наименьшее время прохождения таблицы (score = мс)
+        elif source == "schulte" and ms and ms > 0:
+            db.execute(
+                "INSERT INTO daily_score (user_id, game, difficulty, score) VALUES (?, ?, ?, ?)",
+                (user_id, "schulte", difficulty, int(ms)),
             )
 
         # --- Прогресс ежедневных квестов ---
@@ -1052,6 +1062,7 @@ GAME_LB_SOURCES = {
     "numguess": ["numguess", "duel_numguess"],
     "fastmath": ["fastmath", "duel_fastmath"],
     "infomath": ["infomath", "duel_infomath"],
+    "schulte":  ["schulte"],
     "marathon": ["marathon"],
     "python":   ["python"],
 }
@@ -1102,9 +1113,9 @@ async def sprint_daily_records(game: str = Query(...), period: str = Query("day"
     """Рекорды по каждому уровню: топ-3 лучших результата для одиночных спринт-игр.
     period: day (за сегодня) или all (за всё время). Один игрок — один (лучший)
     результат. numguess: лучший = наименьшее число попыток (сортировка по возрастанию)."""
-    if game not in DAILY_RECORD_GAMES and game != "numguess":
+    if game not in DAILY_RECORD_GAMES and game not in ASC_RECORD_GAMES:
         raise HTTPException(status_code=400, detail="Bad game")
-    asc = (game == "numguess")            # для numguess меньше попыток — лучше
+    asc = (game in ASC_RECORD_GAMES)      # numguess/schulte: меньше — лучше
     agg = "MIN" if asc else "MAX"
     order = "ASC" if asc else "DESC"
     where_time = "" if period == "all" else "AND date(ds.created_at) = date('now')"
@@ -1134,7 +1145,7 @@ async def sprint_daily_records(game: str = Query(...), period: str = Query("day"
         "records": out,
         "labels": DIFF_LABELS,
         "order": "asc" if asc else "desc",
-        "unit": "поп." if asc else "",
+        "unit": {"numguess": "поп.", "schulte": "мс"}.get(game, ""),
         "period": "all" if period == "all" else "day",
     }
 
@@ -2128,7 +2139,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "python-onboard-nowait-v81"
+BUILD_TAG = "schulte-game-v82"
 
 
 @app.get("/api/version")
