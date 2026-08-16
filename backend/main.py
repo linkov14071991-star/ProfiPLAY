@@ -55,6 +55,7 @@ XP_PER_RATING = {
     "infomath": 2.0,  # IT-разминка: как спринт
     "schulte": 2.0,   # таблица Шульте: как спринт
     "gorbov": 2.0,    # чёрно-красная таблица (Горбов–Шульте): как спринт
+    "stroop": 2.0,    # тест Струпа: как спринт
 }
 
 # Множитель по сложности вопросов
@@ -64,9 +65,9 @@ LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
 # Базовая ставка рейтинга за один правильный ответ.
 # Тусовка (party) = 0 очков, потому что играется на своей честности —
 # слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
-BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12}
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12, "stroop": 1}
 # Игры Спринта, где партия за 60 сек = один результат (для «Рекорда дня» по уровням)
-DAILY_RECORD_GAMES = ("sprint", "fastmath", "infomath")
+DAILY_RECORD_GAMES = ("sprint", "fastmath", "infomath", "stroop")
 # Игры «на время»: партия = прохождение таблицы, рекорд = мс (лог времени в daily_score)
 TIME_RECORD_GAMES = ("schulte", "gorbov")
 # Игры, где рекорд = МЕНЬШЕ лучше (сортировка по возрастанию): numguess — попытки, время-игры — мс
@@ -1067,6 +1068,7 @@ GAME_LB_SOURCES = {
     "infomath": ["infomath", "duel_infomath"],
     "schulte":  ["schulte", "duel_schulte"],
     "gorbov":   ["gorbov", "duel_gorbov"],
+    "stroop":   ["stroop", "duel_stroop"],
     "marathon": ["marathon"],
     "python":   ["python"],
 }
@@ -1181,7 +1183,12 @@ DUEL_QUESTIONS_COUNT = 10
 DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
 
 # Форматы дуэли = игры Спринта
-DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte", "gorbov")
+DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte", "gorbov", "stroop")
+# Тест Струпа: набор цветов по сложности и длительность дуэли
+STROOP_KEYS = ("red", "blue", "green", "yellow", "orange", "purple")
+STROOP_N = {"easy": 4, "medium": 5, "hard": 6}
+STROOP_DUEL_MS = 30000
+STROOP_DUEL_TRIALS = 80  # с запасом на 30 сек
 # Дуэль «Угадай число»: диапазон и время (как в соло — 60 сек на всех уровнях)
 DUEL_NG = {
     "easy":   {"maxN": 10,   "time_ms": 60000},
@@ -1232,6 +1239,24 @@ def _score_schulte(payload: dict) -> int:
         return 0
     elapsed_ms = max(1, int(payload.get("elapsed_ms", 0)))
     return max(1, 10_000_000 - elapsed_ms)
+
+
+def _score_stroop(payload: dict) -> int:
+    """Очки за дуэль «Струп»: число верных ответов за отведённое время."""
+    if not payload:
+        return 0
+    return max(0, min(1000, int(payload.get("correct", 0))))
+
+
+def _gen_stroop_trials(n_colors: int, count: int) -> list:
+    """Последовательность проб Струпа: {word, ink}, ink всегда ≠ word."""
+    keys = list(STROOP_KEYS[:n_colors])
+    trials = []
+    for _ in range(count):
+        word = random.choice(keys)
+        ink = random.choice([k for k in keys if k != word])
+        trials.append({"word": word, "ink": ink})
+    return trials
 
 
 def _gen_duel_id() -> str:
@@ -1609,6 +1634,20 @@ async def duel_create(
             )
             return {"duel_id": duel_id, "format": "gorbov", "size": size, "cells": cells}
 
+        if format == "stroop":
+            nc = STROOP_N.get(difficulty)
+            if not nc:
+                raise HTTPException(status_code=400, detail="Bad difficulty")
+            keys = list(STROOP_KEYS[:nc])
+            trials = _gen_stroop_trials(nc, STROOP_DUEL_TRIALS)
+            payload = {"format": "stroop", "keys": keys, "trials": trials}
+            db.execute(
+                "INSERT INTO duels (id, creator_id, difficulty, questions_json, format) VALUES (?, ?, ?, ?, ?)",
+                (duel_id, creator["telegram_id"], difficulty, json.dumps(payload), format),
+            )
+            return {"duel_id": duel_id, "format": "stroop", "keys": keys,
+                    "trials": trials, "time_ms": STROOP_DUEL_MS}
+
         if format == "sprint":
             pool = _pool_for(difficulty, topic)
             if len(pool) < DUEL_QUESTIONS_COUNT:
@@ -1674,6 +1713,8 @@ async def duel_join(
         return {**common, "size": payload["size"], "order": payload["order"]}
     if fmt == "gorbov":
         return {**common, "size": payload["size"], "cells": payload["cells"]}
+    if fmt == "stroop":
+        return {**common, "keys": payload["keys"], "trials": payload["trials"], "time_ms": STROOP_DUEL_MS}
     public_questions = [{"q": q["q"], "options": q["options"]} for q in payload]
     return {
         **common,
@@ -1688,7 +1729,8 @@ async def duel_submit(
     init_data: str = Body(...),
     answers: list = Body(None),      # MCQ-форматы (sprint/fastmath/infomath)
     ng: dict = Body(None),           # результат «Угадай число»
-    sch: dict = Body(None),          # результат «Таблица Шульте» {solved, elapsed_ms}
+    sch: dict = Body(None),          # результат «Таблица Шульте»/«Горбов» {solved, elapsed_ms}
+    strp: dict = Body(None),         # результат «Струп» {correct}
 ):
     """Сдать результат. Считаем очки, если оба сдали — финализируем."""
     tg_user = get_verified_user(init_data)
@@ -1706,6 +1748,8 @@ async def duel_submit(
             my_score = _score_numguess(ng or {})
         elif _fmt in ("schulte", "gorbov"):
             my_score = _score_schulte(sch or {})
+        elif _fmt == "stroop":
+            my_score = _score_stroop(strp or {})
         else:
             questions = json.loads(duel["questions_json"])
             my_score = _score_answers(questions, answers or [])
@@ -2206,7 +2250,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "gorbov-duel-v85"
+BUILD_TAG = "stroop-game-v86"
 
 
 @app.get("/api/version")

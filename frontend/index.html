@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=74">
+<link rel="stylesheet" href="/style.css?v=76">
 </head>
 <body>
 
@@ -211,6 +211,15 @@
         <div class="title">Чёрно-красная таблица</div>
         <div class="desc">Красные вверх, чёрные вниз — чередуя. Переключение внимания.</div>
         <div class="card-stat" id="card-gorbov-stat"></div>
+      </div>
+    </div>
+    <div class="game-card" data-game="stroop">
+      <button class="game-info-btn" data-info="stroop" aria-label="Правила">?</button>
+      <div class="icon">🎨</div>
+      <div class="info">
+        <div class="title">Струп-тест</div>
+        <div class="desc">Тапни ЦВЕТ букв, а не прочитанное слово. Внимание и скорость.</div>
+        <div class="card-stat" id="card-stroop-stat"></div>
       </div>
     </div>
   </div>
@@ -1747,6 +1756,94 @@
   </div>
 </section>
 
+<!-- ==== Экраны: Струп-тест (внимание + скорость) ==== -->
+<section id="screen-stroop-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🎨 Струп-тест</h1>
+    <p class="subtitle">Слово написано другим цветом. Тапай ЦВЕТ букв, не слово. За 60 секунд — сколько успеешь.</p>
+
+    <label class="field">Сложность</label>
+    <div class="pills" id="stroop-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>4 цвета</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>5 цветов</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>6 цветов</span><span class="pill-hint">×2</span></button>
+    </div>
+
+    <div id="stroop-daily-records" class="daily-rec"></div>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">60 сек · множитель <b id="stroop-mult">×1</b> к рейтингу · макс 100/день</div>
+    </div>
+
+    <button id="btn-stroop-start" class="btn btn-primary btn-big">Начать</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+
+    <div class="game-lb" id="stroop-lb">
+      <div class="game-lb-tabs">
+        <button class="game-lb-tab active" data-period="all">За всё время</button>
+        <button class="game-lb-tab" data-period="week">За неделю</button>
+      </div>
+      <div class="game-lb-list" id="stroop-lb-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-stroop-play" class="screen">
+  <div class="sprint-topbar">
+    <div class="timer" id="stroop-timer">60</div>
+    <div class="score-big">✅ <span id="stroop-score">0</span></div>
+  </div>
+  <div class="stroop-word-wrap">
+    <div class="stroop-word" id="stroop-word">СИНИЙ</div>
+    <div class="stroop-hint">Тапни ЦВЕТ букв</div>
+  </div>
+  <div class="stroop-options" id="stroop-options"></div>
+  <button id="btn-stroop-stop" class="btn btn-link">Остановить</button>
+</section>
+
+<section id="screen-stroop-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1 id="stroop-result-title">🏁 Готово!</h1>
+    <div class="result-stats">
+      <div class="stat stat-ok">
+        <div class="stat-num" id="stroop-r-correct">0</div>
+        <div class="stat-label">Верно</div>
+      </div>
+      <div class="stat stat-skip">
+        <div class="stat-num" id="stroop-r-wrong">0</div>
+        <div class="stat-label">Ошибок</div>
+      </div>
+    </div>
+    <div class="reward-strip">
+      <div class="reward-chip rating pos">🏆 <span id="stroop-r-rating">0</span></div>
+      <div class="reward-chip xp pos">💎 <span id="stroop-r-xp">0</span> XP</div>
+    </div>
+    <button id="btn-stroop-again" class="btn btn-primary btn-big">🚀 Ещё раз</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
+<!-- ==== Дуэль: Струп-тест ==== -->
+<section id="screen-duel-stroop" class="screen">
+  <div class="sprint-topbar">
+    <div class="timer" id="duel-stroop-timer">30</div>
+    <div class="score-big">✅ <span id="duel-stroop-score">0</span></div>
+  </div>
+  <p style="text-align:center; font-size:13px; opacity:0.8; margin:6px 0;">⚔ Дуэль · тапай ЦВЕТ букв быстрее соперника</p>
+  <div class="stroop-word-wrap">
+    <div class="stroop-word" id="duel-stroop-word">СИНИЙ</div>
+  </div>
+  <div class="stroop-options" id="duel-stroop-options"></div>
+</section>
+
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
@@ -2329,6 +2426,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=75"></script>
+<script src="/script.js?v=76"></script>
 </body>
 </html>

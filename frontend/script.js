@@ -36,6 +36,7 @@ const SCREENS = {
   duelNg: "screen-duel-ng",
   duelSchulte: "screen-duel-schulte",
   duelGorbov: "screen-duel-gorbov",
+  duelStroop: "screen-duel-stroop",
   gameMode: "screen-game-mode",
   crocoSetup: "screen-croco-setup",
   crocoTheme: "screen-croco-theme", // выбор темы (перед словом)
@@ -71,6 +72,9 @@ const SCREENS = {
   gorbovSetup: "screen-gorbov-setup",
   gorbovPlay: "screen-gorbov-play",
   gorbovResult: "screen-gorbov-result",
+  stroopSetup: "screen-stroop-setup",
+  stroopPlay: "screen-stroop-play",
+  stroopResult: "screen-stroop-result",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -106,6 +110,7 @@ function showScreen(name) {
   if (name === "numguessSetup") loadDailyRecords("numguess");
   if (name === "schulteSetup") { loadDailyRecords("schulte"); loadGameLeaderboard("schulte", "schulte-lb-list", "all"); }
   if (name === "gorbovSetup") { loadDailyRecords("gorbov"); loadGameLeaderboard("gorbov", "gorbov-lb-list", "all"); }
+  if (name === "stroopSetup") { loadDailyRecords("stroop"); loadGameLeaderboard("stroop", "stroop-lb-list", "all"); }
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
@@ -243,6 +248,7 @@ const BACK_PARENT = {
   infomathResult: "infomathSetup",
   schulteResult: "schulteSetup",
   gorbovResult: "gorbovSetup",
+  stroopResult: "stroopSetup",
   aliasResult: "aliasSetup",
   gromkoResult: "gromkoSetup",
   tbResult: "tbSetup",
@@ -257,6 +263,7 @@ const BACK_PARENT = {
   infomathSetup: "gameMode",
   schulteSetup: "gameMode",
   gorbovSetup: "gameMode",
+  stroopSetup: "gameMode",
   duelSetup: "gameMode",
   marathonSetup: "marathonHub",
   crocoSetup: "party",
@@ -294,6 +301,7 @@ const GAME_MODE_META = {
   infomath: { icon: "🖥️", title: "IT-разминка" },
   schulte:  { icon: "🧠", title: "Таблица Шульте" },
   gorbov:   { icon: "🔴", title: "Чёрно-красная таблица" },
+  stroop:   { icon: "🎨", title: "Струп-тест" },
 };
 function openGameMode(game) {
   currentGame = game;
@@ -312,6 +320,7 @@ function enterSolo(game) {
   else if (game === "infomath") { showScreen("infomathSetup"); loadDailyRecords("infomath"); }
   else if (game === "schulte") { resetLbTabs("schulte-lb"); showScreen("schulteSetup"); }
   else if (game === "gorbov") { resetLbTabs("gorbov-lb"); showScreen("gorbovSetup"); }
+  else if (game === "stroop") { resetLbTabs("stroop-lb"); showScreen("stroopSetup"); }
 }
 
 const DAILY_REC_MEDALS = ["🥇", "🥈", "🥉"];
@@ -512,7 +521,7 @@ function routeToGame(game) {
   if (game === "party") { showScreen("party"); return; }
   if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); return; }
   // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
-  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath" || game === "schulte" || game === "gorbov") { openGameMode(game); return; }
+  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath" || game === "schulte" || game === "gorbov" || game === "stroop") { openGameMode(game); return; }
   if (game === "alias") { showScreen("aliasSetup"); return; }
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); return; }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
@@ -582,6 +591,12 @@ const GAME_INFO = {
     body: `<p>Усложнённая Шульте на <b>переключение внимания</b> (проба Горбова). В поле — <span style="color:#e5484d;font-weight:700;">красные</span> и чёрные числа вперемешку.</p>
       <p>Находи их <b>по очереди, чередуя цвет</b>: <span style="color:#e5484d;font-weight:700;">красную 1</span> → чёрную самую большую → <span style="color:#e5484d;font-weight:700;">красную 2</span> → следующую чёрную по убыванию — и так до конца. Сверху всегда подсказка, что искать.</p>
       <p>На время: быстрее пройдёшь — лучше рекорд. Размер: 4×4 (×1), 5×5 (×1.5), 6×6 (×2). За таблицу — рейтинг × множитель, <b>кап 100/день</b>.</p>`,
+  },
+  stroop: {
+    title: "🎨 Струп-тест",
+    body: `<p>Тренажёр внимания и скорости. На экране слово-название цвета, но написано оно <b>другим цветом</b> (например, «СИНИЙ» красными буквами).</p>
+      <p>Твоя задача — тапнуть кнопку с <b>цветом букв</b>, а не с прочитанным словом. Мозг норовит прочитать слово — в этом и вся сложность.</p>
+      <p>За <b>60 секунд</b> — как можно больше верных. Сложность = число цветов: 4 (×1), 5 (×1.5), 6 (×2). Рейтинг × множитель, <b>кап 100/день</b>. Есть «Рекорд дня», таблица лучших и режим дуэли.</p>`,
   },
   infomath: {
     title: "🖥️ IT-разминка",
@@ -2088,6 +2103,139 @@ document.getElementById("btn-gorbov-start").addEventListener("click", gorbovStar
 document.getElementById("btn-gorbov-again").addEventListener("click", gorbovStart);
 document.getElementById("btn-gorbov-stop").addEventListener("click", gorbovStop);
 setupGameLeaderboard("gorbov", "gorbov-lb", "gorbov-lb-list");
+
+// ==============================
+// ========= СТРУП-ТЕСТ =========
+// ==============================
+// Внимание + скорость: слово-цвет написано другим цветом — тапни ЦВЕТ букв.
+const STROOP_PALETTE = {
+  red:    { name: "Красный",    hex: "#e5484d" },
+  blue:   { name: "Синий",      hex: "#3b6fe0" },
+  green:  { name: "Зелёный",    hex: "#2fa84f" },
+  yellow: { name: "Жёлтый",     hex: "#d99a00" },
+  orange: { name: "Оранжевый",  hex: "#ef6c1a" },
+  purple: { name: "Фиолетовый", hex: "#8b5cf6" },
+};
+const STROOP_KEYS = ["red", "blue", "green", "yellow", "orange", "purple"];
+const STROOP_N = { easy: 4, medium: 5, hard: 6 };
+function stroopOptsHtml(keys) {
+  return keys.map((k) => `<button class="stroop-opt" data-key="${k}" style="background:${STROOP_PALETTE[k].hex}">${STROOP_PALETTE[k].name}</button>`).join("");
+}
+function stroopWord(el, word, ink) {
+  el.textContent = STROOP_PALETTE[word].name.toUpperCase();
+  el.style.color = STROOP_PALETTE[ink].hex;
+}
+
+const stroop = { difficulty: "easy", keys: [], timeLeft: 0, timer: null, correct: 0, wrong: 0, ink: null, locked: false };
+setupPills("stroop-difficulty", (v) => { stroop.difficulty = v; updateStroopMult(); });
+function updateStroopMult() {
+  const dm = { easy: 1, medium: 1.5, hard: 2 }[stroop.difficulty] || 1;
+  const el = document.getElementById("stroop-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
+}
+updateStroopMult();
+
+function stroopNewWord() {
+  const k = stroop.keys;
+  const word = k[Math.floor(Math.random() * k.length)];
+  const others = k.filter((x) => x !== word);
+  stroop.ink = others[Math.floor(Math.random() * others.length)];
+  stroopWord(document.getElementById("stroop-word"), word, stroop.ink);
+}
+function stroopStart() {
+  hapticMedium();
+  stroop.keys = STROOP_KEYS.slice(0, STROOP_N[stroop.difficulty] || 4);
+  stroop.correct = 0; stroop.wrong = 0; stroop.locked = false; stroop.timeLeft = 60;
+  document.getElementById("stroop-score").textContent = 0;
+  document.getElementById("stroop-timer").textContent = 60;
+  const box = document.getElementById("stroop-options");
+  box.innerHTML = stroopOptsHtml(stroop.keys);
+  box.querySelectorAll(".stroop-opt").forEach((b) => { b.onclick = () => stroopTap(b.dataset.key); });
+  stroopNewWord();
+  showScreen("stroopPlay");
+  clearInterval(stroop.timer);
+  stroop.timer = setInterval(() => {
+    stroop.timeLeft--;
+    document.getElementById("stroop-timer").textContent = Math.max(0, stroop.timeLeft);
+    if (stroop.timeLeft <= 0) { playTimeUpSound(); stroopFinish(); } else playTick(stroop.timeLeft);
+  }, 1000);
+}
+function stroopTap(key) {
+  if (stroop.locked) return;
+  if (key === stroop.ink) { stroop.correct++; document.getElementById("stroop-score").textContent = stroop.correct; hapticLight(); }
+  else {
+    stroop.wrong++; hapticError();
+    const b = document.querySelector(`#stroop-options .stroop-opt[data-key="${key}"]`);
+    if (b) { b.classList.add("wrong"); setTimeout(() => b.classList.remove("wrong"), 250); }
+  }
+  stroopNewWord();
+}
+async function stroopFinish() {
+  if (stroop.timer) { clearInterval(stroop.timer); stroop.timer = null; }
+  stroop.locked = true;
+  document.getElementById("stroop-r-correct").textContent = stroop.correct;
+  document.getElementById("stroop-r-wrong").textContent = stroop.wrong;
+  const res = stroop.correct > 0
+    ? await awardTraining("stroop", stroop.correct, { correct: stroop.correct, difficulty: stroop.difficulty })
+    : { delta_awarded: 0, xp_awarded: 0 };
+  document.getElementById("stroop-r-rating").textContent = res.delta_awarded || 0;
+  document.getElementById("stroop-r-xp").textContent = res.xp_awarded || 0;
+  showScreen("stroopResult");
+  hapticSuccess();
+}
+document.getElementById("btn-stroop-start").addEventListener("click", stroopStart);
+document.getElementById("btn-stroop-again").addEventListener("click", stroopStart);
+document.getElementById("btn-stroop-stop").addEventListener("click", stroopFinish);
+setupGameLeaderboard("stroop", "stroop-lb", "stroop-lb-list");
+
+// ===== Дуэль «Струп» (общая последовательность, кто больше верных за 30 сек) =====
+function duelStroopStart(info) {
+  duel.stKeys = info.keys || [];
+  duel.stTrials = info.trials || [];
+  duel.stIdx = 0;
+  duel.stCorrect = 0;
+  duel.stTimeLeft = Math.floor((info.time_ms || 30000) / 1000);
+  duel.stLocked = false;
+  const box = document.getElementById("duel-stroop-options");
+  box.innerHTML = stroopOptsHtml(duel.stKeys);
+  box.querySelectorAll(".stroop-opt").forEach((b) => { b.onclick = () => duelStroopTap(b.dataset.key); });
+  document.getElementById("duel-stroop-score").textContent = 0;
+  document.getElementById("duel-stroop-timer").textContent = duel.stTimeLeft;
+  duelStroopRenderWord();
+  showScreen("duelStroop");
+  clearInterval(duel.stTimer);
+  duel.stTimer = setInterval(() => {
+    duel.stTimeLeft--;
+    document.getElementById("duel-stroop-timer").textContent = Math.max(0, duel.stTimeLeft);
+    if (duel.stTimeLeft <= 0) duelStroopEnd(); else playTick(duel.stTimeLeft);
+  }, 1000);
+}
+function duelStroopRenderWord() {
+  const t = duel.stTrials[duel.stIdx % duel.stTrials.length];
+  stroopWord(document.getElementById("duel-stroop-word"), t.word, t.ink);
+}
+function duelStroopTap(key) {
+  if (duel.stLocked) return;
+  const t = duel.stTrials[duel.stIdx % duel.stTrials.length];
+  if (key === t.ink) { duel.stCorrect++; document.getElementById("duel-stroop-score").textContent = duel.stCorrect; hapticLight(); }
+  else {
+    hapticError();
+    const b = document.querySelector(`#duel-stroop-options .stroop-opt[data-key="${key}"]`);
+    if (b) { b.classList.add("wrong"); setTimeout(() => b.classList.remove("wrong"), 250); }
+  }
+  duel.stIdx++;
+  duelStroopRenderWord();
+}
+async function duelStroopEnd() {
+  if (duel.stLocked) return;
+  duel.stLocked = true;
+  clearInterval(duel.stTimer);
+  playTimeUpSound();
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, strp: { correct: duel.stCorrect } });
+  if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
+  refreshProfile();
+  if (res.status === "complete") duelShowResult(res); else duelShowWaiting(res);
+}
 
 // ==============================
 // ======= БЫСТРЫЙ СЧЁТ =========
@@ -3828,6 +3976,7 @@ const DUEL_FMT_TITLES = {
   numguess: "🔢 Угадай число · кто быстрее и точнее",
   schulte: "🧠 Таблица Шульте · один расклад, кто быстрее",
   gorbov: "🔴 Чёрно-красная таблица · один расклад, кто быстрее",
+  stroop: "🎨 Струп-тест · кто больше верных за 30 сек",
 };
 
 setupPills("duel-difficulty", (v) => (duel.difficulty = v));
@@ -3874,6 +4023,7 @@ async function duelStartCreate() {
   if (duel.format === "numguess") { duelNgStart(res); return; }
   if (duel.format === "schulte") { duelSchulteStart(res); return; }
   if (duel.format === "gorbov") { duelGorbovStart(res); return; }
+  if (duel.format === "stroop") { duelStroopStart(res); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;
@@ -4543,7 +4693,7 @@ async function duelAcceptChallenge() {
   hapticMedium();
   duel.mode = "duel";
   const res = await apiPost(`/api/duel/${duel.duelId}/join`, {init_data: INIT_DATA});
-  if (!res || res.error || (res.format !== "numguess" && res.format !== "schulte" && res.format !== "gorbov" && !res.questions)) {
+  if (!res || res.error || (res.format !== "numguess" && res.format !== "schulte" && res.format !== "gorbov" && res.format !== "stroop" && !res.questions)) {
     alert("Не смог присоединиться. Возможно, дуэль уже занята.");
     showScreen("menu");
     return;
@@ -4552,6 +4702,7 @@ async function duelAcceptChallenge() {
   if (duel.format === "numguess") { duelNgStart(res); return; }
   if (duel.format === "schulte") { duelSchulteStart(res); return; }
   if (duel.format === "gorbov") { duelGorbovStart(res); return; }
+  if (duel.format === "stroop") { duelStroopStart(res); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;
@@ -4662,7 +4813,7 @@ document.getElementById("btn-duel-history").addEventListener("click", openDuelHi
 // ==============================
 // ======= ВЫЗОВ НЕДЕЛИ =========
 // ==============================
-const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте", gorbov: "Чёрно-красная таблица" };
+const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте", gorbov: "Чёрно-красная таблица", stroop: "Струп-тест" };
 let weeklyActive = null;
 const weeklyAdmin = { format: "sprint", difficulty: "medium" };
 
