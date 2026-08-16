@@ -595,7 +595,7 @@ const GAME_INFO = {
   stroop: {
     title: "🎨 Струп-тест",
     body: `<p>Тренажёр внимания и скорости. На экране слово-название цвета, но написано оно <b>другим цветом</b> (например, «СИНИЙ» красными буквами).</p>
-      <p>Твоя задача — тапнуть кнопку с <b>цветом букв</b>, а не с прочитанным словом. Мозг норовит прочитать слово — в этом и вся сложность.</p>
+      <p>Задача — нажать плашку с <b>цветом, который написан словом</b> (для «СИНИЙ» это синяя плашка), не обращая внимания на цвет самих букв. Буквы так и норовят сбить — в этом и сложность.</p>
       <p>За <b>60 секунд</b> — как можно больше верных. Сложность = число цветов: 4 (×1), 5 (×1.5), 6 (×2). Рейтинг × множитель, <b>кап 100/день</b>. Есть «Рекорд дня», таблица лучших и режим дуэли.</p>`,
   },
   infomath: {
@@ -2119,7 +2119,8 @@ const STROOP_PALETTE = {
 const STROOP_KEYS = ["red", "blue", "green", "yellow", "orange", "purple"];
 const STROOP_N = { easy: 4, medium: 5, hard: 6 };
 function stroopOptsHtml(keys) {
-  return keys.map((k) => `<button class="stroop-opt" data-key="${k}" style="background:${STROOP_PALETTE[k].hex}">${STROOP_PALETTE[k].name}</button>`).join("");
+  // плашки без подписей: нужно узнать цвет по прочитанному слову (цвет букв сбивает)
+  return keys.map((k) => `<button class="stroop-opt" data-key="${k}" style="background:${STROOP_PALETTE[k].hex}" aria-label="${STROOP_PALETTE[k].name}"></button>`).join("");
 }
 function stroopWord(el, word, ink) {
   el.textContent = STROOP_PALETTE[word].name.toUpperCase();
@@ -2139,8 +2140,9 @@ function stroopNewWord() {
   const k = stroop.keys;
   const word = k[Math.floor(Math.random() * k.length)];
   const others = k.filter((x) => x !== word);
-  stroop.ink = others[Math.floor(Math.random() * others.length)];
-  stroopWord(document.getElementById("stroop-word"), word, stroop.ink);
+  const ink = others[Math.floor(Math.random() * others.length)];
+  stroop.answer = word;  // верно — цвет, который НАПИСАН словом (не цвет букв)
+  stroopWord(document.getElementById("stroop-word"), word, ink);
 }
 function stroopStart() {
   hapticMedium();
@@ -2162,7 +2164,7 @@ function stroopStart() {
 }
 function stroopTap(key) {
   if (stroop.locked) return;
-  if (key === stroop.ink) { stroop.correct++; document.getElementById("stroop-score").textContent = stroop.correct; hapticLight(); }
+  if (key === stroop.answer) { stroop.correct++; document.getElementById("stroop-score").textContent = stroop.correct; hapticLight(); }
   else {
     stroop.wrong++; hapticError();
     const b = document.querySelector(`#stroop-options .stroop-opt[data-key="${key}"]`);
@@ -2217,7 +2219,7 @@ function duelStroopRenderWord() {
 function duelStroopTap(key) {
   if (duel.stLocked) return;
   const t = duel.stTrials[duel.stIdx % duel.stTrials.length];
-  if (key === t.ink) { duel.stCorrect++; document.getElementById("duel-stroop-score").textContent = duel.stCorrect; hapticLight(); }
+  if (key === t.word) { duel.stCorrect++; document.getElementById("duel-stroop-score").textContent = duel.stCorrect; hapticLight(); }
   else {
     hapticError();
     const b = document.querySelector(`#duel-stroop-options .stroop-opt[data-key="${key}"]`);

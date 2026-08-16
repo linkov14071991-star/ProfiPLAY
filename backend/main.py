@@ -2250,7 +2250,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "stroop-game-v86"
+BUILD_TAG = "stroop-word-target-v87"
 
 
 @app.get("/api/version")
