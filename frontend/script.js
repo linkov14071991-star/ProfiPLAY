@@ -35,6 +35,7 @@ const SCREENS = {
   duelHistory: "screen-duel-history",
   duelNg: "screen-duel-ng",
   duelSchulte: "screen-duel-schulte",
+  duelGorbov: "screen-duel-gorbov",
   gameMode: "screen-game-mode",
   crocoSetup: "screen-croco-setup",
   crocoTheme: "screen-croco-theme", // выбор темы (перед словом)
@@ -255,7 +256,7 @@ const BACK_PARENT = {
   fastmathSetup: "gameMode",
   infomathSetup: "gameMode",
   schulteSetup: "gameMode",
-  gorbovSetup: "sprintHub",
+  gorbovSetup: "gameMode",
   duelSetup: "gameMode",
   marathonSetup: "marathonHub",
   crocoSetup: "party",
@@ -292,6 +293,7 @@ const GAME_MODE_META = {
   fastmath: { icon: "🧮", title: "Быстрый счёт" },
   infomath: { icon: "🖥️", title: "IT-разминка" },
   schulte:  { icon: "🧠", title: "Таблица Шульте" },
+  gorbov:   { icon: "🔴", title: "Чёрно-красная таблица" },
 };
 function openGameMode(game) {
   currentGame = game;
@@ -309,6 +311,7 @@ function enterSolo(game) {
   else if (game === "fastmath") { showScreen("fastmathSetup"); loadDailyRecords("fastmath"); }
   else if (game === "infomath") { showScreen("infomathSetup"); loadDailyRecords("infomath"); }
   else if (game === "schulte") { resetLbTabs("schulte-lb"); showScreen("schulteSetup"); }
+  else if (game === "gorbov") { resetLbTabs("gorbov-lb"); showScreen("gorbovSetup"); }
 }
 
 const DAILY_REC_MEDALS = ["🥇", "🥈", "🥉"];
@@ -509,8 +512,7 @@ function routeToGame(game) {
   if (game === "party") { showScreen("party"); return; }
   if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); return; }
   // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
-  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath" || game === "schulte") { openGameMode(game); return; }
-  if (game === "gorbov") { currentGame = "gorbov"; resetLbTabs("gorbov-lb"); showScreen("gorbovSetup"); return; }
+  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath" || game === "schulte" || game === "gorbov") { openGameMode(game); return; }
   if (game === "alias") { showScreen("aliasSetup"); return; }
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); return; }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
@@ -3825,6 +3827,7 @@ const DUEL_FMT_TITLES = {
   infomath: "🖥️ IT-разминка · 10 вопросов × 15 сек",
   numguess: "🔢 Угадай число · кто быстрее и точнее",
   schulte: "🧠 Таблица Шульте · один расклад, кто быстрее",
+  gorbov: "🔴 Чёрно-красная таблица · один расклад, кто быстрее",
 };
 
 setupPills("duel-difficulty", (v) => (duel.difficulty = v));
@@ -3870,6 +3873,7 @@ async function duelStartCreate() {
   duel.role = "creator";
   if (duel.format === "numguess") { duelNgStart(res); return; }
   if (duel.format === "schulte") { duelSchulteStart(res); return; }
+  if (duel.format === "gorbov") { duelGorbovStart(res); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;
@@ -3995,6 +3999,70 @@ async function duelSchulteEnd(solved) {
 }
 document.getElementById("btn-duel-schulte-stop").addEventListener("click", () => duelSchulteEnd(false));
 
+// ===== Дуэль «Чёрно-красная таблица» (один расклад, кто быстрее) =====
+function duelGorbovRenderTarget() {
+  const el = document.getElementById("duel-gorbov-target");
+  if (!el) return;
+  if (duel.gColor === "red") { el.className = "gorbov-target red"; el.textContent = "🔴 " + duel.gRedNext; }
+  else { el.className = "gorbov-target black"; el.textContent = "⚫ " + duel.gBlackNext; }
+}
+function duelGorbovStart(info) {
+  duel.gSize = info.size || 5;
+  duel.gCells = info.cells || [];
+  duel.gN = duel.gSize * duel.gSize;
+  duel.gRedN = Math.ceil(duel.gN / 2);
+  duel.gBlackN = Math.floor(duel.gN / 2);
+  duel.gRedNext = 1;
+  duel.gBlackNext = duel.gBlackN;
+  duel.gColor = "red";
+  duel.gFound = 0;
+  duel.gLocked = false;
+  const grid = document.getElementById("duel-gorbov-grid");
+  grid.style.gridTemplateColumns = `repeat(${duel.gSize}, 1fr)`;
+  grid.innerHTML = duel.gCells.map((c) => `<button class="gs-cell ${c.color}" data-color="${c.color}" data-n="${c.num}">${c.num}</button>`).join("");
+  grid.querySelectorAll(".gs-cell").forEach((el) => { el.onclick = () => duelGorbovTap(el); });
+  duelGorbovRenderTarget();
+  document.getElementById("duel-gorbov-timer").textContent = "0.0";
+  showScreen("duelGorbov");
+  duel.gStart = performance.now();
+  clearInterval(duel.gTimer);
+  duel.gTimer = setInterval(() => {
+    document.getElementById("duel-gorbov-timer").textContent = fmtSec(performance.now() - duel.gStart);
+  }, 100);
+}
+function duelGorbovTap(cell) {
+  if (duel.gLocked) return;
+  const color = cell.dataset.color;
+  const num = parseInt(cell.dataset.n, 10);
+  const wantNum = duel.gColor === "red" ? duel.gRedNext : duel.gBlackNext;
+  if (color === duel.gColor && num === wantNum) {
+    cell.classList.add("found"); cell.disabled = true; hapticLight();
+    duel.gFound++;
+    if (duel.gColor === "red") duel.gRedNext++; else duel.gBlackNext--;
+    if (duel.gFound >= duel.gN) { duelGorbovEnd(true); return; }
+    if (duel.gColor === "red") duel.gColor = (duel.gBlackNext >= 1) ? "black" : "red";
+    else duel.gColor = (duel.gRedNext <= duel.gRedN) ? "red" : "black";
+    duelGorbovRenderTarget();
+  } else {
+    hapticError(); cell.classList.add("wrong");
+    setTimeout(() => cell.classList.remove("wrong"), 300);
+  }
+}
+async function duelGorbovEnd(solved) {
+  if (duel.gLocked) return;
+  duel.gLocked = true;
+  clearInterval(duel.gTimer);
+  const elapsed = Math.round(performance.now() - duel.gStart);
+  duel.schLastMs = solved ? elapsed : 0;
+  if (solved) hapticSuccess(); else hapticError();
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch: { solved: solved, elapsed_ms: elapsed } });
+  if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
+  refreshProfile();
+  if (res.status === "complete") duelShowResult(res);
+  else duelShowWaiting(res);
+}
+document.getElementById("btn-duel-gorbov-stop").addEventListener("click", () => duelGorbovEnd(false));
+
 function duelRenderQ() {
   const q = duel.questions[duel.qIndex];
   document.getElementById("duel-q-index").textContent = duel.qIndex + 1;
@@ -4083,7 +4151,7 @@ async function duelSubmit() {
 function duelShowWaiting(info) {
   const scoreEl = document.getElementById("duel-wait-score");
   const labelEl = scoreEl.nextElementSibling;
-  if (duel.format === "schulte") {
+  if (duel.format === "schulte" || duel.format === "gorbov") {
     scoreEl.textContent = duel.schLastMs ? (fmtSec(duel.schLastMs) + " с") : "—";
     if (labelEl) labelEl.textContent = "твоё время";
   } else {
@@ -4461,7 +4529,7 @@ async function duelOpenIncoming(duelId) {
   if (fmtEl) fmtEl.textContent = (DUEL_FMT_TITLES[info.format] || "Блиц-дуэль") + ". Готов?";
   if (info.creator_score) {
     const wrap = document.getElementById("duel-accept-opp-score-wrap");
-    if (info.format === "schulte") {
+    if (info.format === "schulte" || info.format === "gorbov") {
       wrap.querySelector(".record-badge").innerHTML = `Соперник прошёл за: <b>${fmtSec(10000000 - info.creator_score)} с</b>`;
     } else {
       document.getElementById("duel-accept-opp-score").textContent = info.creator_score;
@@ -4475,7 +4543,7 @@ async function duelAcceptChallenge() {
   hapticMedium();
   duel.mode = "duel";
   const res = await apiPost(`/api/duel/${duel.duelId}/join`, {init_data: INIT_DATA});
-  if (!res || res.error || (res.format !== "numguess" && res.format !== "schulte" && !res.questions)) {
+  if (!res || res.error || (res.format !== "numguess" && res.format !== "schulte" && res.format !== "gorbov" && !res.questions)) {
     alert("Не смог присоединиться. Возможно, дуэль уже занята.");
     showScreen("menu");
     return;
@@ -4483,6 +4551,7 @@ async function duelAcceptChallenge() {
   duel.format = res.format || "sprint";
   if (duel.format === "numguess") { duelNgStart(res); return; }
   if (duel.format === "schulte") { duelSchulteStart(res); return; }
+  if (duel.format === "gorbov") { duelGorbovStart(res); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;
@@ -4593,7 +4662,7 @@ document.getElementById("btn-duel-history").addEventListener("click", openDuelHi
 // ==============================
 // ======= ВЫЗОВ НЕДЕЛИ =========
 // ==============================
-const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте" };
+const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте", gorbov: "Чёрно-красная таблица" };
 let weeklyActive = null;
 const weeklyAdmin = { format: "sprint", difficulty: "medium" };
 

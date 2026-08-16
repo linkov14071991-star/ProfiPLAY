@@ -1066,7 +1066,7 @@ GAME_LB_SOURCES = {
     "fastmath": ["fastmath", "duel_fastmath"],
     "infomath": ["infomath", "duel_infomath"],
     "schulte":  ["schulte", "duel_schulte"],
-    "gorbov":   ["gorbov"],
+    "gorbov":   ["gorbov", "duel_gorbov"],
     "marathon": ["marathon"],
     "python":   ["python"],
 }
@@ -1181,7 +1181,7 @@ DUEL_QUESTIONS_COUNT = 10
 DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
 
 # Форматы дуэли = игры Спринта
-DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte")
+DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte", "gorbov")
 # Дуэль «Угадай число»: диапазон и время (как в соло — 60 сек на всех уровнях)
 DUEL_NG = {
     "easy":   {"maxN": 10,   "time_ms": 60000},
@@ -1190,6 +1190,8 @@ DUEL_NG = {
 }
 # Дуэль «Таблица Шульте»: сторона поля по сложности (оба играют один расклад, кто быстрее)
 DUEL_SCHULTE = {"easy": 4, "medium": 5, "hard": 6}
+# Дуэль «Чёрно-красная таблица» (Горбов–Шульте): сторона поля по сложности
+DUEL_GORBOV = {"easy": 4, "medium": 5, "hard": 6}
 # Рейтинг за бой в общий зачёт: победа / ничья / поражение
 DUEL_RATING = {"win": 20, "draw": 0, "loss": -20}
 
@@ -1346,7 +1348,7 @@ def _display_name(row) -> str:
 def _fmt_duel_score(fmt: str, score: int) -> str:
     """Человекочитаемый счёт дуэли. Для schulte очки инвертированы из времени
     (10_000_000 − мс) → показываем секунды; 0 = не прошёл."""
-    if fmt == "schulte":
+    if fmt in ("schulte", "gorbov"):
         if not score or score <= 0:
             return "—"
         return f"{(10_000_000 - score) / 1000:.1f} с"
@@ -1590,6 +1592,23 @@ async def duel_create(
             )
             return {"duel_id": duel_id, "format": "schulte", "size": size, "order": order}
 
+        if format == "gorbov":
+            size = DUEL_GORBOV.get(difficulty)
+            if not size:
+                raise HTTPException(status_code=400, detail="Bad difficulty")
+            n = size * size
+            red_n = (n + 1) // 2   # ceil
+            black_n = n // 2       # floor
+            cells = [{"color": "red", "num": i} for i in range(1, red_n + 1)]
+            cells += [{"color": "black", "num": i} for i in range(1, black_n + 1)]
+            random.shuffle(cells)
+            payload = {"format": "gorbov", "size": size, "cells": cells}
+            db.execute(
+                "INSERT INTO duels (id, creator_id, difficulty, questions_json, format) VALUES (?, ?, ?, ?, ?)",
+                (duel_id, creator["telegram_id"], difficulty, json.dumps(payload), format),
+            )
+            return {"duel_id": duel_id, "format": "gorbov", "size": size, "cells": cells}
+
         if format == "sprint":
             pool = _pool_for(difficulty, topic)
             if len(pool) < DUEL_QUESTIONS_COUNT:
@@ -1653,6 +1672,8 @@ async def duel_join(
                 "time_limit_ms": payload["time_ms"]}
     if fmt == "schulte":
         return {**common, "size": payload["size"], "order": payload["order"]}
+    if fmt == "gorbov":
+        return {**common, "size": payload["size"], "cells": payload["cells"]}
     public_questions = [{"q": q["q"], "options": q["options"]} for q in payload]
     return {
         **common,
@@ -1683,7 +1704,7 @@ async def duel_submit(
         _fmt = duel["format"] or "sprint"
         if _fmt == "numguess":
             my_score = _score_numguess(ng or {})
-        elif _fmt == "schulte":
+        elif _fmt in ("schulte", "gorbov"):
             my_score = _score_schulte(sch or {})
         else:
             questions = json.loads(duel["questions_json"])
@@ -2185,7 +2206,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "gorbov-game-v84"
+BUILD_TAG = "gorbov-duel-v85"
 
 
 @app.get("/api/version")
