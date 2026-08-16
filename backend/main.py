@@ -1185,8 +1185,8 @@ DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
 # Форматы дуэли = игры Спринта
 DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte", "gorbov", "stroop")
 # Тест Струпа: набор цветов по сложности и длительность дуэли
-STROOP_KEYS = ("red", "blue", "green", "yellow", "orange", "purple")
-STROOP_N = {"easy": 4, "medium": 5, "hard": 6}
+STROOP_KEYS = ("red", "blue", "green", "yellow", "orange", "purple", "cyan", "pink")
+STROOP_N = {"easy": 4, "medium": 6, "hard": 8}
 STROOP_DUEL_MS = 30000
 STROOP_DUEL_TRIALS = 80  # с запасом на 30 сек
 # Дуэль «Угадай число»: диапазон и время (как в соло — 60 сек на всех уровнях)
@@ -2250,7 +2250,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "stroop-word-target-v87"
+BUILD_TAG = "stroop-colors-468-v88"
 
 
 @app.get("/api/version")

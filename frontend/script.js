@@ -596,7 +596,7 @@ const GAME_INFO = {
     title: "🎨 Струп-тест",
     body: `<p>Тренажёр внимания и скорости. На экране слово-название цвета, но написано оно <b>другим цветом</b> (например, «СИНИЙ» красными буквами).</p>
       <p>Задача — нажать плашку с <b>цветом, который написан словом</b> (для «СИНИЙ» это синяя плашка), не обращая внимания на цвет самих букв. Буквы так и норовят сбить — в этом и сложность.</p>
-      <p>За <b>60 секунд</b> — как можно больше верных. Сложность = число цветов: 4 (×1), 5 (×1.5), 6 (×2). Рейтинг × множитель, <b>кап 100/день</b>. Есть «Рекорд дня», таблица лучших и режим дуэли.</p>`,
+      <p>За <b>60 секунд</b> — как можно больше верных. Сложность = число цветов: 4 (×1), 6 (×1.5), 8 (×2). Рейтинг × множитель, <b>кап 100/день</b>. Есть «Рекорд дня», таблица лучших и режим дуэли.</p>`,
   },
   infomath: {
     title: "🖥️ IT-разминка",
@@ -2115,9 +2115,11 @@ const STROOP_PALETTE = {
   yellow: { name: "Жёлтый",     hex: "#d99a00" },
   orange: { name: "Оранжевый",  hex: "#ef6c1a" },
   purple: { name: "Фиолетовый", hex: "#8b5cf6" },
+  cyan:   { name: "Голубой",    hex: "#17b3c7" },
+  pink:   { name: "Розовый",    hex: "#ec4899" },
 };
-const STROOP_KEYS = ["red", "blue", "green", "yellow", "orange", "purple"];
-const STROOP_N = { easy: 4, medium: 5, hard: 6 };
+const STROOP_KEYS = ["red", "blue", "green", "yellow", "orange", "purple", "cyan", "pink"];
+const STROOP_N = { easy: 4, medium: 6, hard: 8 };
 function stroopOptsHtml(keys) {
   // плашки без подписей: нужно узнать цвет по прочитанному слову (цвет букв сбивает)
   return keys.map((k) => `<button class="stroop-opt" data-key="${k}" style="background:${STROOP_PALETTE[k].hex}" aria-label="${STROOP_PALETTE[k].name}"></button>`).join("");
