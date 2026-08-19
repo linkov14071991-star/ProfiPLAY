@@ -2443,6 +2443,19 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .gt-rules-body p { margin: 0 0 10px; line-height: 1.5; }
 .gt-rules-ex { background: rgba(180, 242, 77, 0.16); border-radius: 12px; padding: 10px 12px; margin: 10px 0; font-size: 13.5px; line-height: 1.5; }
 .gt-rules-ex-t { font-weight: 800; margin-bottom: 4px; color: var(--brand-purple); }
+.gt-dict { background: rgba(102, 54, 233, 0.06); border-radius: 12px; padding: 10px 12px; margin: 10px 0; font-size: 13px; }
+.gt-dict-t { font-weight: 800; margin-bottom: 6px; color: var(--brand-purple); }
+.gt-dict-tbl { width: 100%; border-collapse: collapse; }
+.gt-dict-tbl th, .gt-dict-tbl td { text-align: left; padding: 5px 7px; border-bottom: 1px solid rgba(102, 54, 233, 0.12); vertical-align: top; line-height: 1.35; }
+.gt-dict-tbl th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.3px; opacity: 0.7; }
+.gt-dict-tbl td:last-child { font-weight: 700; color: var(--brand-purple); }
+.gt-quiz-qtext { font-size: 14.5px; line-height: 1.5; margin-bottom: 10px; }
+.gt-quiz-opts { display: flex; flex-direction: column; gap: 8px; }
+.gt-quiz-opt { text-align: left; padding: 11px 13px; border-radius: 12px; border: 1.5px solid rgba(102, 54, 233, 0.25); background: #fff; color: var(--text-on-light); font-size: 13.5px; line-height: 1.35; cursor: pointer; font-weight: 600; }
+.gt-quiz-opt:disabled { cursor: default; }
+.gt-quiz-opt.correct { border-color: #2fa84f; background: rgba(47, 168, 79, 0.12); }
+.gt-quiz-opt.wrong { border-color: #e5484d; background: rgba(229, 72, 77, 0.1); }
+.gt-quiz-exp { margin-top: 10px; font-size: 13.5px; line-height: 1.5; background: rgba(102, 54, 233, 0.06); border-radius: 12px; padding: 10px 12px; color: var(--text-on-light); }
 .drl-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px dashed rgba(102,54,233,0.15); }
 .drl-row:first-of-type { border-top: none; }
 .drl-lvl { flex-shrink: 0; width: 92px; font-weight: 700; font-size: 12.5px; color: var(--brand-purple); }

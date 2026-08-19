@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=81">
+<link rel="stylesheet" href="/style.css?v=82">
 </head>
 <body>
 
@@ -1962,7 +1962,18 @@
         <div>Так по очереди, пока кто-то не доведёт кучу до <b>29+</b>.</div>
       </div>
 
-      <p><b>❗ Главный секрет.</b> Дело не в том, чтобы самому прыгнуть на 29. Дело в том, <b>какое число ты оставишь Профику</b>. Есть «плохие» числа: если оставить Профику такое — он уже <b>никак</b> не сможет выиграть при твоей верной игре. Твоя задача — каждый ход отдавать Профику именно такое «проигрышное» число.</p>
+      <p><b>❗ Главный секрет.</b> Дело не в том, чтобы самому прыгнуть на цель. Дело в том, <b>какую позицию ты оставишь Профику после своего хода</b>. Иногда позиция — это одно число, а на сложном уровне — пара чисел в двух кучах. Твоя задача — по возможности передавать Профику <b>позицию, из которой у него нет гарантированной победы</b> (при твоей верной игре он уже не отыграется).</p>
+
+      <div class="gt-dict">
+        <div class="gt-dict-t">🔤 Один и тот же смысл — двумя языками:</div>
+        <table class="gt-dict-tbl">
+          <tr><th>В игре</th><th>На языке ЕГЭ</th></tr>
+          <tr><td>плохая позиция для соперника</td><td>проигрышная позиция</td></tr>
+          <tr><td>есть ход, который спасает</td><td>выигрышная позиция</td></tr>
+          <tr><td>можешь оставить сопернику проигрыш</td><td>у тебя есть выигрышная стратегия</td></tr>
+          <tr><td>соперник выигрывает при любом твоём ходе</td><td>выигрышной стратегии нет</td></tr>
+        </table>
+      </div>
 
       <p><b>Как тебе помогает игра:</b><br>
       🟢 после хорошего хода загорается «Стратегия сохранена»;<br>
@@ -1987,9 +1998,66 @@
     <div class="gim-body">
       <p>Профик ходил первым, но стартовая позиция была такой, что при правильной игре выиграть мог именно второй игрок — <b>ты</b>.</p>
       <p>Это называется <b>выигрышной стратегией второго игрока</b>. Именно такие позиции разбирают в заданиях ЕГЭ №19–21 — ты только что прожил эту идею на практике.</p>
+      <div class="gt-dict" style="margin-top:6px;">
+        <div class="gt-dict-t">🔤 Переведём на язык экзамена:</div>
+        <div>то, что в игре ты называл «оставить Профику плохую позицию», на ЕГЭ звучит как <b>«перевести соперника в проигрышную позицию»</b>. Это и есть суть №20–21.</div>
+      </div>
     </div>
     <div class="gim-foot">
       <button class="btn btn-primary" id="btn-gt-bridge-ok" style="width:100%; margin:0;">Понял → ещё партия</button>
+    </div>
+  </div>
+</div>
+
+<!-- Момент открытия перед первой партией -->
+<div id="gt-quickstart-modal" class="game-info-modal hidden">
+  <div class="gim-backdrop"></div>
+  <div class="gim-card">
+    <div class="gim-title">♟️ Профик ходит первым</div>
+    <div class="gim-body">
+      <p>Твоя задача — победить <b>не случайно, а стратегией</b>.</p>
+      <p><b>Запомни одну вещь:</b> думай не о своём числе, а о том, <b>что ты оставишь Профику</b> после своего хода.</p>
+      <p style="opacity:0.7;">Остальное поймёшь по ходу игры. Подробные правила всегда открываются кнопкой «📖 Правила».</p>
+    </div>
+    <div class="gim-foot">
+      <button class="btn btn-primary" id="btn-gt-quickstart-ok" style="width:100%; margin:0;">Понял, играем 🦊</button>
+    </div>
+  </div>
+</div>
+
+<!-- Режим «Определи позицию» перед первым ходом -->
+<div id="gt-classify-modal" class="game-info-modal hidden">
+  <div class="gim-backdrop"></div>
+  <div class="gim-card">
+    <div class="gim-title">🤔 Определи позицию</div>
+    <div class="gim-body">
+      <div>Стартовая позиция: <b id="gt-classify-pos"></b>. Профик ходит первым.</div>
+      <div style="margin:8px 0 6px;">Как думаешь, кто может <b>гарантированно</b> победить при идеальной игре?</div>
+      <div class="gt-quiz-opts" id="gt-classify-opts">
+        <button class="gt-quiz-opt" data-a="profik">🐱 Профик (первый)</button>
+        <button class="gt-quiz-opt" data-a="vekta">🦊 Я, Векта (второй)</button>
+        <button class="gt-quiz-opt" data-a="unsure">❓ Не уверен</button>
+      </div>
+      <div id="gt-classify-exp" class="gt-quiz-exp" style="display:none;"></div>
+    </div>
+    <div class="gim-foot">
+      <button class="btn btn-primary" id="btn-gt-classify-ok" style="width:100%; margin:0;" disabled>Выбери ответ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Универсальная модалка-викторина (Почему победил / Как на ЕГЭ) -->
+<div id="gt-quiz-modal" class="game-info-modal hidden">
+  <div class="gim-backdrop"></div>
+  <div class="gim-card">
+    <div class="gim-title" id="gt-quiz-title"></div>
+    <div class="gim-body">
+      <div id="gt-quiz-q" class="gt-quiz-qtext"></div>
+      <div class="gt-quiz-opts" id="gt-quiz-opts"></div>
+      <div id="gt-quiz-exp" class="gt-quiz-exp" style="display:none;"></div>
+    </div>
+    <div class="gim-foot">
+      <button class="btn btn-primary" id="btn-gt-quiz-ok" style="width:100%; margin:0;" disabled>Выбери ответ</button>
     </div>
   </div>
 </div>
@@ -2576,6 +2644,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=81"></script>
+<script src="/script.js?v=82"></script>
 </body>
 </html>

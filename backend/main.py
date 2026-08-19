@@ -2252,7 +2252,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "gametheory-rules-v91"
+BUILD_TAG = "gametheory-edu2-v92"
 
 
 @app.get("/api/version")

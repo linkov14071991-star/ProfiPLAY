@@ -2227,9 +2227,40 @@ function gtPlural(n, one, few, many) {
   if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
   return many;
 }
+// Прогресс игрока (для постепенного усложнения обучения)
+function gtFlag(k) { try { return localStorage.getItem(k) === "1"; } catch (e) { return false; } }
+function gtSetFlag(k) { try { localStorage.setItem(k, "1"); } catch (e) {} }
+function gtWinsCount() { try { return parseInt(localStorage.getItem("gt_wins") || "0", 10) || 0; } catch (e) { return 0; } }
+function gtIncWins() { try { localStorage.setItem("gt_wins", String(gtWinsCount() + 1)); } catch (e) {} }
+// Переходные вопросы «игра → формулировка ЕГЭ». Ответы проверены перебором (мини-игра до 8, +1/×2).
+const GT_EGE_Q = [
+  { title: "🎓 А теперь — как на ЕГЭ",
+    q: "Мини-игра: в куче S камней, за ход можно <b>+1</b> или <b>×2</b>, побеждает дошедший до <b>8</b>. Профик ходит <b>первым</b>. Из каких стартов <b>ты</b> (второй игрок) точно выигрываешь при верной игре?",
+    opts: ["S = 4 или 6", "S = 1 или 3", "при любом S"], correct: 1,
+    exp: "Из позиций <b>1</b> и <b>3</b> у первого игрока (Профика) нет хорошего хода: любой его +1/×2 ведёт в позицию, где у тебя есть ответ — сразу в цель или снова в проигрыш для него. Это и есть «проигрышные позиции первого игрока»." },
+  { title: "🎓 А теперь — как на ЕГЭ",
+    q: "Что значит фраза «у второго игрока есть <b>выигрышная стратегия</b>»?",
+    opts: ["Второму просто повезёт с ходами первого", "Второй может так отвечать на <b>любой</b> ход первого, что обязательно выиграет", "Второй ходит первым"], correct: 1,
+    exp: "Стратегия — это правило ответа на <b>любой</b> ход соперника, гарантирующее победу. В игре ты каждый раз оставлял Профику проигрышную позицию — это и была твоя стратегия." },
+  { title: "🎓 А теперь — как на ЕГЭ",
+    q: "Позиция называется <b>проигрышной</b>, если тот, кто из неё ходит…",
+    opts: ["может сразу дойти до цели", "при <b>любом</b> своём ходе отдаёт сопернику выигрышную позицию", "имеет меньше камней, чем нужно"], correct: 1,
+    exp: "Проигрышная позиция — та, из которой <b>все</b> ходы ведут в выигрышные позиции соперника. Твоя задача в игре — отдавать такие позиции Профику." },
+  { title: "🎓 А теперь — как на ЕГЭ",
+    q: "Мини-игра до <b>8</b>, ходы +1 или ×2. Ты ходишь из позиции <b>6</b>. Какой ход выигрывает <b>сразу</b>?",
+    opts: ["+1 (→ 7)", "×2 (→ 12 ≥ 8)", "оба проигрывают"], correct: 1,
+    exp: "×2 даёт 12 ≥ 8 — победа за один ход. Умножение часто «перепрыгивает» цель, поэтому в №19 всегда первым делом проверяй, не выигрывает ли ×2 сразу." },
+];
 // Ходы из позиции s, которые СОХРАНЯЮТ выигрыш за ходящего (ведут к победе или к проигрышной позиции соперника)
 function gtWinningMoves(s) {
   return gtNext(s, gt.mul).filter((m) => gtSum(m.state) >= gt.target || !gtIsWin(m.state, gt.target, gt.mul, gt.memo));
+}
+// Причинное объяснение: из позиции `after` ходит Профик. Его выигрышный ответ (если позиция для тебя проиграна)
+function gtProfikWinReply(after) {
+  const moves = gtNext(after, gt.mul);
+  for (const m of moves) if (gtSum(m.state) >= gt.target) return { mv: m, immediate: true };
+  for (const m of moves) if (!gtIsWin(m.state, gt.target, gt.mul, gt.memo)) return { mv: m, immediate: false };
+  return null;
 }
 
 setupPills("gt-difficulty", (v) => { gt.level = v; updateGtMult(); document.getElementById("gt-rule").textContent = GT_LEVELS[v].rule; });
@@ -2319,6 +2350,8 @@ function gtRenderMoves() {
 }
 
 function gtStart() {
+  // момент открытия — один раз перед самой первой партией
+  if (!gtFlag("gt_quickstart_shown")) { document.getElementById("gt-quickstart-modal").classList.remove("hidden"); return; }
   hapticMedium();
   const cfg = GT_LEVELS[gt.level];
   gt.mul = cfg.mul; gt.target = cfg.target; gt.over = false; gt.turn = "profik";
@@ -2334,9 +2367,92 @@ function gtStart() {
   document.getElementById("btn-gt-hint").textContent = "💡 Подсказка";
   gtRenderPiles();
   gtRenderMoves();
-  document.getElementById("gt-turn").textContent = "Профик ходит…";
   showScreen("gtPlay");
-  setTimeout(gtProfikMove, 800);
+  // после освоения (≥2 побед) — не сообщаем, что старт выигрышный, а просим определить тип позиции
+  if (gtWinsCount() >= 2) {
+    document.getElementById("gt-turn").textContent = "Определи позицию 🤔";
+    gtShowClassify();
+  } else {
+    document.getElementById("gt-turn").textContent = "Профик ходит…";
+    setTimeout(gtProfikMove, 800);
+  }
+}
+// Режим «Определи позицию»: старт всегда проигрышен для первого (Профика) → верный ответ «Векта»
+function gtShowClassify() {
+  document.getElementById("gt-classify-pos").textContent = gt.startPiles.join(" + ");
+  const exp = document.getElementById("gt-classify-exp"); exp.style.display = "none"; exp.innerHTML = "";
+  const ok = document.getElementById("btn-gt-classify-ok"); ok.disabled = true; ok.textContent = "Выбери ответ";
+  const box = document.getElementById("gt-classify-opts");
+  box.querySelectorAll(".gt-quiz-opt").forEach((b) => { b.disabled = false; b.className = "gt-quiz-opt"; });
+  let answered = false;
+  box.querySelectorAll(".gt-quiz-opt").forEach((b) => {
+    b.onclick = () => {
+      if (answered) return; answered = true;
+      const a = b.dataset.a;
+      box.querySelectorAll(".gt-quiz-opt").forEach((x) => {
+        x.disabled = true;
+        if (x.dataset.a === "vekta") x.classList.add("correct");
+        else if (x.dataset.a === a) x.classList.add("wrong");
+      });
+      if (a === "vekta") hapticSuccess(); else hapticError();
+      exp.style.display = "block";
+      exp.innerHTML = a === "vekta"
+        ? "✅ Верно! Стартовая позиция <b>проигрышна для первого игрока</b> (Профика). Значит, у тебя, второго, есть выигрышная стратегия — найди её."
+        : (a === "profik"
+          ? "❌ Не совсем. В этой игре старт специально <b>проигрышен для первого</b> игрока. Значит выигрывает второй — <b>ты</b>. Осталось сыграть верно."
+          : "🤔 Смотри: старт <b>проигрышен для первого</b> игрока (Профика), поэтому побеждает второй — <b>ты</b>. Скоро научишься это определять сам.");
+      ok.disabled = false; ok.textContent = "Играть 🦊";
+    };
+  });
+  const modal = document.getElementById("gt-classify-modal");
+  ok.onclick = () => { modal.classList.add("hidden"); document.getElementById("gt-turn").textContent = "Профик ходит…"; setTimeout(gtProfikMove, 800); };
+  modal.classList.remove("hidden");
+}
+// Универсальная модалка-викторина (MCQ + разбор)
+function gtShowQuiz(data) {
+  document.getElementById("gt-quiz-title").textContent = data.title;
+  document.getElementById("gt-quiz-q").innerHTML = data.q;
+  const exp = document.getElementById("gt-quiz-exp"); exp.style.display = "none"; exp.innerHTML = "";
+  const ok = document.getElementById("btn-gt-quiz-ok"); ok.disabled = true; ok.textContent = "Выбери ответ";
+  const box = document.getElementById("gt-quiz-opts");
+  box.innerHTML = data.opts.map((o, i) => `<button class="gt-quiz-opt" data-i="${i}">${o}</button>`).join("");
+  let answered = false;
+  box.querySelectorAll(".gt-quiz-opt").forEach((b) => {
+    b.onclick = () => {
+      if (answered) return; answered = true;
+      const i = parseInt(b.dataset.i, 10);
+      box.querySelectorAll(".gt-quiz-opt").forEach((x, xi) => {
+        x.disabled = true;
+        if (xi === data.correct) x.classList.add("correct");
+        else if (xi === i) x.classList.add("wrong");
+      });
+      if (i === data.correct) hapticSuccess(); else hapticError();
+      exp.innerHTML = (i === data.correct ? "✅ " : "❌ ") + data.exp;
+      exp.style.display = "block";
+      ok.disabled = false; ok.textContent = data.cta || "Понятно";
+    };
+  });
+  const modal = document.getElementById("gt-quiz-modal");
+  ok.onclick = () => { modal.classList.add("hidden"); };
+  modal.classList.remove("hidden");
+}
+function gtShowWhyWin() {
+  gtShowQuiz({
+    title: "🏆 Ты победил. А почему?",
+    q: "Выбери лучшее объяснение того, что ты сделал:",
+    opts: [
+      "Мне повезло с ходами Профика.",
+      "Я оставлял Профику позицию, из которой у него не было гарантированной победы.",
+      "Я всегда старался как можно сильнее увеличить кучу.",
+    ],
+    correct: 1,
+    exp: "Победа не случайна: каждый раз ты переводил Профика в <b>проигрышную позицию</b>. На ЕГЭ это и называется «выигрышная стратегия второго игрока».",
+    cta: "Понятно",
+  });
+}
+function gtShowEgeQuiz(w) {
+  const idx = Math.floor((w - 3) / 2) % GT_EGE_Q.length;
+  gtShowQuiz(Object.assign({ cta: "Понятно" }, GT_EGE_Q[idx]));
 }
 function gtProfikMove() {
   if (gt.over) return;
@@ -2366,8 +2482,8 @@ function gtHumanMove(pile, op) {
   // ключевая проверка: не «единственный ли ход», а СОХРАНИЛАСЬ ли выигрышная позиция за тебя
   const kept = win ? true : !gtIsWin(after, gt.target, gt.mul, gt.memo);
   if (!kept && !gt.turningPoint) {
-    const wm = gtWinningMoves(before);
-    const cm = wm[0];
+    const cm = gtWinningMoves(before)[0];                 // верная альтернатива
+    const reply = gtProfikWinReply(after);               // чем именно Профик накажет
     gt.turningPoint = {
       moveNo: gt.history.filter((h) => h.who === "vekta").length + 1,
       historyLen: gt.history.length,
@@ -2375,6 +2491,10 @@ function gtHumanMove(pile, op) {
       stateAfter: after,
       opText,
       correctText: cm ? gtOpText(cm.pile, cm.op, before.length, gt.mul) : null,
+      correctState: cm ? cm.state : null,
+      replyText: reply ? gtOpText(reply.mv.pile, reply.mv.op, after.length, gt.mul) : null,
+      replyState: reply ? reply.mv.state : null,
+      replyImmediate: reply ? reply.immediate : false,
     };
   }
   gt.history.push({ who: "vekta", opText, after, kept, win });
@@ -2415,23 +2535,29 @@ async function gtEnd(win) {
     hapticError();
     gt.streak = 0;
     title.textContent = "😼 Профик выиграл";
-    sub.textContent = "Проблема была не в последнем ходе. Смотри, где ушла победа:";
+    sub.textContent = "Проблема была не в последнем ходе. Смотри, в какой позиции ушла победа:";
     document.getElementById("gt-r-rating").textContent = 0;
     document.getElementById("gt-r-xp").textContent = 0;
     if (gt.turningPoint) {
-      const tp = gt.turningPoint;
+      const tp = gt.turningPoint, P = (s) => s.join(" + ");
+      // причина: чем именно Профик наказал
+      const cause = tp.replyText
+        ? `Теперь ходит Профик: <b>${tp.replyText}</b> → <b>${P(tp.replyState)}</b>. ` +
+          (tp.replyImmediate ? "Он доходит до цели." : "После этого у тебя уже нет ответа, сохраняющего победу — инициатива перешла к Профику.")
+        : "После этого у Профика появляется гарантированная победа.";
       turning.style.display = "block";
       turning.innerHTML =
         `<div class="gt-tp-title">🔍 Поворотный момент — ход ${tp.moveNo}</div>` +
-        `<div>Ты сделал: <b>${tp.stateBefore.join(" + ")} → ${tp.stateAfter.join(" + ")}</b>. После этого у Профика появилась выигрышная позиция.</div>` +
-        `<button id="btn-gt-show-correct" class="btn btn-link">👀 Показать выигрышный ход</button>` +
+        `<div>Ты сходил <b>${P(tp.stateBefore)} → ${P(tp.stateAfter)}</b> и этим <b>потерял гарантированную победу</b>. ${cause}</div>` +
+        `<button id="btn-gt-show-correct" class="btn btn-link">👀 Как надо было</button>` +
         `<div id="gt-correct" style="display:none; margin-top:4px;"></div>`;
       const scb = document.getElementById("btn-gt-show-correct");
       if (scb) scb.onclick = () => {
         const el = document.getElementById("gt-correct");
         el.style.display = "block";
         el.innerHTML = tp.correctText
-          ? `💡 Из позиции <b>${tp.stateBefore.join(" + ")}</b> выигрышный ход: <b>${tp.correctText}</b> — он оставлял Профику проигрышную позицию.`
+          ? `💡 Из позиции <b>${P(tp.stateBefore)}</b> верный ход — <b>${tp.correctText}</b> → <b>${P(tp.correctState)}</b>. ` +
+            `Каким бы ходом Профик ни ответил из этой позиции, у тебя остаётся выигрышный ответ — поэтому она проигрышная для него.`
           : "💡 Здесь ещё был ход, сохранявший победу.";
       };
       rewindBtn.style.display = "";
@@ -2442,11 +2568,13 @@ async function gtEnd(win) {
   document.getElementById("gt-streak").textContent = gt.streak;
   document.getElementById("gt-r-streak").textContent = gt.streak;
   showScreen("gtResult");
-  // Мост «игра → ЕГЭ» — один раз, после первой победы
+  // Обучающие переходы после победы: 1-я → мост к ЕГЭ, 2-я → «почему победил?», далее → вопрос ЕГЭ
   if (win) {
-    let firstWin = false;
-    try { firstWin = localStorage.getItem("gt_bridge_shown") !== "1"; } catch (e) {}
-    if (firstWin) { try { localStorage.setItem("gt_bridge_shown", "1"); } catch (e) {} document.getElementById("gt-bridge-modal").classList.remove("hidden"); }
+    gtIncWins();
+    const w = gtWinsCount();
+    if (w === 1) { gtSetFlag("gt_bridge_shown"); document.getElementById("gt-bridge-modal").classList.remove("hidden"); }
+    else if (w === 2) { setTimeout(gtShowWhyWin, 400); }
+    else if (w >= 3 && w % 2 === 1) { setTimeout(() => gtShowEgeQuiz(w), 400); }
   }
 }
 function gtRebuildLog() {
@@ -2508,6 +2636,7 @@ document.getElementById("btn-gt-review").addEventListener("click", () => {
   else { box.style.display = "none"; btn.textContent = "🔍 Посмотреть стратегию"; }
 });
 document.getElementById("btn-gt-bridge-ok").addEventListener("click", () => { document.getElementById("gt-bridge-modal").classList.add("hidden"); gtStart(); });
+document.getElementById("btn-gt-quickstart-ok").addEventListener("click", () => { gtSetFlag("gt_quickstart_shown"); document.getElementById("gt-quickstart-modal").classList.add("hidden"); gtStart(); });
 function gtOpenRules() { hapticLight(); document.getElementById("gt-rules-modal").classList.remove("hidden"); }
 function gtCloseRules() { document.getElementById("gt-rules-modal").classList.add("hidden"); }
 document.getElementById("btn-gt-rules").addEventListener("click", gtOpenRules);
