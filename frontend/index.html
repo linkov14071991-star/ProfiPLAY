@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=83">
+<link rel="stylesheet" href="/style.css?v=84">
 </head>
 <body>
 
@@ -250,6 +250,15 @@
         <div class="title">Теория игр</div>
         <div class="desc">Обыграй Профика в игре на камнях. Задание ЕГЭ 19–21, выигрышная стратегия.</div>
         <div class="card-stat" id="card-gametheory-stat"></div>
+      </div>
+    </div>
+    <div class="game-card" data-game="hangman">
+      <button class="game-info-btn" data-info="hangman" aria-label="Правила">?</button>
+      <div class="icon">🎯</div>
+      <div class="info">
+        <div class="title">Виселица</div>
+        <div class="desc">Угадай термин, формулу или команду по буквам. Матеша, физика, инфа, Python и таблицы.</div>
+        <div class="card-stat" id="card-hangman-stat"></div>
       </div>
     </div>
     <div class="game-card" data-game="finderr">
@@ -2065,6 +2074,87 @@
   </div>
 </div>
 
+<!-- ==== Экраны: Виселица ==== -->
+<section id="screen-hm-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🎯 Виселица</h1>
+    <p class="subtitle">Угадай спрятанное слово по буквам, пока не собралась виселица. Термины, формулы и команды — заодно и запомнишь.</p>
+
+    <label class="field">Тема</label>
+    <div class="pills" id="hm-theme">
+      <button class="pill active" data-value="math">🔢 Матеша</button>
+      <button class="pill" data-value="physics">🧲 Физика</button>
+      <button class="pill" data-value="info">💻 Инфа</button>
+      <button class="pill" data-value="code">🐍 Прога + Таблицы</button>
+    </div>
+
+    <label class="field">Уровень</label>
+    <div class="pills" id="hm-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Лёгкий</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средний</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложный</span><span class="pill-hint">×2</span></button>
+    </div>
+    <p class="gt-rule" id="hm-rule">6 ошибок — и виселица собрана. Есть подсказка-определение к каждому слову.</p>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">За угаданное слово — рейтинг <b id="hm-mult">×1</b> · макс 100/день · серия: <b id="hm-streak">0</b></div>
+    </div>
+
+    <button id="btn-hm-start" class="btn btn-primary btn-big">Играть</button>
+    <button class="btn btn-link btn-back" data-back="marathonHub">← В меню</button>
+
+    <div class="game-lb" id="hm-lb">
+      <div class="game-lb-tabs">
+        <button class="game-lb-tab active" data-period="all">За всё время</button>
+        <button class="game-lb-tab" data-period="week">За неделю</button>
+      </div>
+      <div class="game-lb-list" id="hm-lb-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-hm-play" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <div class="hm-topbar">
+      <span class="hm-chip" id="hm-theme-chip">🔢 Матеша</span>
+      <span class="hm-lives" id="hm-lives">❤️❤️❤️❤️❤️❤️</span>
+    </div>
+    <div class="hm-gallows" id="hm-gallows"></div>
+    <div class="hm-hint" id="hm-hint"></div>
+    <div class="hm-word" id="hm-word"></div>
+    <div class="hm-wrong" id="hm-wrong"></div>
+    <div class="hm-keyboard" id="hm-keyboard"></div>
+    <button class="btn btn-link btn-back" data-back="hmSetup">← Сдаться</button>
+  </div>
+</section>
+
+<section id="screen-hm-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1 id="hm-result-title">🎉 Угадал!</h1>
+    <div class="hm-reveal" id="hm-reveal"></div>
+    <div class="hm-def" id="hm-def"></div>
+    <div class="reward-strip" id="hm-reward-strip">
+      <div class="reward-chip rating pos">🏆 <span id="hm-r-rating">0</span></div>
+      <div class="reward-chip xp pos">💎 <span id="hm-r-xp">0</span> XP</div>
+    </div>
+    <p style="text-align:center; opacity:0.7; margin:12px 0 8px;">Серия: <b id="hm-r-streak">0</b></p>
+    <button id="btn-hm-again" class="btn btn-primary btn-big">🔄 Ещё слово</button>
+    <button class="btn btn-secondary btn-back" data-back="marathonHub">В меню</button>
+  </div>
+</section>
+
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
@@ -2647,6 +2737,7 @@
   </div>
 </div>
 
-<script src="/script.js?v=83"></script>
+<script src="/hangman-words.js?v=1"></script>
+<script src="/script.js?v=84"></script>
 </body>
 </html>

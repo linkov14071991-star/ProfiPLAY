@@ -78,6 +78,9 @@ const SCREENS = {
   gtSetup: "screen-gt-setup",
   gtPlay: "screen-gt-play",
   gtResult: "screen-gt-result",
+  hmSetup: "screen-hm-setup",
+  hmPlay: "screen-hm-play",
+  hmResult: "screen-hm-result",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -115,6 +118,7 @@ function showScreen(name) {
   if (name === "gorbovSetup") { loadDailyRecords("gorbov"); loadGameLeaderboard("gorbov", "gorbov-lb-list", "all"); }
   if (name === "stroopSetup") { loadDailyRecords("stroop"); loadGameLeaderboard("stroop", "stroop-lb-list", "all"); }
   if (name === "gtSetup") { loadGameLeaderboard("gametheory", "gt-lb-list", "all"); }
+  if (name === "hmSetup") { loadGameLeaderboard("hangman", "hm-lb-list", "all"); }
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
@@ -256,6 +260,9 @@ const BACK_PARENT = {
   gtResult: "gtSetup",
   gtSetup: "marathonHub",
   gtPlay: "gtSetup",
+  hmResult: "hmSetup",
+  hmSetup: "marathonHub",
+  hmPlay: "hmSetup",
   aliasResult: "aliasSetup",
   gromkoResult: "gromkoSetup",
   tbResult: "tbSetup",
@@ -537,6 +544,7 @@ function routeToGame(game) {
   if (game === "duel") { showScreen("duelSetup"); return; }
   if (game === "python") { window.location.href = "python/index.html"; return; }
   if (game === "gametheory") { currentGame = "gametheory"; resetLbTabs("gt-lb"); showScreen("gtSetup"); return; }
+  if (game === "hangman") { currentGame = "hangman"; resetLbTabs("hm-lb"); showScreen("hmSetup"); return; }
 }
 
 document.body.addEventListener("click", (e) => {
@@ -611,6 +619,12 @@ const GAME_INFO = {
     body: `<p>Игра на камнях из <b>задания ЕГЭ 19–21</b>. Ты — 🦊 Векта, соперник — 🐱 Профик, ходите по очереди (Профик первым). За ход — либо <b>➕1 камень</b>, либо <b>умножить кучу</b> (×2 или ×3). Кто первым доведёт кучу до цели — тот выиграл.</p>
       <p>Секрет не в том, чтобы прыгнуть на цель самому, а в том, <b>какое число ты оставишь Профику</b>: надо каждый ход отдавать ему «проигрышное». Профик играет идеально и наказывает за ошибку.</p>
       <p>Полные правила с примером — кнопка <b>«📖 Как играть»</b> на экране игры. Уровни: лёгкий (одна куча, ×2, до 29), средний (×3, до 50), сложный (две кучи, до 65). За победу — рейтинг × множитель, <b>кап 100/день</b>.</p>`,
+  },
+  hangman: {
+    title: "🎯 Виселица",
+    body: `<p>Угадывай спрятанное слово по буквам. За каждую ошибку достраивается виселица — их всего <b>6</b>. Открой все буквы раньше, чем она соберётся.</p>
+      <p>4 темы: <b>Матеша, Физика, Инфа</b> и <b>Прога + Таблицы</b> (команды Python и функции таблиц: СУММ, ЕСЛИ, ВПР). К каждому слову есть <b>подсказка-определение</b> — играя, запоминаешь термины, формулы и команды.</p>
+      <p>3 уровня сложности дают множитель ×1 / ×1.5 / ×2. За угаданное слово — рейтинг в общий зачёт, <b>кап 100/день</b>. Копи серию угаданных слов!</p>`,
   },
   infomath: {
     title: "🖥️ IT-разминка",
@@ -2644,6 +2658,137 @@ document.getElementById("btn-gt-rules2").addEventListener("click", gtOpenRules);
 document.getElementById("btn-gt-rules-ok").addEventListener("click", gtCloseRules);
 document.querySelector("#gt-rules-modal .gim-backdrop").addEventListener("click", gtCloseRules);
 setupGameLeaderboard("gametheory", "gt-lb", "gt-lb-list");
+
+// ==============================
+// ========= ВИСЕЛИЦА ===========
+// ==============================
+// Угадывание термина/формулы/команды по буквам. 4 темы, 3 уровня, подсказка-определение.
+const HM_THEMES = { math: "🔢 Матеша", physics: "🧲 Физика", info: "💻 Инфа", code: "🐍 Прога + Таблицы" };
+const HM_MULT = { easy: 1, medium: 1.5, hard: 2 };
+const HM_MAX_WRONG = 6;
+const HM_CYR = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+const HM_LAT = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const hm = { theme: "math", level: "easy", word: "", hint: "", guessed: new Set(), wrong: [], over: false, streak: 0, lastWord: "" };
+
+setupPills("hm-theme", (v) => { hm.theme = v; });
+setupPills("hm-difficulty", (v) => { hm.level = v; hmUpdateMult(); });
+function hmUpdateMult() {
+  const m = HM_MULT[hm.level];
+  const el = document.getElementById("hm-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(m) ? m : m.toFixed(1));
+}
+hmUpdateMult();
+
+function hmPickWord() {
+  const pool = ((window.HANGMAN_WORDS || {})[hm.theme] || {})[hm.level] || [];
+  if (!pool.length) return { w: "PYTHON", h: "" };
+  let pick = pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length > 1) { let g = 0; while (pick.w === hm.lastWord && g++ < 10) pick = pool[Math.floor(Math.random() * pool.length)]; }
+  return pick;
+}
+function hmAlphabet() { return /[A-Z]/.test(hm.word) ? HM_LAT : HM_CYR; }
+
+function hmStart() {
+  hapticMedium();
+  const p = hmPickWord();
+  hm.word = p.w; hm.hint = p.h; hm.lastWord = p.w;
+  hm.guessed = new Set(); hm.wrong = []; hm.over = false;
+  document.getElementById("hm-theme-chip").textContent = HM_THEMES[hm.theme];
+  document.getElementById("hm-hint").textContent = "💡 " + hm.hint;
+  hmRenderWord(); hmRenderWrong(); hmRenderLives(); hmDrawGallows(); hmRenderKeyboard();
+  showScreen("hmPlay");
+}
+function hmRenderKeyboard() {
+  const box = document.getElementById("hm-keyboard");
+  box.innerHTML = "";
+  for (const ch of hmAlphabet()) {
+    const b = document.createElement("button");
+    b.className = "hm-key";
+    b.textContent = ch;
+    if (hm.guessed.has(ch)) { b.disabled = true; b.classList.add(hm.word.includes(ch) ? "hit" : "miss"); }
+    b.onclick = () => hmGuess(ch);
+    box.appendChild(b);
+  }
+}
+function hmRenderWord() {
+  const box = document.getElementById("hm-word");
+  box.innerHTML = [...hm.word].map((ch) => {
+    const g = hm.guessed.has(ch);
+    const shown = g || hm.over;
+    let cls = "hm-cell";
+    if (g) cls += " open"; else if (hm.over) cls += " missed";
+    return `<span class="${cls}">${shown ? ch : ""}</span>`;
+  }).join("");
+}
+function hmRenderWrong() {
+  const el = document.getElementById("hm-wrong");
+  el.textContent = hm.wrong.length ? "Мимо: " + hm.wrong.join(" ") : "";
+}
+function hmRenderLives() {
+  const left = Math.max(0, HM_MAX_WRONG - hm.wrong.length);
+  document.getElementById("hm-lives").textContent = "❤️".repeat(left) + "🖤".repeat(HM_MAX_WRONG - left);
+}
+function hmGuess(ch) {
+  if (hm.over || hm.guessed.has(ch)) return;
+  hm.guessed.add(ch);
+  if (hm.word.includes(ch)) hapticLight();
+  else { hm.wrong.push(ch); hapticError(); }
+  hmRenderWord(); hmRenderWrong(); hmRenderLives(); hmDrawGallows(); hmRenderKeyboard();
+  if ([...hm.word].every((c) => hm.guessed.has(c))) { hmEnd(true); return; }
+  if (hm.wrong.length >= HM_MAX_WRONG) { hmEnd(false); return; }
+}
+function hmDrawGallows() {
+  const n = hm.wrong.length, S = "#6636E9", R = "#E5484D";
+  const frame = [
+    `<line x1="20" y1="140" x2="100" y2="140" stroke="${S}" stroke-width="4"/>`,
+    `<line x1="45" y1="140" x2="45" y2="15" stroke="${S}" stroke-width="4"/>`,
+    `<line x1="45" y1="15" x2="95" y2="15" stroke="${S}" stroke-width="4"/>`,
+    `<line x1="95" y1="15" x2="95" y2="30" stroke="${S}" stroke-width="3"/>`,
+  ].join("");
+  const body = [
+    `<circle cx="95" cy="42" r="12" fill="none" stroke="${R}" stroke-width="3"/>`,
+    `<line x1="95" y1="54" x2="95" y2="90" stroke="${R}" stroke-width="3"/>`,
+    `<line x1="95" y1="62" x2="80" y2="78" stroke="${R}" stroke-width="3"/>`,
+    `<line x1="95" y1="62" x2="110" y2="78" stroke="${R}" stroke-width="3"/>`,
+    `<line x1="95" y1="90" x2="82" y2="112" stroke="${R}" stroke-width="3"/>`,
+    `<line x1="95" y1="90" x2="108" y2="112" stroke="${R}" stroke-width="3"/>`,
+  ].slice(0, n).join("");
+  document.getElementById("hm-gallows").innerHTML = `<svg viewBox="0 0 130 150" width="130" height="150">${frame}${body}</svg>`;
+}
+async function hmEnd(won) {
+  hm.over = true;
+  hmRenderWord(); hmRenderKeyboard();
+  const title = document.getElementById("hm-result-title");
+  document.getElementById("hm-reveal").innerHTML = `Слово: <b>${hm.word}</b>`;
+  document.getElementById("hm-def").textContent = hm.hint;
+  const strip = document.getElementById("hm-reward-strip");
+  if (won) {
+    hapticSuccess();
+    hm.streak++;
+    title.textContent = "🎉 Угадал!";
+    strip.style.display = "";
+    const res = await awardTraining("hangman", 1, { correct: 1, difficulty: hm.level });
+    document.getElementById("hm-r-rating").textContent = (res && res.delta_awarded) || 0;
+    document.getElementById("hm-r-xp").textContent = (res && res.xp_awarded) || 0;
+  } else {
+    hapticError();
+    hm.streak = 0;
+    title.textContent = "💀 Виселица собрана";
+    strip.style.display = "none";
+  }
+  document.getElementById("hm-streak").textContent = hm.streak;
+  document.getElementById("hm-r-streak").textContent = hm.streak;
+  showScreen("hmResult");
+}
+document.getElementById("btn-hm-start").addEventListener("click", hmStart);
+document.getElementById("btn-hm-again").addEventListener("click", hmStart);
+document.addEventListener("keydown", (e) => {
+  const scr = document.getElementById("screen-hm-play");
+  if (!scr || !scr.classList.contains("active") || hm.over) return;
+  const key = (e.key || "").toUpperCase();
+  if (key.length === 1 && hmAlphabet().includes(key)) hmGuess(key);
+});
+setupGameLeaderboard("hangman", "hm-lb", "hm-lb-list");
 
 // ===== Дуэль «Струп» (общая последовательность, кто больше верных за 30 сек) =====
 function duelStroopStart(info) {

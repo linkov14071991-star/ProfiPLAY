@@ -57,6 +57,7 @@ XP_PER_RATING = {
     "gorbov": 2.0,    # чёрно-красная таблица (Горбов–Шульте): как спринт
     "stroop": 2.0,    # тест Струпа: как спринт
     "gametheory": 1.5,  # теория игр (обыграть Профика)
+    "hangman": 1.5,     # виселица (термины, формулы, команды)
 }
 
 # Множитель по сложности вопросов
@@ -66,7 +67,7 @@ LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
 # Базовая ставка рейтинга за один правильный ответ.
 # Тусовка (party) = 0 очков, потому что играется на своей честности —
 # слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
-BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12, "stroop": 1, "gametheory": 4}
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12, "stroop": 1, "gametheory": 4, "hangman": 6}
 # Игры Спринта, где партия за 60 сек = один результат (для «Рекорда дня» по уровням)
 DAILY_RECORD_GAMES = ("sprint", "fastmath", "infomath", "stroop")
 # Игры «на время»: партия = прохождение таблицы, рекорд = мс (лог времени в daily_score)
@@ -1071,6 +1072,7 @@ GAME_LB_SOURCES = {
     "gorbov":   ["gorbov", "duel_gorbov"],
     "stroop":   ["stroop", "duel_stroop"],
     "gametheory": ["gametheory"],
+    "hangman":  ["hangman"],
     "marathon": ["marathon"],
     "python":   ["python"],
 }
@@ -2268,7 +2270,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "weekly-tables-v93"
+BUILD_TAG = "hangman-v94"
 
 
 @app.get("/api/version")
