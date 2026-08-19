@@ -2233,6 +2233,9 @@ GIVEAWAY = {
     "prize_winner": "Памятная медаль с забега (та самая, которую получит Игорь) 🏅",
     "prize2_min": 128,   # сертификат за 2 место разыгрывается при стольких участниках
     "prize3_min": 256,   # сертификат за 3 место разыгрывается при стольких участниках
+    "hist_from": 40 * 60,   # гистограмма статистики: от 40 мин
+    "hist_to": 60 * 60,     # до 60 мин
+    "hist_step": 2 * 60,    # шаг 2 минуты
 }
 
 
@@ -2326,18 +2329,24 @@ async def giveaway_state(init_data: str = Body(..., embed=True)):
 
 
 def _giveaway_histogram(secs):
-    """Распределение по 5-минутным корзинам в диапазоне min..max."""
+    """Распределение по корзинам в диапазоне hist_from..hist_to с шагом hist_step
+    (по умолчанию 40–60 мин, шаг 2 мин). Прогнозы вне диапазона идут в крайние корзины «<40» и «60+»."""
     if not secs:
         return []
-    lo, hi = GIVEAWAY["min_sec"], GIVEAWAY["max_sec"]
-    step = 5 * 60
+    lo, hi, step = GIVEAWAY["hist_from"], GIVEAWAY["hist_to"], GIVEAWAY["hist_step"]
     buckets = []
+    below = sum(1 for s in secs if s < lo)
+    if below:
+        buckets.append({"from": lo - step, "to": lo, "label": f"<{lo // 60}", "count": below})
     b = lo
     while b < hi:
         top = (b + step) >= hi          # последняя корзина включает верхнюю границу
         cnt = sum(1 for s in secs if ((b <= s <= b + step) if top else (b <= s < b + step)))
-        buckets.append({"from": b, "to": b + step, "count": cnt})
+        buckets.append({"from": b, "to": b + step, "label": f"{b // 60}–{(b + step) // 60}", "count": cnt})
         b += step
+    above = sum(1 for s in secs if s > hi)
+    if above:
+        buckets.append({"from": hi, "to": hi + step, "label": f"{hi // 60}+", "count": above})
     return buckets
 
 
@@ -2644,7 +2653,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-broadcast-v101"
+BUILD_TAG = "giveaway-hist-v102"
 
 
 @app.get("/api/version")

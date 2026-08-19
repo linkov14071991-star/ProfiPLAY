@@ -2953,7 +2953,8 @@ function gvRenderStats(res) {
   const maxc = Math.max(1, ...h.map((b) => b.count));
   document.getElementById("gv-hist").innerHTML = h.map((b) => {
     const pct = Math.round((b.count / maxc) * 100);
-    return `<div class="gv-hrow"><span class="gv-hlbl">${Math.floor(b.from / 60)}–${Math.floor(b.to / 60)}м</span><span class="gv-hbar"><span style="width:${pct}%"></span></span><span class="gv-hc">${b.count}</span></div>`;
+    const lbl = b.label || `${Math.floor(b.from / 60)}–${Math.floor(b.to / 60)}`;
+    return `<div class="gv-hrow"><span class="gv-hlbl">${lbl}м</span><span class="gv-hbar"><span style="width:${pct}%"></span></span><span class="gv-hc">${b.count}</span></div>`;
   }).join("");
 }
 function gvRenderTable(res) {
