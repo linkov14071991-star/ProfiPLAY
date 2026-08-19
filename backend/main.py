@@ -1187,7 +1187,7 @@ DUEL_QUESTIONS_COUNT = 10
 DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
 
 # Форматы дуэли = игры Спринта
-DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte", "gorbov", "stroop")
+DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte", "gorbov", "stroop", "hangman")
 # Тест Струпа: набор цветов по сложности и длительность дуэли
 STROOP_KEYS = ("red", "blue", "green", "yellow", "orange", "purple", "cyan", "pink")
 STROOP_N = {"easy": 4, "medium": 6, "hard": 8}
@@ -1250,6 +1250,32 @@ def _score_stroop(payload: dict) -> int:
     if not payload:
         return 0
     return max(0, min(1000, int(payload.get("correct", 0))))
+
+
+def _score_hangman(payload: dict) -> int:
+    """Очки за «Виселицу» (вызов Игоря): сумма оставшихся жизней за 3 слова.
+    Клиент считает и присылает score; здесь только валидируем диапазон.
+    Максимум разумно 3 слова × 6 жизней = 18."""
+    if not payload:
+        return 0
+    return max(0, min(18, int(payload.get("score", 0))))
+
+
+_HM_ALPHA = re.compile(r"^[A-ZА-Я]{1,20}$")
+
+
+def _sanitize_hm_words(raw) -> list:
+    """Проверяем 3 слова от клиента: только заглавные буквы (лат/кир), без Ё,
+    с непустой подсказкой. Отбрасываем лишнее, режем длину."""
+    out = []
+    for it in (raw or [])[:3]:
+        if not isinstance(it, dict):
+            continue
+        w = str(it.get("w", "")).upper().replace("Ё", "Е")
+        h = str(it.get("h", "")).strip()[:120]
+        if _HM_ALPHA.match(w) and h:
+            out.append({"w": w, "h": h, "lvl": str(it.get("lvl", ""))[:8]})
+    return out
 
 
 def _gen_stroop_trials(n_colors: int, count: int) -> list:
@@ -1580,6 +1606,7 @@ async def duel_create(
     topic: str = Body(""),
     format: str = Body("sprint"),
     questions: list = Body(None),   # клиентские MCQ для fastmath / infomath
+    hmwords: list = Body(None),     # 3 слова для «Виселицы» (вызов Игоря)
 ):
     """Создать новую дуэль в одном из форматов Спринта.
     sprint — вопросы из банка (сервер); fastmath/infomath — MCQ от клиента;
@@ -1651,6 +1678,17 @@ async def duel_create(
             )
             return {"duel_id": duel_id, "format": "stroop", "keys": keys,
                     "trials": trials, "time_ms": STROOP_DUEL_MS}
+
+        if format == "hangman":
+            words = _sanitize_hm_words(hmwords)
+            if len(words) != 3:
+                raise HTTPException(status_code=400, detail="Need 3 words")
+            payload = {"format": "hangman", "words": words}
+            db.execute(
+                "INSERT INTO duels (id, creator_id, difficulty, questions_json, format) VALUES (?, ?, ?, ?, ?)",
+                (duel_id, creator["telegram_id"], difficulty, json.dumps(payload), format),
+            )
+            return {"duel_id": duel_id, "format": "hangman", "words": words}
 
         if format == "sprint":
             pool = _pool_for(difficulty, topic)
@@ -1735,6 +1773,7 @@ async def duel_submit(
     ng: dict = Body(None),           # результат «Угадай число»
     sch: dict = Body(None),          # результат «Таблица Шульте»/«Горбов» {solved, elapsed_ms}
     strp: dict = Body(None),         # результат «Струп» {correct}
+    hm: dict = Body(None),           # результат «Виселица» {score}
 ):
     """Сдать результат. Считаем очки, если оба сдали — финализируем."""
     tg_user = get_verified_user(init_data)
@@ -1754,6 +1793,8 @@ async def duel_submit(
             my_score = _score_schulte(sch or {})
         elif _fmt == "stroop":
             my_score = _score_stroop(strp or {})
+        elif _fmt == "hangman":
+            my_score = _score_hangman(hm or {})
         else:
             questions = json.loads(duel["questions_json"])
             my_score = _score_answers(questions, answers or [])
@@ -1994,6 +2035,7 @@ WEEKLY_FMT_TITLES = {
     "schulte": "Таблица Шульте",
     "gorbov": "Чёрно-красная таблица",
     "stroop": "Струп-тест",
+    "hangman": "Виселица",
 }
 WEEKLY_BONUS = 50
 _bg_tasks: set = set()
@@ -2105,6 +2147,8 @@ async def weekly_active(init_data: str = Body(..., embed=True)):
             res.update({"size": payload["size"], "cells": payload["cells"]})
         elif fmt == "stroop":
             res.update({"keys": payload["keys"], "trials": payload["trials"], "time_ms": STROOP_DUEL_MS})
+        elif fmt == "hangman":
+            res.update({"words": payload["words"]})
         else:
             res["questions"] = [{"q": q["q"], "options": q["options"]} for q in payload]
             res["time_limit_ms"] = DUEL_TIME_LIMIT_MS
@@ -2119,6 +2163,7 @@ async def weekly_attempt(
     ng: dict = Body(None),
     sch: dict = Body(None),          # результат «Таблица Шульте»/«Горбов» {solved, elapsed_ms}
     strp: dict = Body(None),         # результат «Струп» {correct}
+    hm: dict = Body(None),           # результат «Виселица» {score}
 ):
     """Пользователь сдаёт попытку. Обогнал счёт админа → +50 (один раз за вызов)."""
     tg_user = get_verified_user(init_data)
@@ -2145,11 +2190,14 @@ async def weekly_attempt(
             score = _score_schulte(sch or {})
         elif _wf == "stroop":
             score = _score_stroop(strp or {})
+        elif _wf == "hangman":
+            score = _score_hangman(hm or {})
         else:
             questions = json.loads(ch["payload_json"])
             score = _score_answers(questions, answers or [])
 
-        beat = score > ch["admin_score"]
+        # «Виселица»: набрать столько же ИЛИ больше — уже победа (по просьбе); остальные — строго больше
+        beat = (score >= ch["admin_score"]) if _wf == "hangman" else (score > ch["admin_score"])
         bonus = WEEKLY_BONUS if beat else 0
         if bonus:
             db.execute("UPDATE users SET rating = rating + ? WHERE telegram_id = ?", (bonus, my_id))
@@ -2270,7 +2318,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "prokachka-rename-v95"
+BUILD_TAG = "hangman-weekly-v96"
 
 
 @app.get("/api/version")

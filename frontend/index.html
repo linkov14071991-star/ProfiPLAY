@@ -332,6 +332,7 @@
       <button class="pill" data-value="schulte">🔢 Таблица Шульте</button>
       <button class="pill" data-value="gorbov">🔴 Чёрно-красная</button>
       <button class="pill" data-value="stroop">🎨 Струп-тест</button>
+      <button class="pill" data-value="hangman">🎯 Виселица</button>
     </div>
     <label class="field">Сложность</label>
     <div class="pills" id="wa-difficulty">
@@ -2149,9 +2150,10 @@
       <div class="reward-chip rating pos">🏆 <span id="hm-r-rating">0</span></div>
       <div class="reward-chip xp pos">💎 <span id="hm-r-xp">0</span> XP</div>
     </div>
-    <p style="text-align:center; opacity:0.7; margin:12px 0 8px;">Серия: <b id="hm-r-streak">0</b></p>
+    <p style="text-align:center; opacity:0.7; margin:12px 0 8px;" id="hm-streak-line">Серия: <b id="hm-r-streak">0</b></p>
+    <button id="btn-hm-next" class="btn btn-primary btn-big" style="display:none;">Дальше →</button>
     <button id="btn-hm-again" class="btn btn-primary btn-big">🔄 Ещё слово</button>
-    <button class="btn btn-secondary btn-back" data-back="marathonHub">В меню</button>
+    <button class="btn btn-secondary btn-back" data-back="marathonHub" id="btn-hm-menu">В меню</button>
   </div>
 </section>
 
@@ -2737,7 +2739,7 @@
   </div>
 </div>
 
-<script src="/hangman-words.js?v=1"></script>
-<script src="/script.js?v=85"></script>
+<script src="/hangman-words.js?v=2"></script>
+<script src="/script.js?v=86"></script>
 </body>
 </html>

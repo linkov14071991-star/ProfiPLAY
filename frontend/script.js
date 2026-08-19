@@ -2668,7 +2668,8 @@ const HM_MULT = { easy: 1, medium: 1.5, hard: 2 };
 const HM_MAX_WRONG = 6;
 const HM_CYR = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
 const HM_LAT = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const hm = { theme: "math", level: "easy", word: "", hint: "", guessed: new Set(), wrong: [], over: false, streak: 0, lastWord: "" };
+const hm = { theme: "math", level: "easy", word: "", hint: "", guessed: new Set(), wrong: [], over: false, streak: 0, lastWord: "",
+             wmode: null, wwords: [], widx: 0, wscore: 0 };
 
 setupPills("hm-theme", (v) => { hm.theme = v; });
 setupPills("hm-difficulty", (v) => { hm.level = v; hmUpdateMult(); });
@@ -2690,10 +2691,31 @@ function hmAlphabet() { return /[A-Z]/.test(hm.word) ? HM_LAT : HM_CYR; }
 
 function hmStart() {
   hapticMedium();
+  hm.wmode = null;
   const p = hmPickWord();
   hm.word = p.w; hm.hint = p.h; hm.lastWord = p.w;
   hm.guessed = new Set(); hm.wrong = []; hm.over = false;
   document.getElementById("hm-theme-chip").textContent = HM_THEMES[hm.theme];
+  document.getElementById("hm-hint").textContent = "💡 " + hm.hint;
+  hmRenderWord(); hmRenderWrong(); hmRenderLives(); hmDrawGallows(); hmRenderKeyboard();
+  showScreen("hmPlay");
+}
+// ---- Вызов от Игоря: 3 слова (лёгкое/среднее/сложное), сумма оставшихся жизней ----
+function hmPick3() {
+  const bank = window.HANGMAN_WORDS || {};
+  const poolOf = (lvl) => { let all = []; for (const th in bank) all = all.concat((bank[th][lvl] || []).map((x) => ({ w: x.w, h: x.h, lvl }))); return all; };
+  const pick = (lvl) => { const a = poolOf(lvl); return a[Math.floor(Math.random() * a.length)]; };
+  return [pick("easy"), pick("medium"), pick("hard")];
+}
+function hmWeeklyStart(words, mode) {
+  hm.wmode = mode; hm.wwords = words || []; hm.widx = 0; hm.wscore = 0;
+  hmWeeklyLoadWord();
+}
+function hmWeeklyLoadWord() {
+  const it = hm.wwords[hm.widx];
+  hm.word = (it.w || "").toUpperCase(); hm.hint = it.h || "";
+  hm.guessed = new Set(); hm.wrong = []; hm.over = false;
+  document.getElementById("hm-theme-chip").textContent = `🔥 Вызов Игоря · слово ${hm.widx + 1}/3`;
   document.getElementById("hm-hint").textContent = "💡 " + hm.hint;
   hmRenderWord(); hmRenderWrong(); hmRenderLives(); hmDrawGallows(); hmRenderKeyboard();
   showScreen("hmPlay");
@@ -2758,9 +2780,15 @@ function hmDrawGallows() {
 async function hmEnd(won) {
   hm.over = true;
   hmRenderWord(); hmRenderKeyboard();
+  if (hm.wmode) return hmWeeklyWordEnd(won);
   const title = document.getElementById("hm-result-title");
   document.getElementById("hm-reveal").innerHTML = `Слово: <b>${hm.word}</b>`;
   document.getElementById("hm-def").textContent = hm.hint;
+  // одиночный режим: показываем «Ещё слово» и «В меню», прячем «Дальше»
+  document.getElementById("btn-hm-next").style.display = "none";
+  document.getElementById("btn-hm-again").style.display = "";
+  document.getElementById("btn-hm-menu").style.display = "";
+  document.getElementById("hm-streak-line").style.display = "";
   const strip = document.getElementById("hm-reward-strip");
   if (won) {
     hapticSuccess();
@@ -2780,6 +2808,32 @@ async function hmEnd(won) {
   document.getElementById("hm-r-streak").textContent = hm.streak;
   showScreen("hmResult");
 }
+// Конец слова в режиме вызова: копим очки (оставшиеся жизни), ведём к следующему или сдаём
+function hmWeeklyWordEnd(won) {
+  const pts = won ? Math.max(0, HM_MAX_WRONG - hm.wrong.length) : 0;
+  hm.wscore += pts;
+  hm.widx++;
+  if (hm.widx < 3) {
+    // межсловный экран
+    document.getElementById("hm-result-title").textContent = won ? `✅ Слово ${hm.widx}/3 — угадано!` : `💀 Слово ${hm.widx}/3 — не угадано`;
+    document.getElementById("hm-reveal").innerHTML = `Слово: <b>${hm.word}</b> · +${pts} очк.`;
+    document.getElementById("hm-def").textContent = hm.hint;
+    document.getElementById("hm-reward-strip").style.display = "none";
+    document.getElementById("hm-streak-line").innerHTML = `Очки за вызов: <b>${hm.wscore}</b>`;
+    document.getElementById("hm-streak-line").style.display = "";
+    document.getElementById("btn-hm-next").style.display = "";
+    document.getElementById("btn-hm-again").style.display = "none";
+    document.getElementById("btn-hm-menu").style.display = "none";
+    if (won) hapticSuccess(); else hapticError();
+    showScreen("hmResult");
+  } else {
+    // третье слово сыграно — отправляем сумму
+    const mode = hm.wmode; hm.wmode = null;
+    if (mode === "weekly") weeklyUserFinish({ hm: { score: hm.wscore } });
+    else weeklyAdminFinish({ hm: { score: hm.wscore } });
+  }
+}
+document.getElementById("btn-hm-next").addEventListener("click", () => { hapticMedium(); hmWeeklyLoadWord(); });
 document.getElementById("btn-hm-start").addEventListener("click", hmStart);
 document.getElementById("btn-hm-again").addEventListener("click", hmStart);
 document.addEventListener("keydown", (e) => {
@@ -4618,6 +4672,7 @@ async function duelStartCreate() {
   else if (duel.format === "fastmath" || duel.format === "infomath") {
     body.questions = duelBuildItems(duel.format, duel.difficulty);
   }
+  else if (duel.format === "hangman") { body.hmwords = hmPick3(); }
   const res = await apiPost("/api/duel/create", body);
   if (!res || !res.duel_id) {
     alert("Не удалось создать дуэль. Попробуй ещё раз.");
@@ -4629,6 +4684,7 @@ async function duelStartCreate() {
   if (duel.format === "schulte") { duelSchulteStart(res); return; }
   if (duel.format === "gorbov") { duelGorbovStart(res); return; }
   if (duel.format === "stroop") { duelStroopStart(res); return; }
+  if (duel.format === "hangman") { hmWeeklyStart(res.words, "weekly-admin"); return; }
   duel.questions = res.questions;
   duel.timeLimitMs = res.time_limit_ms || 15000;
   duel.qIndex = 0;
@@ -5424,16 +5480,19 @@ document.getElementById("btn-duel-history").addEventListener("click", openDuelHi
 // ==============================
 // ======= ВЫЗОВ НЕДЕЛИ =========
 // ==============================
-const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте", gorbov: "Чёрно-красная таблица", stroop: "Струп-тест" };
+const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте", gorbov: "Чёрно-красная таблица", stroop: "Струп-тест", hangman: "Виселица" };
 const WEEKLY_TIME_FMTS = ["schulte", "gorbov"];
 // Человекочитаемый счёт вызова: таблицы на время → секунды, остальное → как есть
 function weeklyScoreText(fmt, score) {
   if (WEEKLY_TIME_FMTS.includes(fmt)) return (!score || score <= 0) ? "не пройдено" : ((10000000 - score) / 1000).toFixed(1) + " с";
+  if (fmt === "hangman") return (score || 0) + " очк.";
   return String(score);
 }
 function weeklyGoalHtml(fmt, score) {
   const s = `<b>${weeklyScoreText(fmt, score)}</b>`;
-  return WEEKLY_TIME_FMTS.includes(fmt) ? `пройди быстрее ${s}` : `побей ${s}`;
+  if (WEEKLY_TIME_FMTS.includes(fmt)) return `пройди быстрее ${s}`;
+  if (fmt === "hangman") return `набери ${s} или больше`;
+  return `побей ${s}`;
 }
 let weeklyActive = null;
 const weeklyAdmin = { format: "sprint", difficulty: "medium" };
@@ -5505,6 +5564,8 @@ function openWeeklyPlay() {
     duelGorbovStart({ size: a.size, cells: a.cells });
   } else if (a.format === "stroop") {
     duelStroopStart({ keys: a.keys, trials: a.trials, time_ms: a.time_ms });
+  } else if (a.format === "hangman") {
+    hmWeeklyStart(a.words, "weekly");
   } else {
     duel.questions = a.questions;
     duel.timeLimitMs = a.time_limit_ms || 15000;
@@ -5520,6 +5581,7 @@ async function weeklyUserFinish(payload) {
   if (payload.ng) body.ng = payload.ng;
   else if (payload.sch) body.sch = payload.sch;
   else if (payload.strp) body.strp = payload.strp;
+  else if (payload.hm) body.hm = payload.hm;
   else body.answers = payload.answers;
   const res = await apiPost(`/api/weekly/${duel.weeklyId}/attempt`, body);
   duel.mode = "duel";
@@ -5560,6 +5622,7 @@ async function weeklyAdminFinish(payload) {
   if (payload.ng) body.ng = payload.ng;
   else if (payload.sch) body.sch = payload.sch;
   else if (payload.strp) body.strp = payload.strp;
+  else if (payload.hm) body.hm = payload.hm;
   else body.answers = payload.answers;
   await apiPost(`/api/duel/${duel.duelId}/submit`, body);      // проставит creator_score
   const prom = await apiPost("/api/weekly/promote", { init_data: INIT_DATA, duel_id: duel.duelId });
