@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=80">
+<link rel="stylesheet" href="/style.css?v=81">
 </head>
 <body>
 
@@ -1863,6 +1863,8 @@
     <h1>♟️ Теория игр</h1>
     <p class="subtitle">Обыграй Профика в игре на камнях. Он ходит первым и играет идеально — твоя задача, играя за Векту (второй игрок), найти выигрышную стратегию.</p>
 
+    <button id="btn-gt-rules" class="btn btn-secondary" style="margin:0 0 6px;">📖 Как играть — простыми словами</button>
+
     <label class="field">Уровень</label>
     <div class="pills" id="gt-difficulty">
       <button class="pill pill-diff active" data-value="easy"><span>Лёгкий</span><span class="pill-hint">×1</span></button>
@@ -1908,7 +1910,10 @@
     <button id="btn-gt-hint" class="btn btn-secondary gt-hint-btn">💡 Подсказка</button>
     <div class="gt-hint" id="gt-hint"></div>
     <div class="gt-log" id="gt-log"></div>
-    <button id="btn-gt-give" class="btn btn-link">Сдаться</button>
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button id="btn-gt-rules2" class="btn btn-link">📖 Правила</button>
+      <button id="btn-gt-give" class="btn btn-link">Сдаться</button>
+    </div>
   </div>
 </section>
 
@@ -1933,6 +1938,46 @@
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>
+
+<!-- Правила «Теории игр» простым языком -->
+<div id="gt-rules-modal" class="game-info-modal hidden">
+  <div class="gim-backdrop" data-close="gt-rules-modal"></div>
+  <div class="gim-card">
+    <div class="gim-title">📖 Как играть — простыми словами</div>
+    <div class="gim-body gt-rules-body">
+      <p><b>Кто играет.</b> Ты — 🦊 Векта. Соперник — 🐱 Профик. Ходите <b>по очереди</b>. Профик ходит <b>первым</b>, ты — вторым.</p>
+
+      <p><b>Что на столе.</b> Есть <b>куча камней</b> (на лёгком уровне — одна). У неё есть число — сколько сейчас камней. И есть <b>цель</b>, например <b>29</b>.</p>
+
+      <p><b>Что можно сделать за ход</b> (одно из двух):<br>
+      ➕ <b>добавить 1 камень</b> — число вырастает на 1;<br>
+      ✖️ <b>умножить кучу</b> (на лёгком — ×2) — число становится вдвое больше.</p>
+
+      <p><b>Кто выиграл.</b> Побеждает тот, после чьего хода в куче стало <b>29 камней или больше</b>. То есть кто <b>дотянул до цели — тот и выиграл</b>.</p>
+
+      <div class="gt-rules-ex">
+        <div class="gt-rules-ex-t">👀 Пример хода (цель 29):</div>
+        <div>В куче <b>10</b>. Профик делает ➕1 → стало <b>11</b>.</div>
+        <div>Твой ход. Сделаешь ✖️2 → станет <b>22</b>. Сделаешь ➕1 → станет <b>12</b>.</div>
+        <div>Так по очереди, пока кто-то не доведёт кучу до <b>29+</b>.</div>
+      </div>
+
+      <p><b>❗ Главный секрет.</b> Дело не в том, чтобы самому прыгнуть на 29. Дело в том, <b>какое число ты оставишь Профику</b>. Есть «плохие» числа: если оставить Профику такое — он уже <b>никак</b> не сможет выиграть при твоей верной игре. Твоя задача — каждый ход отдавать Профику именно такое «проигрышное» число.</p>
+
+      <p><b>Как тебе помогает игра:</b><br>
+      🟢 после хорошего хода загорается «Стратегия сохранена»;<br>
+      💡 кнопка <b>Подсказка</b> подскажет направление (3 уровня — от намёка до точного хода);<br>
+      🔍 после партии можно открыть <b>разбор</b> и увидеть, где всё пошло не так, и <b>вернуться к моменту ошибки</b>.</p>
+
+      <p style="opacity:0.75;">На среднем и сложном уровне цель больше, умножение на ×3, а на сложном — <b>две кучи</b> сразу. Правила те же.</p>
+
+      <p><b>Зачем это.</b> Это живая версия задания <b>ЕГЭ №19–21</b> про выигрышную стратегию. Научишься чувствовать её в игре — легко разберёшь и на экзамене.</p>
+    </div>
+    <div class="gim-foot">
+      <button class="btn btn-primary" id="btn-gt-rules-ok" style="width:100%; margin:0;">Понятно, играем 🦊</button>
+    </div>
+  </div>
+</div>
 
 <!-- Мост «игра → ЕГЭ»: после первой победы -->
 <div id="gt-bridge-modal" class="game-info-modal hidden">
@@ -2531,6 +2576,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=80"></script>
+<script src="/script.js?v=81"></script>
 </body>
 </html>

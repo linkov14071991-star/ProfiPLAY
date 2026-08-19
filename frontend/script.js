@@ -608,9 +608,9 @@ const GAME_INFO = {
   },
   gametheory: {
     title: "♟️ Теория игр",
-    body: `<p>Игра на камнях из <b>задания ЕГЭ 19–21</b>. Двое ходят по очереди: <b>Профик</b> ходит первым, <b>Векта</b> (ты) — вторым. За ход можно добавить в кучу 1 камень или увеличить кучу в несколько раз.</p>
-      <p>Побеждает тот, кто первым доведёт сумму камней до цели (или больше). Профик <b>играет идеально</b> и наказывает за ошибку. Стартовая позиция всегда такова, что у второго игрока (у тебя) <b>есть выигрышная стратегия</b> — её и нужно найти.</p>
-      <p>Уровни: лёгкий (одна куча, +1 / ×2, до 29), средний (+1 / ×3, до 50), сложный (две кучи, +1 / ×3, до 65). За победу — рейтинг × множитель, <b>кап 100/день</b>. Копи серию побед!</p>`,
+    body: `<p>Игра на камнях из <b>задания ЕГЭ 19–21</b>. Ты — 🦊 Векта, соперник — 🐱 Профик, ходите по очереди (Профик первым). За ход — либо <b>➕1 камень</b>, либо <b>умножить кучу</b> (×2 или ×3). Кто первым доведёт кучу до цели — тот выиграл.</p>
+      <p>Секрет не в том, чтобы прыгнуть на цель самому, а в том, <b>какое число ты оставишь Профику</b>: надо каждый ход отдавать ему «проигрышное». Профик играет идеально и наказывает за ошибку.</p>
+      <p>Полные правила с примером — кнопка <b>«📖 Как играть»</b> на экране игры. Уровни: лёгкий (одна куча, ×2, до 29), средний (×3, до 50), сложный (две кучи, до 65). За победу — рейтинг × множитель, <b>кап 100/день</b>.</p>`,
   },
   infomath: {
     title: "🖥️ IT-разминка",
@@ -2508,6 +2508,12 @@ document.getElementById("btn-gt-review").addEventListener("click", () => {
   else { box.style.display = "none"; btn.textContent = "🔍 Посмотреть стратегию"; }
 });
 document.getElementById("btn-gt-bridge-ok").addEventListener("click", () => { document.getElementById("gt-bridge-modal").classList.add("hidden"); gtStart(); });
+function gtOpenRules() { hapticLight(); document.getElementById("gt-rules-modal").classList.remove("hidden"); }
+function gtCloseRules() { document.getElementById("gt-rules-modal").classList.add("hidden"); }
+document.getElementById("btn-gt-rules").addEventListener("click", gtOpenRules);
+document.getElementById("btn-gt-rules2").addEventListener("click", gtOpenRules);
+document.getElementById("btn-gt-rules-ok").addEventListener("click", gtCloseRules);
+document.querySelector("#gt-rules-modal .gim-backdrop").addEventListener("click", gtCloseRules);
 setupGameLeaderboard("gametheory", "gt-lb", "gt-lb-list");
 
 // ===== Дуэль «Струп» (общая последовательность, кто больше верных за 30 сек) =====
