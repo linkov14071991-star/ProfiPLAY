@@ -2882,6 +2882,11 @@ async function loadGiveaway() {
   document.getElementById("gv-event").textContent = `${res.event} · ${res.date}`;
   document.getElementById("gv-desc").textContent = res.desc;
   document.getElementById("gv-link").href = res.url;
+  const pz = document.getElementById("gv-prizes");
+  if (pz) pz.innerHTML =
+    `<div class="gv-prizes-title">🎁 Призы</div>` +
+    `<div class="gv-prize-row"><span class="gv-prize-place">🥇🥈🥉 Топ-3</span><span>${res.prize_top3 || ""}</span></div>` +
+    `<div class="gv-prize-row"><span class="gv-prize-place">🥇 1 место</span><span>дополнительно — ${res.prize_winner || ""}</span></div>`;
   if (res.my) {
     document.getElementById("gv-min").value = Math.floor(res.my.seconds / 60);
     document.getElementById("gv-sec").value = res.my.seconds % 60;

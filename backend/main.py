@@ -2229,6 +2229,8 @@ GIVEAWAY = {
     "min_sec": 30 * 60,                    # 30:00
     "max_sec": 90 * 60,                    # 1:30:00
     "prizes": 3,                           # сколько призовых мест подсвечиваем
+    "prize_top3": "Сертификат OZON на 1000 ₽",
+    "prize_winner": "Памятная медаль с забега (та самая, которую получит Игорь) 🏅",
 }
 
 
@@ -2309,6 +2311,7 @@ async def giveaway_state(init_data: str = Body(..., embed=True)):
         "server_now_iso": datetime.now(MSK_TZ).isoformat(),
         "min_sec": GIVEAWAY["min_sec"], "max_sec": GIVEAWAY["max_sec"],
         "prizes": GIVEAWAY["prizes"],
+        "prize_top3": GIVEAWAY["prize_top3"], "prize_winner": GIVEAWAY["prize_winner"],
         "locked": _giveaway_locked(),
         "is_admin": my_id in ADMIN_IDS,
         "my": ({"seconds": mine["seconds"], "updated_at": mine["updated_at"]} if mine else None),
@@ -2389,10 +2392,14 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
                 diff = _fmt_mmss(it["diff"])
                 if rank <= GIVEAWAY["prizes"]:
                     medal = ["🥇", "🥈", "🥉"][rank - 1]
+                    prize = GIVEAWAY["prize_top3"]
+                    if rank == 1:
+                        prize += " + " + GIVEAWAY["prize_winner"]
                     text = (f"🏁 Розыгрыш от Игоря завершён!\n"
                             f"Игорь пробежал 10 км за {actual_txt}.\n"
                             f"Твой прогноз: {pred} (промах ±{diff}).\n"
-                            f"{medal} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉")
+                            f"{medal} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉\n"
+                            f"🎁 Твой приз: {prize}")
                 else:
                     text = (f"🏁 Розыгрыш от Игоря завершён!\n"
                             f"Игорь пробежал 10 км за {actual_txt}.\n"
@@ -2511,7 +2518,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-notify-v98"
+BUILD_TAG = "giveaway-prizes-v99"
 
 
 @app.get("/api/version")
