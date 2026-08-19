@@ -2270,7 +2270,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "hangman-v94"
+BUILD_TAG = "prokachka-rename-v95"
 
 
 @app.get("/api/version")
