@@ -1989,6 +1989,9 @@ WEEKLY_FMT_TITLES = {
     "fastmath": "Быстрый счёт",
     "infomath": "IT-разминка",
     "numguess": "Угадай число",
+    "schulte": "Таблица Шульте",
+    "gorbov": "Чёрно-красная таблица",
+    "stroop": "Струп-тест",
 }
 WEEKLY_BONUS = 50
 _bg_tasks: set = set()
@@ -2094,6 +2097,12 @@ async def weekly_active(init_data: str = Body(..., embed=True)):
         if fmt == "numguess":
             res.update({"maxN": payload["maxN"], "secret": payload["secret"],
                         "time_limit_ms": payload["time_ms"]})
+        elif fmt == "schulte":
+            res.update({"size": payload["size"], "order": payload["order"]})
+        elif fmt == "gorbov":
+            res.update({"size": payload["size"], "cells": payload["cells"]})
+        elif fmt == "stroop":
+            res.update({"keys": payload["keys"], "trials": payload["trials"], "time_ms": STROOP_DUEL_MS})
         else:
             res["questions"] = [{"q": q["q"], "options": q["options"]} for q in payload]
             res["time_limit_ms"] = DUEL_TIME_LIMIT_MS
@@ -2106,6 +2115,8 @@ async def weekly_attempt(
     init_data: str = Body(...),
     answers: list = Body(None),
     ng: dict = Body(None),
+    sch: dict = Body(None),          # результат «Таблица Шульте»/«Горбов» {solved, elapsed_ms}
+    strp: dict = Body(None),         # результат «Струп» {correct}
 ):
     """Пользователь сдаёт попытку. Обогнал счёт админа → +50 (один раз за вызов)."""
     tg_user = get_verified_user(init_data)
@@ -2125,8 +2136,13 @@ async def weekly_attempt(
             return {"score": existing["score"], "admin_score": ch["admin_score"],
                     "beat": bool(existing["beat"]), "bonus": existing["bonus"], "already": True}
 
-        if (ch["format"] or "sprint") == "numguess":
+        _wf = ch["format"] or "sprint"
+        if _wf == "numguess":
             score = _score_numguess(ng or {})
+        elif _wf in ("schulte", "gorbov"):
+            score = _score_schulte(sch or {})
+        elif _wf == "stroop":
+            score = _score_stroop(strp or {})
         else:
             questions = json.loads(ch["payload_json"])
             score = _score_answers(questions, answers or [])
@@ -2252,7 +2268,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "gametheory-edu2-v92"
+BUILD_TAG = "weekly-tables-v93"
 
 
 @app.get("/api/version")

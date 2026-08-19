@@ -2688,7 +2688,10 @@ async function duelStroopEnd() {
   duel.stLocked = true;
   clearInterval(duel.stTimer);
   playTimeUpSound();
-  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, strp: { correct: duel.stCorrect } });
+  const strp = { correct: duel.stCorrect };
+  if (duel.mode === "weekly") return weeklyUserFinish({ strp });
+  if (duel.mode === "weekly-admin") return weeklyAdminFinish({ strp });
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, strp });
   if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
   refreshProfile();
   if (res.status === "complete") duelShowResult(res); else duelShowWaiting(res);
@@ -4598,7 +4601,10 @@ async function duelSchulteEnd(solved) {
   const elapsed = Math.round(performance.now() - duel.schStart);
   duel.schLastMs = solved ? elapsed : 0;
   if (solved) hapticSuccess(); else hapticError();
-  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch: { solved: solved, elapsed_ms: elapsed } });
+  const sch = { solved: solved, elapsed_ms: elapsed };
+  if (duel.mode === "weekly") return weeklyUserFinish({ sch });
+  if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
   if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
   refreshProfile();
   if (res.status === "complete") duelShowResult(res);
@@ -4662,7 +4668,10 @@ async function duelGorbovEnd(solved) {
   const elapsed = Math.round(performance.now() - duel.gStart);
   duel.schLastMs = solved ? elapsed : 0;
   if (solved) hapticSuccess(); else hapticError();
-  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch: { solved: solved, elapsed_ms: elapsed } });
+  const sch = { solved: solved, elapsed_ms: elapsed };
+  if (duel.mode === "weekly") return weeklyUserFinish({ sch });
+  if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
   if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
   refreshProfile();
   if (res.status === "complete") duelShowResult(res);
@@ -5271,6 +5280,16 @@ document.getElementById("btn-duel-history").addEventListener("click", openDuelHi
 // ======= ВЫЗОВ НЕДЕЛИ =========
 // ==============================
 const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте", gorbov: "Чёрно-красная таблица", stroop: "Струп-тест" };
+const WEEKLY_TIME_FMTS = ["schulte", "gorbov"];
+// Человекочитаемый счёт вызова: таблицы на время → секунды, остальное → как есть
+function weeklyScoreText(fmt, score) {
+  if (WEEKLY_TIME_FMTS.includes(fmt)) return (!score || score <= 0) ? "не пройдено" : ((10000000 - score) / 1000).toFixed(1) + " с";
+  return String(score);
+}
+function weeklyGoalHtml(fmt, score) {
+  const s = `<b>${weeklyScoreText(fmt, score)}</b>`;
+  return WEEKLY_TIME_FMTS.includes(fmt) ? `пройди быстрее ${s}` : `побей ${s}`;
+}
 let weeklyActive = null;
 const weeklyAdmin = { format: "sprint", difficulty: "medium" };
 
@@ -5292,7 +5311,7 @@ async function loadWeekly() {
   if (played) {
     status = played.beat
       ? `<div class="weekly-status ok">✅ Ты обыграл! +${played.bonus} получено</div>`
-      : `<div class="weekly-status">Твой счёт ${played.score} — в этот раз не хватило</div>`;
+      : `<div class="weekly-status">Твой результат ${weeklyScoreText(a.format, played.score)} — в этот раз не хватило</div>`;
   } else if (a.is_admin) {
     status = `<div class="weekly-status">Это твой вызов — ученики уже играют!</div>`;
   }
@@ -5301,7 +5320,7 @@ async function loadWeekly() {
   block.innerHTML = `
     <div class="weekly-card">
       <div class="weekly-title">🔥 Вызов от Игоря</div>
-      <div class="weekly-sub">Формат: <b>${WEEKLY_FMT_TITLES_JS[a.format] || a.format}</b> · побей <b>${a.admin_score}</b> → <b style="color:var(--brand-lime);">+50</b></div>
+      <div class="weekly-sub">Формат: <b>${WEEKLY_FMT_TITLES_JS[a.format] || a.format}</b> · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
       ${status}${btn}
     </div>`;
 }
@@ -5320,7 +5339,7 @@ async function loadWeeklyBanner() {
   el.innerHTML = `
     <div class="weekly-card" onclick="openWeeklyPlay()" style="cursor:pointer;">
       <div class="weekly-title">🔥 Вызов от Игоря</div>
-      <div class="weekly-sub">Обгони <b>${a.admin_score}</b> в «${WEEKLY_FMT_TITLES_JS[a.format] || a.format}» → <b style="color:var(--brand-lime);">+50</b> к рейтингу</div>
+      <div class="weekly-sub">«${WEEKLY_FMT_TITLES_JS[a.format] || a.format}» · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b> к рейтингу</div>
       <button class="btn btn-primary" style="margin-top:8px;">⚔ Принять вызов</button>
     </div>`;
 }
@@ -5335,6 +5354,12 @@ function openWeeklyPlay() {
   duel.format = a.format;
   if (a.format === "numguess") {
     duelNgStart({ secret: a.secret, maxN: a.maxN, time_limit_ms: a.time_limit_ms });
+  } else if (a.format === "schulte") {
+    duelSchulteStart({ size: a.size, order: a.order });
+  } else if (a.format === "gorbov") {
+    duelGorbovStart({ size: a.size, cells: a.cells });
+  } else if (a.format === "stroop") {
+    duelStroopStart({ keys: a.keys, trials: a.trials, time_ms: a.time_ms });
   } else {
     duel.questions = a.questions;
     duel.timeLimitMs = a.time_limit_ms || 15000;
@@ -5347,13 +5372,16 @@ function openWeeklyPlay() {
 
 async function weeklyUserFinish(payload) {
   const body = { init_data: INIT_DATA };
-  if (payload.ng) body.ng = payload.ng; else body.answers = payload.answers;
+  if (payload.ng) body.ng = payload.ng;
+  else if (payload.sch) body.sch = payload.sch;
+  else if (payload.strp) body.strp = payload.strp;
+  else body.answers = payload.answers;
   const res = await apiPost(`/api/weekly/${duel.weeklyId}/attempt`, body);
   duel.mode = "duel";
   if (!res) { alert("Не удалось отправить результат."); showScreen("compHub"); return; }
   refreshProfile();
-  document.getElementById("weekly-res-you").textContent = res.score;
-  document.getElementById("weekly-res-admin").textContent = res.admin_score;
+  document.getElementById("weekly-res-you").textContent = weeklyScoreText(duel.format, res.score);
+  document.getElementById("weekly-res-admin").textContent = weeklyScoreText(duel.format, res.admin_score);
   const title = document.getElementById("weekly-res-title");
   const sub = document.getElementById("weekly-res-sub");
   if (res.beat) {
@@ -5384,11 +5412,15 @@ async function weeklyAdminStart() {
 
 async function weeklyAdminFinish(payload) {
   const body = { init_data: INIT_DATA };
-  if (payload.ng) body.ng = payload.ng; else body.answers = payload.answers;
+  if (payload.ng) body.ng = payload.ng;
+  else if (payload.sch) body.sch = payload.sch;
+  else if (payload.strp) body.strp = payload.strp;
+  else body.answers = payload.answers;
   await apiPost(`/api/duel/${duel.duelId}/submit`, body);      // проставит creator_score
   const prom = await apiPost("/api/weekly/promote", { init_data: INIT_DATA, duel_id: duel.duelId });
+  const wf = duel.format;
   duel.mode = "duel";
-  document.getElementById("weekly-res-you").textContent = prom ? prom.admin_score : "—";
+  document.getElementById("weekly-res-you").textContent = prom ? weeklyScoreText(wf, prom.admin_score) : "—";
   document.getElementById("weekly-res-admin").textContent = "все";
   const title = document.getElementById("weekly-res-title");
   const sub = document.getElementById("weekly-res-sub");
