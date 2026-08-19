@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=79">
+<link rel="stylesheet" href="/style.css?v=80">
 </head>
 <body>
 
@@ -1904,6 +1904,9 @@
     <div class="gt-piles" id="gt-piles"></div>
     <div class="gt-sum">Сумма камней: <b id="gt-sum">0</b> из <span id="gt-target2">29</span></div>
     <div class="gt-moves" id="gt-moves"></div>
+    <div class="gt-feedback" id="gt-feedback"></div>
+    <button id="btn-gt-hint" class="btn btn-secondary gt-hint-btn">💡 Подсказка</button>
+    <div class="gt-hint" id="gt-hint"></div>
     <div class="gt-log" id="gt-log"></div>
     <button id="btn-gt-give" class="btn btn-link">Сдаться</button>
   </div>
@@ -1917,15 +1920,34 @@
   <div class="card">
     <h1 id="gt-result-title">🏆 Победа!</h1>
     <p class="subtitle" id="gt-result-sub"></p>
+    <div class="gt-turning" id="gt-turning" style="display:none;"></div>
     <div class="reward-strip">
       <div class="reward-chip rating pos">🏆 <span id="gt-r-rating">0</span></div>
       <div class="reward-chip xp pos">💎 <span id="gt-r-xp">0</span> XP</div>
     </div>
     <p style="text-align:center; opacity:0.7; margin:12px 0 8px;">Серия побед: <b id="gt-r-streak">0</b></p>
+    <button id="btn-gt-review" class="btn btn-secondary">🔍 Посмотреть стратегию</button>
+    <div class="gt-review" id="gt-review" style="display:none;"></div>
+    <button id="btn-gt-rewind" class="btn btn-secondary" style="display:none;">↩ Вернуться к моменту ошибки</button>
     <button id="btn-gt-again" class="btn btn-primary btn-big">🔄 Ещё партия</button>
     <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
   </div>
 </section>
+
+<!-- Мост «игра → ЕГЭ»: после первой победы -->
+<div id="gt-bridge-modal" class="game-info-modal hidden">
+  <div class="gim-backdrop"></div>
+  <div class="gim-card">
+    <div class="gim-title">🧠 Ты сыграл как в задании ЕГЭ №20–21</div>
+    <div class="gim-body">
+      <p>Профик ходил первым, но стартовая позиция была такой, что при правильной игре выиграть мог именно второй игрок — <b>ты</b>.</p>
+      <p>Это называется <b>выигрышной стратегией второго игрока</b>. Именно такие позиции разбирают в заданиях ЕГЭ №19–21 — ты только что прожил эту идею на практике.</p>
+    </div>
+    <div class="gim-foot">
+      <button class="btn btn-primary" id="btn-gt-bridge-ok" style="width:100%; margin:0;">Понял → ещё партия</button>
+    </div>
+  </div>
+</div>
 
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
@@ -2509,6 +2531,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=79"></script>
+<script src="/script.js?v=80"></script>
 </body>
 </html>

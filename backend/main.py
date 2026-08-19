@@ -66,7 +66,7 @@ LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
 # Базовая ставка рейтинга за один правильный ответ.
 # Тусовка (party) = 0 очков, потому что играется на своей честности —
 # слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
-BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12, "stroop": 1, "gametheory": 20}
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12, "stroop": 1, "gametheory": 4}
 # Игры Спринта, где партия за 60 сек = один результат (для «Рекорда дня» по уровням)
 DAILY_RECORD_GAMES = ("sprint", "fastmath", "infomath", "stroop")
 # Игры «на время»: партия = прохождение таблицы, рекорд = мс (лог времени в daily_score)
@@ -2252,7 +2252,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "gametheory-v89"
+BUILD_TAG = "gametheory-edu-v90"
 
 
 @app.get("/api/version")

@@ -2219,7 +2219,18 @@ const GT_LEVELS = {
   hard:   { piles: 2, mul: 3, target: 65, mult: 2,
             rule: "Две кучи · +1 или ×3 в любую · побеждает тот, кто первым доведёт сумму до 65." },
 };
-const gt = { level: "easy", piles: [], mul: 2, target: 29, memo: null, turn: "profik", over: false, streak: 0 };
+const gt = { level: "easy", piles: [], mul: 2, target: 29, memo: null, turn: "profik", over: false, streak: 0,
+             history: [], startPiles: [], hintsUsed: 0, hintLevel: 0, turningPoint: null };
+function gtPlural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
+}
+// Ходы из позиции s, которые СОХРАНЯЮТ выигрыш за ходящего (ведут к победе или к проигрышной позиции соперника)
+function gtWinningMoves(s) {
+  return gtNext(s, gt.mul).filter((m) => gtSum(m.state) >= gt.target || !gtIsWin(m.state, gt.target, gt.mul, gt.memo));
+}
 
 setupPills("gt-difficulty", (v) => { gt.level = v; updateGtMult(); document.getElementById("gt-rule").textContent = GT_LEVELS[v].rule; });
 function updateGtMult() {
@@ -2313,9 +2324,14 @@ function gtStart() {
   gt.mul = cfg.mul; gt.target = cfg.target; gt.over = false; gt.turn = "profik";
   gt.memo = new Map();
   gt.piles = gtPickStart(cfg, gt.memo);
+  gt.startPiles = gt.piles.slice();
+  gt.history = []; gt.hintsUsed = 0; gt.hintLevel = 0; gt.turningPoint = null;
   document.getElementById("gt-target").textContent = cfg.target;
   document.getElementById("gt-target2").textContent = cfg.target;
   document.getElementById("gt-log").innerHTML = "";
+  document.getElementById("gt-feedback").textContent = "";
+  document.getElementById("gt-hint").textContent = "";
+  document.getElementById("btn-gt-hint").textContent = "💡 Подсказка";
   gtRenderPiles();
   gtRenderMoves();
   document.getElementById("gt-turn").textContent = "Профик ходит…";
@@ -2326,20 +2342,48 @@ function gtProfikMove() {
   if (gt.over) return;
   const m = gtAiMove(gt.piles, gt.target, gt.mul, gt.memo);
   gt.piles = m.state;
-  gtLog("Профик 🐱", gtOpText(m.pile, m.op, gt.piles.length, gt.mul), "profik");
+  const opText = gtOpText(m.pile, m.op, gt.piles.length, gt.mul);
+  const win = gtSum(gt.piles) >= gt.target;
+  gt.history.push({ who: "profik", opText, after: gt.piles.slice(), win });
+  gtLog("Профик 🐱", opText, "profik");
   gtRenderPiles();
-  if (gtSum(gt.piles) >= gt.target) { gtEnd(false); return; }
+  if (win) { gtEnd(false); return; }
   gt.turn = "vekta";
+  gt.hintLevel = 0;
+  document.getElementById("gt-hint").textContent = "";
+  document.getElementById("btn-gt-hint").textContent = "💡 Подсказка";
   document.getElementById("gt-turn").textContent = "Твой ход, Векта 🦊";
   gtRenderMoves();
 }
 function gtHumanMove(pile, op) {
   if (gt.turn !== "vekta" || gt.over) return;
   hapticLight();
+  const before = gt.piles.slice();
   if (op === "add") gt.piles[pile] += 1; else gt.piles[pile] *= gt.mul;
-  gtLog("Векта 🦊 (ты)", gtOpText(pile, op, gt.piles.length, gt.mul), "vekta");
+  const after = gt.piles.slice();
+  const opText = gtOpText(pile, op, gt.piles.length, gt.mul);
+  const win = gtSum(after) >= gt.target;
+  // ключевая проверка: не «единственный ли ход», а СОХРАНИЛАСЬ ли выигрышная позиция за тебя
+  const kept = win ? true : !gtIsWin(after, gt.target, gt.mul, gt.memo);
+  if (!kept && !gt.turningPoint) {
+    const wm = gtWinningMoves(before);
+    const cm = wm[0];
+    gt.turningPoint = {
+      moveNo: gt.history.filter((h) => h.who === "vekta").length + 1,
+      historyLen: gt.history.length,
+      stateBefore: before,
+      stateAfter: after,
+      opText,
+      correctText: cm ? gtOpText(cm.pile, cm.op, before.length, gt.mul) : null,
+    };
+  }
+  gt.history.push({ who: "vekta", opText, after, kept, win });
+  gtLog("Векта 🦊 (ты)", opText, "vekta");
   gtRenderPiles();
-  if (gtSum(gt.piles) >= gt.target) { gtEnd(true); return; }
+  const fb = document.getElementById("gt-feedback");
+  if (kept) { fb.className = "gt-feedback ok"; fb.textContent = "🟢 Стратегия сохранена — хороший ход."; }
+  else { fb.className = "gt-feedback"; fb.textContent = ""; }
+  if (win) { gtEnd(true); return; }
   gt.turn = "profik";
   document.getElementById("gt-turn").textContent = "Профик думает…";
   gtRenderMoves();
@@ -2350,29 +2394,120 @@ async function gtEnd(win) {
   gtRenderMoves();
   const title = document.getElementById("gt-result-title");
   const sub = document.getElementById("gt-result-sub");
+  const turning = document.getElementById("gt-turning");
+  const rewindBtn = document.getElementById("btn-gt-rewind");
+  const review = document.getElementById("gt-review");
+  review.style.display = "none"; review.innerHTML = "";
+  turning.style.display = "none"; turning.innerHTML = "";
+  document.getElementById("btn-gt-review").textContent = "🔍 Посмотреть стратегию";
+
   if (win) {
     hapticSuccess();
     gt.streak++;
-    title.textContent = "🏆 Победа над Профиком!";
-    sub.textContent = "Ты нашёл выигрышную стратегию за второго игрока. Профик повержен!";
-    const res = await awardTraining("gametheory", 1, { correct: 1, difficulty: gt.level });
+    title.textContent = "🏆 Ты победил Профика!";
+    sub.textContent = "И это не случайно: ты оставлял Профику позиции, из которых он не мог сохранить победу. Ты применил идею заданий ЕГЭ №19–21 — выигрышную стратегию второго игрока.";
+    rewindBtn.style.display = "none";
+    const correctVal = 5 - Math.min(3, gt.hintsUsed);   // подсказки мягко снижают награду
+    const res = await awardTraining("gametheory", correctVal, { correct: correctVal, difficulty: gt.level });
     document.getElementById("gt-r-rating").textContent = (res && res.delta_awarded) || 0;
     document.getElementById("gt-r-xp").textContent = (res && res.xp_awarded) || 0;
   } else {
     hapticError();
     gt.streak = 0;
-    title.textContent = "😾 Профик выиграл";
-    sub.textContent = "Профик перехватил инициативу. Выигрышный ход был — попробуй ещё раз!";
+    title.textContent = "😼 Профик выиграл";
+    sub.textContent = "Проблема была не в последнем ходе. Смотри, где ушла победа:";
     document.getElementById("gt-r-rating").textContent = 0;
     document.getElementById("gt-r-xp").textContent = 0;
+    if (gt.turningPoint) {
+      const tp = gt.turningPoint;
+      turning.style.display = "block";
+      turning.innerHTML =
+        `<div class="gt-tp-title">🔍 Поворотный момент — ход ${tp.moveNo}</div>` +
+        `<div>Ты сделал: <b>${tp.stateBefore.join(" + ")} → ${tp.stateAfter.join(" + ")}</b>. После этого у Профика появилась выигрышная позиция.</div>` +
+        `<button id="btn-gt-show-correct" class="btn btn-link">👀 Показать выигрышный ход</button>` +
+        `<div id="gt-correct" style="display:none; margin-top:4px;"></div>`;
+      const scb = document.getElementById("btn-gt-show-correct");
+      if (scb) scb.onclick = () => {
+        const el = document.getElementById("gt-correct");
+        el.style.display = "block";
+        el.innerHTML = tp.correctText
+          ? `💡 Из позиции <b>${tp.stateBefore.join(" + ")}</b> выигрышный ход: <b>${tp.correctText}</b> — он оставлял Профику проигрышную позицию.`
+          : "💡 Здесь ещё был ход, сохранявший победу.";
+      };
+      rewindBtn.style.display = "";
+    } else {
+      rewindBtn.style.display = "none";
+    }
   }
   document.getElementById("gt-streak").textContent = gt.streak;
   document.getElementById("gt-r-streak").textContent = gt.streak;
   showScreen("gtResult");
+  // Мост «игра → ЕГЭ» — один раз, после первой победы
+  if (win) {
+    let firstWin = false;
+    try { firstWin = localStorage.getItem("gt_bridge_shown") !== "1"; } catch (e) {}
+    if (firstWin) { try { localStorage.setItem("gt_bridge_shown", "1"); } catch (e) {} document.getElementById("gt-bridge-modal").classList.remove("hidden"); }
+  }
+}
+function gtRebuildLog() {
+  document.getElementById("gt-log").innerHTML = "";
+  for (const h of gt.history) gtLog(h.who === "profik" ? "Профик 🐱" : "Векта 🦊 (ты)", h.opText, h.who);
+}
+function gtRenderReview() {
+  const box = document.getElementById("gt-review");
+  let html = `<div class="gt-rv-title">Ход партии</div><div class="gt-rv-line">▶ Старт: <b>${gt.startPiles.join(" + ")}</b></div>`;
+  for (const h of gt.history) {
+    const who = h.who === "profik" ? "Профик 🐱" : "Ты 🦊";
+    const mark = h.win ? "🏆" : (h.who === "vekta" ? (h.kept ? "🟢" : "🔴") : "");
+    html += `<div class="gt-rv-line ${h.who}">${who}: ${h.opText} → <b>${h.after.join(" + ")}</b> ${mark}</div>`;
+  }
+  html += `<div class="gt-rv-note">🟢 — ты оставил Профику проигрышную позицию · 🔴 — здесь ушла выигрышная стратегия</div>`;
+  box.innerHTML = html;
+}
+function gtRewind() {
+  if (!gt.turningPoint) return;
+  hapticMedium();
+  const tp = gt.turningPoint;
+  gt.piles = tp.stateBefore.slice();
+  gt.history = gt.history.slice(0, tp.historyLen);
+  gt.over = false; gt.turn = "vekta"; gt.turningPoint = null; gt.hintLevel = 0;
+  gtRebuildLog();
+  gtRenderPiles();
+  gtRenderMoves();
+  document.getElementById("gt-feedback").textContent = "";
+  document.getElementById("gt-hint").textContent = "";
+  document.getElementById("btn-gt-hint").textContent = "💡 Подсказка";
+  document.getElementById("gt-turn").textContent = "Твой ход — попробуй другой ход 🦊";
+  showScreen("gtPlay");
+}
+function gtHint() {
+  if (gt.turn !== "vekta" || gt.over) return;
+  hapticLight();
+  gt.hintLevel = Math.min(3, gt.hintLevel + 1);
+  gt.hintsUsed = Math.max(gt.hintsUsed, gt.hintLevel);
+  const el = document.getElementById("gt-hint");
+  if (gt.hintLevel === 1) {
+    el.textContent = "💡 Думай не о ходе Профика, а о том, какую позицию ты оставишь ему. Цель — отдать сопернику проигрышную позицию.";
+  } else if (gt.hintLevel === 2) {
+    const n = gtWinningMoves(gt.piles).length;
+    el.textContent = `💡 Из этой позиции ${n} ${gtPlural(n, "ход сохраняет", "хода сохраняют", "ходов сохраняют")} выигрыш. Ищи их.`;
+  } else {
+    const m = gtWinningMoves(gt.piles)[0];
+    el.textContent = m ? `💡 Например: ${gtOpText(m.pile, m.op, gt.piles.length, gt.mul)} — оставит Профику проигрышную позицию.` : "💡 Выигрышного хода отсюда нет.";
+  }
+  document.getElementById("btn-gt-hint").textContent = gt.hintLevel >= 3 ? "💡 Подсказка (макс)" : `💡 Подсказка ${gt.hintLevel}/3`;
 }
 document.getElementById("btn-gt-start").addEventListener("click", gtStart);
 document.getElementById("btn-gt-again").addEventListener("click", gtStart);
 document.getElementById("btn-gt-give").addEventListener("click", () => { if (!gt.over) gtEnd(false); });
+document.getElementById("btn-gt-hint").addEventListener("click", gtHint);
+document.getElementById("btn-gt-rewind").addEventListener("click", gtRewind);
+document.getElementById("btn-gt-review").addEventListener("click", () => {
+  const box = document.getElementById("gt-review"), btn = document.getElementById("btn-gt-review");
+  if (box.style.display !== "block") { gtRenderReview(); box.style.display = "block"; btn.textContent = "🙈 Скрыть разбор"; }
+  else { box.style.display = "none"; btn.textContent = "🔍 Посмотреть стратегию"; }
+});
+document.getElementById("btn-gt-bridge-ok").addEventListener("click", () => { document.getElementById("gt-bridge-modal").classList.add("hidden"); gtStart(); });
 setupGameLeaderboard("gametheory", "gt-lb", "gt-lb-list");
 
 // ===== Дуэль «Струп» (общая последовательность, кто больше верных за 30 сек) =====
