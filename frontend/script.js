@@ -81,6 +81,7 @@ const SCREENS = {
   hmSetup: "screen-hm-setup",
   hmPlay: "screen-hm-play",
   hmResult: "screen-hm-result",
+  giveaway: "screen-giveaway",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -106,7 +107,7 @@ function showScreen(name) {
   document.getElementById(SCREENS[name]).classList.add("active");
   window.scrollTo(0, 0);
   // при возврате на меню — обновим плашку рейтинга
-  if (name === "menu") { refreshProfile(); loadWeeklyBanner(); refreshNotifBadge(); }
+  if (name === "menu") { refreshProfile(); loadWeeklyBanner(); loadGiveawayBanner(); refreshNotifBadge(); }
   if (name === "profile") loadProfileScreen();
   if (name === "compHub") loadWeekly();
   if (name === "duelSetup") loadDuelIncoming();
@@ -545,6 +546,7 @@ function routeToGame(game) {
   if (game === "python") { window.location.href = "python/index.html"; return; }
   if (game === "gametheory") { currentGame = "gametheory"; resetLbTabs("gt-lb"); showScreen("gtSetup"); return; }
   if (game === "hangman") { currentGame = "hangman"; resetLbTabs("hm-lb"); showScreen("hmSetup"); return; }
+  if (game === "giveaway") { openGiveaway(); return; }
 }
 
 document.body.addEventListener("click", (e) => {
@@ -2843,6 +2845,152 @@ document.addEventListener("keydown", (e) => {
   if (key.length === 1 && hmAlphabet().includes(key)) hmGuess(key);
 });
 setupGameLeaderboard("hangman", "hm-lb", "hm-lb-list");
+
+// ==============================
+// ===== РОЗЫГРЫШ ОТ ИГОРЯ ======
+// ==============================
+let gvState = null;
+let gvCountdownTimer = null;
+function gvFmt(sec) {
+  sec = Math.max(0, Math.round(sec || 0));
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+async function loadGiveawayBanner() {
+  const el = document.getElementById("giveaway-banner");
+  if (!el) return;
+  let res = null;
+  try { res = await apiPost("/api/giveaway/state", { init_data: INIT_DATA }); } catch (e) {}
+  if (!res || !res.active) { el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "";
+  const cta = (res.actual_sec != null) ? "Смотреть результаты"
+    : (res.locked ? "Смотреть прогнозы"
+      : (res.my ? `Твой прогноз: ${gvFmt(res.my.seconds)} · изменить` : "Угадать время →"));
+  el.innerHTML = `
+    <div class="gv-card" onclick="openGiveaway()">
+      <div class="gv-card-title">🏃 Розыгрыш от Игоря</div>
+      <div class="gv-card-sub">${res.event} · ${res.date}</div>
+      <button class="btn btn-primary" style="margin-top:8px;">${cta}</button>
+    </div>`;
+}
+async function openGiveaway() { hapticMedium(); showScreen("giveaway"); await loadGiveaway(); }
+window.openGiveaway = openGiveaway;
+async function loadGiveaway() {
+  const res = await apiPost("/api/giveaway/state", { init_data: INIT_DATA });
+  if (!res) return;
+  gvState = res;
+  document.getElementById("gv-event").textContent = `${res.event} · ${res.date}`;
+  document.getElementById("gv-desc").textContent = res.desc;
+  document.getElementById("gv-link").href = res.url;
+  if (res.my) {
+    document.getElementById("gv-min").value = Math.floor(res.my.seconds / 60);
+    document.getElementById("gv-sec").value = res.my.seconds % 60;
+  }
+  const locked = res.locked;
+  document.getElementById("gv-min").disabled = locked;
+  document.getElementById("gv-sec").disabled = locked;
+  const saveBtn = document.getElementById("btn-gv-save");
+  saveBtn.disabled = locked;
+  saveBtn.textContent = locked ? "Приём закрыт" : (res.my ? "Изменить прогноз" : "Сохранить прогноз");
+  const st = document.getElementById("gv-my-status");
+  if (res.my) st.innerHTML = `Записан прогноз <b>${gvFmt(res.my.seconds)}</b>` + (res.my_rank ? ` · место сейчас: <b>${res.my_rank}</b>` : "");
+  else st.textContent = locked ? "Ты не успел сделать прогноз." : "";
+  gvStartCountdown(res);
+  gvRenderResults(res);
+  gvRenderStats(res);
+  gvRenderTable(res);
+  document.getElementById("gv-admin").style.display = res.is_admin ? "" : "none";
+}
+function gvStartCountdown(res) {
+  const el = document.getElementById("gv-countdown");
+  if (gvCountdownTimer) { clearInterval(gvCountdownTimer); gvCountdownTimer = null; }
+  const deadline = new Date(res.deadline_iso).getTime();
+  const tick = () => {
+    let left = Math.floor((deadline - Date.now()) / 1000);
+    if (left <= 0) {
+      el.className = "gv-countdown closed";
+      el.innerHTML = "⏱️ Приём прогнозов закрыт";
+      if (gvCountdownTimer) { clearInterval(gvCountdownTimer); gvCountdownTimer = null; }
+      return;
+    }
+    const d = Math.floor(left / 86400); left -= d * 86400;
+    const h = Math.floor(left / 3600); left -= h * 3600;
+    const m = Math.floor(left / 60), s = left % 60;
+    const hms = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    el.className = "gv-countdown";
+    el.innerHTML = `⏳ До закрытия приёма: <b>${d ? d + " д " : ""}${hms}</b>`;
+  };
+  tick();
+  gvCountdownTimer = setInterval(tick, 1000);
+}
+function gvRenderStats(res) {
+  const el = document.getElementById("gv-stats");
+  const s = res.stats;
+  if (!s || !s.count) { el.innerHTML = `<div class="gv-stat-empty">Пока нет прогнозов — будь первым!</div>`; document.getElementById("gv-hist").innerHTML = ""; document.getElementById("gv-count").textContent = ""; return; }
+  document.getElementById("gv-count").textContent = `(${s.count})`;
+  el.innerHTML =
+    `<div class="gv-stat"><div class="gv-stat-n">${s.count}</div><div class="gv-stat-l">участников</div></div>` +
+    `<div class="gv-stat"><div class="gv-stat-n">${gvFmt(s.avg_sec)}</div><div class="gv-stat-l">в среднем</div></div>` +
+    `<div class="gv-stat"><div class="gv-stat-n">${gvFmt(s.min_sec)}</div><div class="gv-stat-l">быстрее всех</div></div>` +
+    `<div class="gv-stat"><div class="gv-stat-n">${gvFmt(s.max_sec)}</div><div class="gv-stat-l">медленнее всех</div></div>`;
+  const h = s.histogram || [];
+  const maxc = Math.max(1, ...h.map((b) => b.count));
+  document.getElementById("gv-hist").innerHTML = h.map((b) => {
+    const pct = Math.round((b.count / maxc) * 100);
+    return `<div class="gv-hrow"><span class="gv-hlbl">${Math.floor(b.from / 60)}–${Math.floor(b.to / 60)}м</span><span class="gv-hbar"><span style="width:${pct}%"></span></span><span class="gv-hc">${b.count}</span></div>`;
+  }).join("");
+}
+function gvRenderTable(res) {
+  const el = document.getElementById("gv-table");
+  const t = res.table || [];
+  if (!t.length) { el.innerHTML = `<div class="gv-stat-empty">Прогнозов пока нет.</div>`; return; }
+  const hasActual = res.actual_sec != null;
+  el.innerHTML = t.map((r) => {
+    const win = r.winner ? " winner" : "";
+    const medal = r.winner ? (["🥇", "🥈", "🥉"][r.rank - 1] || "🏅") : r.rank;
+    const diff = hasActual ? `<span class="gv-diff">±${gvFmt(r.diff)}</span>` : "";
+    return `<div class="gv-row${win}"><span class="gv-rank">${medal}</span><span class="gv-nick">${r.nick}</span><span class="gv-pred">${gvFmt(r.seconds)}</span>${diff}</div>`;
+  }).join("");
+}
+function gvRenderResults(res) {
+  const el = document.getElementById("gv-results");
+  if (res.actual_sec == null) { el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "";
+  const winners = (res.table || []).filter((r) => r.winner);
+  const wins = winners.map((w) => `${["🥇", "🥈", "🥉"][w.rank - 1] || "🏅"} ${w.nick} — ${gvFmt(w.seconds)} (±${gvFmt(w.diff)})`).join("<br>");
+  el.innerHTML = `<div class="gv-res-title">🏁 Игорь пробежал за <b>${gvFmt(res.actual_sec)}</b></div><div class="gv-res-winners">${wins || "—"}</div>`;
+}
+async function gvSave() {
+  if (!gvState || gvState.locked) return;
+  const mn = parseInt(document.getElementById("gv-min").value, 10);
+  const sc = parseInt(document.getElementById("gv-sec").value, 10);
+  if (isNaN(mn) || isNaN(sc) || sc < 0 || sc > 59) { alert("Введи время в формате ММ:СС (секунды 0–59)."); return; }
+  const total = mn * 60 + sc;
+  if (total < gvState.min_sec || total > gvState.max_sec) { alert(`Время должно быть от ${gvFmt(gvState.min_sec)} до ${gvFmt(gvState.max_sec)}.`); return; }
+  hapticMedium();
+  const res = await apiPost("/api/giveaway/predict", { init_data: INIT_DATA, seconds: total });
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось сохранить прогноз."); return; }
+  hapticSuccess();
+  await loadGiveaway();
+  const st = document.getElementById("gv-my-status");
+  st.classList.add("saved-flash");
+  setTimeout(() => st.classList.remove("saved-flash"), 900);
+}
+async function gvAdminSetResult() {
+  const val = prompt("Фактический результат Игоря на 10 км (ММ:СС), например 54:30. Пусто — сбросить.");
+  if (val === null) return;
+  let seconds = 0;
+  if (val.trim()) {
+    const m = val.trim().match(/^(\d{1,3}):(\d{2})$/);
+    if (!m) { alert("Формат ММ:СС, например 54:30"); return; }
+    seconds = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  }
+  const res = await apiPost("/api/giveaway/set_result", { init_data: INIT_DATA, seconds });
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось сохранить результат."); return; }
+  await loadGiveaway();
+}
+document.getElementById("btn-gv-save").addEventListener("click", gvSave);
+document.getElementById("btn-gv-setresult").addEventListener("click", gvAdminSetResult);
 
 // ===== Дуэль «Струп» (общая последовательность, кто больше верных за 30 сек) =====
 function duelStroopStart(info) {

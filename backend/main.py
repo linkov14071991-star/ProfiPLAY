@@ -18,6 +18,7 @@ import random
 import re
 import secrets
 import string
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qsl
 
@@ -2214,6 +2215,162 @@ async def weekly_attempt(
         return {"score": score, "admin_score": ch["admin_score"], "beat": beat, "bonus": bonus}
 
 
+# ================= Розыгрыш от Игоря (угадай время забега) =================
+MSK_TZ = timezone(timedelta(hours=3))
+GIVEAWAY = {
+    "active": True,
+    "title": "Розыгрыш от Игоря",
+    "event": "Большой фестиваль бега · Соревнование 10 км",
+    "date": "23 августа 2026, Москва",
+    "desc": "23 августа Игорь бежит 10 км на Большом фестивале бега (старт в 9:00). "
+            "Угадай его время на финише! Ближе всех и раньше всех проголосовал — победитель.",
+    "url": "https://runfest.runc.run/#section-1077",
+    "deadline_msk": "2026-08-23 09:00",   # приём прогнозов до старта
+    "min_sec": 30 * 60,                    # 30:00
+    "max_sec": 90 * 60,                    # 1:30:00
+    "prizes": 3,                           # сколько призовых мест подсвечиваем
+}
+
+
+def _giveaway_deadline():
+    return datetime.strptime(GIVEAWAY["deadline_msk"], "%Y-%m-%d %H:%M").replace(tzinfo=MSK_TZ)
+
+
+def _giveaway_locked():
+    return datetime.now(MSK_TZ) >= _giveaway_deadline()
+
+
+def _giveaway_actual(db):
+    r = db.execute("SELECT actual_sec FROM giveaway_result WHERE id = 1").fetchone()
+    return r["actual_sec"] if r and r["actual_sec"] is not None else None
+
+
+def _giveaway_ranked(rows, actual):
+    """Сортировка прогнозов. Если известен факт — по близости, затем по времени голоса.
+    До факта — по времени (возрастание). rows: list of dict-подобных."""
+    items = [dict(r) for r in rows]
+    for it in items:
+        it["nick"] = _giveaway_nick_from(it)
+        it["diff"] = abs(it["seconds"] - actual) if actual is not None else None
+    if actual is not None:
+        items.sort(key=lambda x: (x["diff"], x["updated_at"]))
+    else:
+        items.sort(key=lambda x: x["seconds"])
+    return items
+
+
+def _giveaway_nick_from(d):
+    u = d.get("username")
+    return ("@" + u) if u else "Игрок"
+
+
+@app.post("/api/giveaway/state")
+async def giveaway_state(init_data: str = Body(..., embed=True)):
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        my_id = me["telegram_id"]
+        mine = db.execute(
+            "SELECT seconds, updated_at FROM giveaway_prediction WHERE user_id = ?", (my_id,)
+        ).fetchone()
+        rows = db.execute(
+            "SELECT username, seconds, updated_at FROM giveaway_prediction"
+        ).fetchall()
+        actual = _giveaway_actual(db)
+
+    secs = [r["seconds"] for r in rows]
+    count = len(secs)
+    stats = {"count": count, "avg_sec": (round(sum(secs) / count) if count else None),
+             "min_sec": (min(secs) if count else None), "max_sec": (max(secs) if count else None),
+             "histogram": _giveaway_histogram(secs)}
+    ranked = _giveaway_ranked(rows, actual)
+    # проставим место и найдём мою позицию
+    table = []
+    my_rank = None
+    for i, it in enumerate(ranked):
+        entry = {"nick": it["nick"], "seconds": it["seconds"], "updated_at": it["updated_at"],
+                 "rank": i + 1, "diff": it["diff"],
+                 "winner": (actual is not None and i < GIVEAWAY["prizes"])}
+        table.append(entry)
+        if mine and it["seconds"] == mine["seconds"] and it["updated_at"] == mine["updated_at"]:
+            my_rank = i + 1
+
+    return {
+        "active": GIVEAWAY["active"],
+        "title": GIVEAWAY["title"], "event": GIVEAWAY["event"], "date": GIVEAWAY["date"],
+        "desc": GIVEAWAY["desc"], "url": GIVEAWAY["url"],
+        "deadline_msk": GIVEAWAY["deadline_msk"],
+        "deadline_iso": _giveaway_deadline().isoformat(),
+        "server_now_iso": datetime.now(MSK_TZ).isoformat(),
+        "min_sec": GIVEAWAY["min_sec"], "max_sec": GIVEAWAY["max_sec"],
+        "prizes": GIVEAWAY["prizes"],
+        "locked": _giveaway_locked(),
+        "is_admin": my_id in ADMIN_IDS,
+        "my": ({"seconds": mine["seconds"], "updated_at": mine["updated_at"]} if mine else None),
+        "my_rank": my_rank,
+        "stats": stats,
+        "table": table,
+        "actual_sec": actual,
+    }
+
+
+def _giveaway_histogram(secs):
+    """Распределение по 5-минутным корзинам в диапазоне min..max."""
+    if not secs:
+        return []
+    lo, hi = GIVEAWAY["min_sec"], GIVEAWAY["max_sec"]
+    step = 5 * 60
+    buckets = []
+    b = lo
+    while b < hi:
+        top = (b + step) >= hi          # последняя корзина включает верхнюю границу
+        cnt = sum(1 for s in secs if ((b <= s <= b + step) if top else (b <= s < b + step)))
+        buckets.append({"from": b, "to": b + step, "count": cnt})
+        b += step
+    return buckets
+
+
+@app.post("/api/giveaway/predict")
+async def giveaway_predict(init_data: str = Body(...), seconds: int = Body(...)):
+    tg_user = get_verified_user(init_data)
+    if _giveaway_locked():
+        raise HTTPException(status_code=403, detail="Приём прогнозов закрыт")
+    seconds = int(seconds)
+    if seconds < GIVEAWAY["min_sec"] or seconds > GIVEAWAY["max_sec"]:
+        raise HTTPException(status_code=400, detail="Время вне допустимого диапазона")
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        nick = me["username"] if ("username" in me.keys() and me["username"]) else (me["first_name"] or "Игрок")
+        now_iso = datetime.now(MSK_TZ).isoformat()
+        db.execute(
+            """
+            INSERT INTO giveaway_prediction (user_id, username, seconds, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET username = excluded.username,
+                seconds = excluded.seconds, updated_at = excluded.updated_at
+            """,
+            (me["telegram_id"], nick, seconds, now_iso),
+        )
+    return {"ok": True, "seconds": seconds, "updated_at": now_iso}
+
+
+@app.post("/api/giveaway/set_result")
+async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(...)):
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    val = None if seconds is None or int(seconds) <= 0 else int(seconds)
+    with get_db() as db:
+        db.execute(
+            """
+            INSERT INTO giveaway_result (id, actual_sec) VALUES (1, ?)
+            ON CONFLICT(id) DO UPDATE SET actual_sec = excluded.actual_sec
+            """,
+            (val,),
+        )
+    return {"ok": True, "actual_sec": val}
+
+
 # ---------- Python-режим (MVP) ----------
 @app.post("/api/python/telemetry_batch")
 async def python_telemetry_batch(payload: dict = Body(...)):
@@ -2318,7 +2475,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "hangman-weekly-v96"
+BUILD_TAG = "giveaway-v97"
 
 
 @app.get("/api/version")

@@ -222,6 +222,26 @@ def init_db():
         )
         """
     )
+    # Розыгрыш от Игоря: прогноз времени забега (один прогноз на пользователя, последний перезаписывает)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS giveaway_prediction (
+            user_id    INTEGER PRIMARY KEY,
+            username   TEXT,
+            seconds    INTEGER NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    # Фактический результат забега (одна строка id=1), проставляет админ
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS giveaway_result (
+            id         INTEGER PRIMARY KEY,
+            actual_sec INTEGER
+        )
+        """
+    )
 
     conn.commit()
     conn.close()

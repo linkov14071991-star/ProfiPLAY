@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=85">
+<link rel="stylesheet" href="/style.css?v=86">
 </head>
 <body>
 
@@ -113,11 +113,21 @@
     <button class="btn btn-secondary" onclick="showScreen('rules')" style="margin-top:0; font-size:13px; padding:12px 6px;">📖 Правила</button>
   </div>
 
+  <!-- Баннер «Розыгрыш от Игоря» — угадай время забега -->
+  <div id="giveaway-banner" style="display:none; margin:8px 0 4px;"></div>
+
   <!-- Баннер «Вызов от Игоря» — виден всем, кто ещё не проходил активный вызов -->
   <div id="weekly-banner" style="display:none; margin:8px 0 4px;"></div>
 
   <h3 style="padding-left:4px;" id="modes-anchor">🎮 Разделы</h3>
   <div class="games-grid">
+    <div class="game-card" data-game="giveaway">
+      <div class="icon" style="background:#FFD166;">🏃</div>
+      <div class="info">
+        <div class="title">Розыгрыш от Игоря</div>
+        <div class="desc">Угадай, за сколько Игорь пробежит 10 км 23 августа. Ближе всех и раньше всех — победа!</div>
+      </div>
+    </div>
     <div class="game-card" data-game="sec-sprint">
       <div class="icon">⚡</div>
       <div class="info">
@@ -2075,6 +2085,48 @@
   </div>
 </div>
 
+<!-- ==== Экран: Розыгрыш от Игоря ==== -->
+<section id="screen-giveaway" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🏃 Розыгрыш от Игоря</h1>
+    <div class="gv-event" id="gv-event"></div>
+    <p class="subtitle" id="gv-desc" style="margin-top:6px;"></p>
+    <a id="gv-link" href="#" target="_blank" rel="noopener" class="gv-link">🔗 Подробнее о забеге →</a>
+
+    <div class="gv-countdown" id="gv-countdown"></div>
+
+    <div class="gv-mybox">
+      <div class="gv-mylabel">🎯 Твой прогноз времени на 10 км (ММ:СС)</div>
+      <div class="gv-time-input">
+        <input id="gv-min" class="gv-tf" type="number" inputmode="numeric" min="30" max="90" placeholder="55">
+        <span class="gv-colon">:</span>
+        <input id="gv-sec" class="gv-tf" type="number" inputmode="numeric" min="0" max="59" placeholder="30">
+      </div>
+      <div class="gv-hintline">Диапазон 30:00 – 1:30:00. Менять можно до 9:00 23 августа (МСК); засчитается последний.</div>
+      <button id="btn-gv-save" class="btn btn-primary btn-big">Сохранить прогноз</button>
+      <div id="gv-my-status" class="gv-my-status"></div>
+    </div>
+
+    <div class="gv-results" id="gv-results" style="display:none;"></div>
+
+    <div class="gv-stats" id="gv-stats"></div>
+    <div class="gv-hist" id="gv-hist"></div>
+
+    <h3 style="margin:14px 0 6px;">📋 Все прогнозы <span id="gv-count" style="opacity:0.6; font-weight:600;"></span></h3>
+    <div class="gv-table" id="gv-table"></div>
+
+    <div class="gv-admin" id="gv-admin" style="display:none;">
+      <button id="btn-gv-setresult" class="btn btn-secondary">⚙️ Указать результат забега (админ)</button>
+    </div>
+
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+  </div>
+</section>
+
 <!-- ==== Экраны: Виселица ==== -->
 <section id="screen-hm-setup" class="screen">
   <div class="brand-header">
@@ -2740,6 +2792,6 @@
 </div>
 
 <script src="/hangman-words.js?v=2"></script>
-<script src="/script.js?v=86"></script>
+<script src="/script.js?v=87"></script>
 </body>
 </html>
