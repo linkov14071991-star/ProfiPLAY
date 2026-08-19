@@ -75,6 +75,9 @@ const SCREENS = {
   stroopSetup: "screen-stroop-setup",
   stroopPlay: "screen-stroop-play",
   stroopResult: "screen-stroop-result",
+  gtSetup: "screen-gt-setup",
+  gtPlay: "screen-gt-play",
+  gtResult: "screen-gt-result",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -111,6 +114,7 @@ function showScreen(name) {
   if (name === "schulteSetup") { loadDailyRecords("schulte"); loadGameLeaderboard("schulte", "schulte-lb-list", "all"); }
   if (name === "gorbovSetup") { loadDailyRecords("gorbov"); loadGameLeaderboard("gorbov", "gorbov-lb-list", "all"); }
   if (name === "stroopSetup") { loadDailyRecords("stroop"); loadGameLeaderboard("stroop", "stroop-lb-list", "all"); }
+  if (name === "gtSetup") { loadGameLeaderboard("gametheory", "gt-lb-list", "all"); }
   // Рандомная реплика Профика на любом экране с data-profik-context
   populateProfikChips();
 }
@@ -249,6 +253,9 @@ const BACK_PARENT = {
   schulteResult: "schulteSetup",
   gorbovResult: "gorbovSetup",
   stroopResult: "stroopSetup",
+  gtResult: "gtSetup",
+  gtSetup: "marathonHub",
+  gtPlay: "gtSetup",
   aliasResult: "aliasSetup",
   gromkoResult: "gromkoSetup",
   tbResult: "tbSetup",
@@ -529,6 +536,7 @@ function routeToGame(game) {
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); return; }
   if (game === "duel") { showScreen("duelSetup"); return; }
   if (game === "python") { window.location.href = "python/index.html"; return; }
+  if (game === "gametheory") { currentGame = "gametheory"; resetLbTabs("gt-lb"); showScreen("gtSetup"); return; }
 }
 
 document.body.addEventListener("click", (e) => {
@@ -597,6 +605,12 @@ const GAME_INFO = {
     body: `<p>Тренажёр внимания и скорости. На экране слово-название цвета, но написано оно <b>другим цветом</b> (например, «СИНИЙ» красными буквами).</p>
       <p>Задача — нажать плашку с <b>цветом, который написан словом</b> (для «СИНИЙ» это синяя плашка), не обращая внимания на цвет самих букв. Буквы так и норовят сбить — в этом и сложность.</p>
       <p>За <b>60 секунд</b> — как можно больше верных. Сложность = число цветов: 4 (×1), 6 (×1.5), 8 (×2). Рейтинг × множитель, <b>кап 100/день</b>. Есть «Рекорд дня», таблица лучших и режим дуэли.</p>`,
+  },
+  gametheory: {
+    title: "♟️ Теория игр",
+    body: `<p>Игра на камнях из <b>задания ЕГЭ 19–21</b>. Двое ходят по очереди: <b>Профик</b> ходит первым, <b>Векта</b> (ты) — вторым. За ход можно добавить в кучу 1 камень или увеличить кучу в несколько раз.</p>
+      <p>Побеждает тот, кто первым доведёт сумму камней до цели (или больше). Профик <b>играет идеально</b> и наказывает за ошибку. Стартовая позиция всегда такова, что у второго игрока (у тебя) <b>есть выигрышная стратегия</b> — её и нужно найти.</p>
+      <p>Уровни: лёгкий (одна куча, +1 / ×2, до 29), средний (+1 / ×3, до 50), сложный (две кучи, +1 / ×3, до 65). За победу — рейтинг × множитель, <b>кап 100/день</b>. Копи серию побед!</p>`,
   },
   infomath: {
     title: "🖥️ IT-разминка",
@@ -2191,6 +2205,175 @@ document.getElementById("btn-stroop-start").addEventListener("click", stroopStar
 document.getElementById("btn-stroop-again").addEventListener("click", stroopStart);
 document.getElementById("btn-stroop-stop").addEventListener("click", stroopFinish);
 setupGameLeaderboard("stroop", "stroop-lb", "stroop-lb-list");
+
+// ==============================
+// ========= ТЕОРИЯ ИГР =========
+// ==============================
+// Игра на камнях (задание ЕГЭ 19–21). Профик (1-й) играет идеально, Векта (ты, 2-й)
+// ищет выигрышную стратегию. Старт — проигрышная позиция для первого игрока.
+const GT_LEVELS = {
+  easy:   { piles: 1, mul: 2, target: 29, mult: 1,
+            rule: "Одна куча · ходы +1 или ×2 · побеждает тот, кто первым дойдёт до 29." },
+  medium: { piles: 1, mul: 3, target: 50, mult: 1.5,
+            rule: "Одна куча · ходы +1 или ×3 · побеждает тот, кто первым дойдёт до 50." },
+  hard:   { piles: 2, mul: 3, target: 65, mult: 2,
+            rule: "Две кучи · +1 или ×3 в любую · побеждает тот, кто первым доведёт сумму до 65." },
+};
+const gt = { level: "easy", piles: [], mul: 2, target: 29, memo: null, turn: "profik", over: false, streak: 0 };
+
+setupPills("gt-difficulty", (v) => { gt.level = v; updateGtMult(); document.getElementById("gt-rule").textContent = GT_LEVELS[v].rule; });
+function updateGtMult() {
+  const dm = GT_LEVELS[gt.level].mult;
+  const el = document.getElementById("gt-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
+}
+updateGtMult();
+
+function gtSum(s) { let t = 0; for (const x of s) t += x; return t; }
+function gtNext(s, mul) {
+  const res = [];
+  for (let i = 0; i < s.length; i++) {
+    const a = s.slice(); a[i] += 1; res.push({ state: a, pile: i, op: "add" });
+    const b = s.slice(); b[i] *= mul; res.push({ state: b, pile: i, op: "mul" });
+  }
+  return res;
+}
+// Может ли выиграть игрок, который сейчас ходит из позиции s? (камни только растут → без циклов)
+function gtIsWin(s, target, mul, memo) {
+  const key = s.join(",");
+  if (memo.has(key)) return memo.get(key);
+  let win = false;
+  for (const m of gtNext(s, mul)) {
+    if (gtSum(m.state) >= target) { win = true; break; }
+    if (!gtIsWin(m.state, target, mul, memo)) { win = true; break; }
+  }
+  memo.set(key, win);
+  return win;
+}
+// Оптимальный ход Профика
+function gtAiMove(s, target, mul, memo) {
+  const moves = gtNext(s, mul);
+  for (const m of moves) if (gtSum(m.state) >= target) return m;          // немедленная победа
+  const winning = moves.filter((m) => !gtIsWin(m.state, target, mul, memo));
+  if (winning.length) return winning[Math.floor(Math.random() * winning.length)];
+  // проигрышная позиция — ставим самую трудную ловушку (меньше выигрышных ответов у соперника)
+  let best = moves[0], bestCount = Infinity;
+  for (const m of moves) {
+    let wc = 0;
+    for (const r of gtNext(m.state, mul)) if (gtSum(r.state) >= target || !gtIsWin(r.state, target, mul, memo)) wc++;
+    if (wc < bestCount) { bestCount = wc; best = m; }
+  }
+  return best;
+}
+// Стартовая позиция, где ПЕРВЫЙ игрок (Профик) проигрывает → у Векты (2-й) есть стратегия
+function gtPickStart(cfg, memo) {
+  for (let tries = 0; tries < 400; tries++) {
+    const s = cfg.piles === 1
+      ? [1 + Math.floor(Math.random() * (cfg.target - 3))]
+      : [6, 1 + Math.floor(Math.random() * (cfg.target - 12))];
+    if (gtSum(s) >= cfg.target) continue;
+    if (!gtIsWin(s, cfg.target, cfg.mul, memo)) return s;
+  }
+  return cfg.piles === 1 ? [Math.max(1, cfg.target - 4)] : [6, Math.max(1, cfg.target - 12)];
+}
+function gtOpText(pile, op, npiles, mul) {
+  const p = npiles > 1 ? `куча ${pile + 1}: ` : "";
+  return op === "add" ? `${p}+1 камень` : `${p}×${mul}`;
+}
+function gtLog(who, text, cls) {
+  const box = document.getElementById("gt-log");
+  const div = document.createElement("div");
+  div.className = "gt-log-line " + (cls || "");
+  div.textContent = `${who}: ${text}`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+function gtRenderPiles() {
+  const box = document.getElementById("gt-piles");
+  box.innerHTML = gt.piles.map((n, i) =>
+    `<div class="gt-pile"><div class="gt-pile-n">${n}</div>${gt.piles.length > 1 ? `<div class="gt-pile-lbl">Куча ${i + 1}</div>` : ""}</div>`).join("");
+  document.getElementById("gt-sum").textContent = gtSum(gt.piles);
+}
+function gtRenderMoves() {
+  const box = document.getElementById("gt-moves");
+  const active = gt.turn === "vekta" && !gt.over;
+  let html = "";
+  for (let i = 0; i < gt.piles.length; i++) {
+    const pf = gt.piles.length > 1 ? `Куча ${i + 1} ` : "";
+    html += `<button class="gt-move" ${active ? "" : "disabled"} data-pile="${i}" data-op="add">${pf}➕ 1</button>`;
+    html += `<button class="gt-move" ${active ? "" : "disabled"} data-pile="${i}" data-op="mul">${pf}✖️ ${gt.mul}</button>`;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll(".gt-move").forEach((b) => { b.onclick = () => gtHumanMove(parseInt(b.dataset.pile, 10), b.dataset.op); });
+}
+
+function gtStart() {
+  hapticMedium();
+  const cfg = GT_LEVELS[gt.level];
+  gt.mul = cfg.mul; gt.target = cfg.target; gt.over = false; gt.turn = "profik";
+  gt.memo = new Map();
+  gt.piles = gtPickStart(cfg, gt.memo);
+  document.getElementById("gt-target").textContent = cfg.target;
+  document.getElementById("gt-target2").textContent = cfg.target;
+  document.getElementById("gt-log").innerHTML = "";
+  gtRenderPiles();
+  gtRenderMoves();
+  document.getElementById("gt-turn").textContent = "Профик ходит…";
+  showScreen("gtPlay");
+  setTimeout(gtProfikMove, 800);
+}
+function gtProfikMove() {
+  if (gt.over) return;
+  const m = gtAiMove(gt.piles, gt.target, gt.mul, gt.memo);
+  gt.piles = m.state;
+  gtLog("Профик 🐱", gtOpText(m.pile, m.op, gt.piles.length, gt.mul), "profik");
+  gtRenderPiles();
+  if (gtSum(gt.piles) >= gt.target) { gtEnd(false); return; }
+  gt.turn = "vekta";
+  document.getElementById("gt-turn").textContent = "Твой ход, Векта 🦊";
+  gtRenderMoves();
+}
+function gtHumanMove(pile, op) {
+  if (gt.turn !== "vekta" || gt.over) return;
+  hapticLight();
+  if (op === "add") gt.piles[pile] += 1; else gt.piles[pile] *= gt.mul;
+  gtLog("Векта 🦊 (ты)", gtOpText(pile, op, gt.piles.length, gt.mul), "vekta");
+  gtRenderPiles();
+  if (gtSum(gt.piles) >= gt.target) { gtEnd(true); return; }
+  gt.turn = "profik";
+  document.getElementById("gt-turn").textContent = "Профик думает…";
+  gtRenderMoves();
+  setTimeout(gtProfikMove, 800);
+}
+async function gtEnd(win) {
+  gt.over = true;
+  gtRenderMoves();
+  const title = document.getElementById("gt-result-title");
+  const sub = document.getElementById("gt-result-sub");
+  if (win) {
+    hapticSuccess();
+    gt.streak++;
+    title.textContent = "🏆 Победа над Профиком!";
+    sub.textContent = "Ты нашёл выигрышную стратегию за второго игрока. Профик повержен!";
+    const res = await awardTraining("gametheory", 1, { correct: 1, difficulty: gt.level });
+    document.getElementById("gt-r-rating").textContent = (res && res.delta_awarded) || 0;
+    document.getElementById("gt-r-xp").textContent = (res && res.xp_awarded) || 0;
+  } else {
+    hapticError();
+    gt.streak = 0;
+    title.textContent = "😾 Профик выиграл";
+    sub.textContent = "Профик перехватил инициативу. Выигрышный ход был — попробуй ещё раз!";
+    document.getElementById("gt-r-rating").textContent = 0;
+    document.getElementById("gt-r-xp").textContent = 0;
+  }
+  document.getElementById("gt-streak").textContent = gt.streak;
+  document.getElementById("gt-r-streak").textContent = gt.streak;
+  showScreen("gtResult");
+}
+document.getElementById("btn-gt-start").addEventListener("click", gtStart);
+document.getElementById("btn-gt-again").addEventListener("click", gtStart);
+document.getElementById("btn-gt-give").addEventListener("click", () => { if (!gt.over) gtEnd(false); });
+setupGameLeaderboard("gametheory", "gt-lb", "gt-lb-list");
 
 // ===== Дуэль «Струп» (общая последовательность, кто больше верных за 30 сек) =====
 function duelStroopStart(info) {

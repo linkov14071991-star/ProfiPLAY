@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=78">
+<link rel="stylesheet" href="/style.css?v=79">
 </head>
 <body>
 
@@ -241,6 +241,15 @@
       <div class="info">
         <div class="title">Python <span class="by-profik">by Профик</span></div>
         <div class="desc">От основ до задач ЕГЭ, шаг за шагом. Уроки, тесты, ежедневки.</div>
+      </div>
+    </div>
+    <div class="game-card" data-game="gametheory">
+      <button class="game-info-btn" data-info="gametheory" aria-label="Правила">?</button>
+      <div class="icon">♟️</div>
+      <div class="info">
+        <div class="title">Теория игр</div>
+        <div class="desc">Обыграй Профика в игре на камнях. Задание ЕГЭ 19–21, выигрышная стратегия.</div>
+        <div class="card-stat" id="card-gametheory-stat"></div>
       </div>
     </div>
     <div class="game-card" data-game="finderr">
@@ -1844,6 +1853,80 @@
   <div class="stroop-options" id="duel-stroop-options"></div>
 </section>
 
+<!-- ==== Экраны: Теория игр (обыграй Профика) ==== -->
+<section id="screen-gt-setup" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>♟️ Теория игр</h1>
+    <p class="subtitle">Обыграй Профика в игре на камнях. Он ходит первым и играет идеально — твоя задача, играя за Векту (второй игрок), найти выигрышную стратегию.</p>
+
+    <label class="field">Уровень</label>
+    <div class="pills" id="gt-difficulty">
+      <button class="pill pill-diff active" data-value="easy"><span>Лёгкий</span><span class="pill-hint">×1</span></button>
+      <button class="pill pill-diff" data-value="medium"><span>Средний</span><span class="pill-hint">×1.5</span></button>
+      <button class="pill pill-diff" data-value="hard"><span>Сложный</span><span class="pill-hint">×2</span></button>
+    </div>
+    <p class="gt-rule" id="gt-rule">Одна куча · ходы +1 или ×2 · побеждает тот, кто первым дойдёт до 29.</p>
+
+    <div style="text-align:center;">
+      <div class="mult-hint">Победа над Профиком — рейтинг <b id="gt-mult">×1</b> · макс 100/день · серия побед: <b id="gt-streak">0</b></div>
+    </div>
+
+    <button id="btn-gt-start" class="btn btn-primary btn-big">Играть</button>
+    <button class="btn btn-link btn-back" data-back="menu">← В меню</button>
+
+    <div class="game-lb" id="gt-lb">
+      <div class="game-lb-tabs">
+        <button class="game-lb-tab active" data-period="all">За всё время</button>
+        <button class="game-lb-tab" data-period="week">За неделю</button>
+      </div>
+      <div class="game-lb-list" id="gt-lb-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-gt-play" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <div class="gt-goal">🎯 Цель: дойти до <b id="gt-target">29</b></div>
+    <div class="gt-players">
+      <div class="gt-player profik"><span class="gt-ava">🐱</span> Профик<br><span class="gt-role">1-й</span></div>
+      <div class="gt-vs">⚔</div>
+      <div class="gt-player vekta"><span class="gt-ava">🦊</span> Векта (ты)<br><span class="gt-role">2-й</span></div>
+    </div>
+    <div class="gt-turn" id="gt-turn">Профик ходит…</div>
+    <div class="gt-piles" id="gt-piles"></div>
+    <div class="gt-sum">Сумма камней: <b id="gt-sum">0</b> из <span id="gt-target2">29</span></div>
+    <div class="gt-moves" id="gt-moves"></div>
+    <div class="gt-log" id="gt-log"></div>
+    <button id="btn-gt-give" class="btn btn-link">Сдаться</button>
+  </div>
+</section>
+
+<section id="screen-gt-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1 id="gt-result-title">🏆 Победа!</h1>
+    <p class="subtitle" id="gt-result-sub"></p>
+    <div class="reward-strip">
+      <div class="reward-chip rating pos">🏆 <span id="gt-r-rating">0</span></div>
+      <div class="reward-chip xp pos">💎 <span id="gt-r-xp">0</span> XP</div>
+    </div>
+    <p style="text-align:center; opacity:0.7; margin:12px 0 8px;">Серия побед: <b id="gt-r-streak">0</b></p>
+    <button id="btn-gt-again" class="btn btn-primary btn-big">🔄 Ещё партия</button>
+    <button class="btn btn-secondary btn-back" data-back="menu">В меню</button>
+  </div>
+</section>
+
 <!-- ==== Экраны: Тайм-баттл ==== -->
 <section id="screen-tb-setup" class="screen">
   <div class="brand-header">
@@ -2426,6 +2509,6 @@
   </div>
 </div>
 
-<script src="/script.js?v=78"></script>
+<script src="/script.js?v=79"></script>
 </body>
 </html>
