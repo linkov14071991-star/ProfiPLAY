@@ -242,6 +242,15 @@ def init_db():
         )
         """
     )
+    # Флаги приложения (например, «рассылка X уже отправлена»)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS app_flags (
+            key   TEXT PRIMARY KEY,
+            value TEXT
+        )
+        """
+    )
 
     conn.commit()
     conn.close()

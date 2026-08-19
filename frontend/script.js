@@ -5823,12 +5823,15 @@ function _readStartParam() {
   const q = new URLSearchParams(window.location.search);
   if (q.get("duel")) return { type: "duel", value: q.get("duel") };
   if (q.get("weekly")) return { type: "weekly" };
+  if (q.get("giveaway")) return { type: "giveaway" };
   const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || "";
   if (sp.startsWith("duel_")) return { type: "duel", value: sp.slice(5) };
   if (sp === "weekly") return { type: "weekly" };
+  if (sp === "giveaway") return { type: "giveaway" };
   const h = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
   if (h.get("duel")) return { type: "duel", value: h.get("duel") };
   if (h.get("weekly")) return { type: "weekly" };
+  if (h.get("giveaway")) return { type: "giveaway" };
   return null;
 }
 
@@ -5841,6 +5844,7 @@ window._maybeOpenIncomingDuel = async function() {
   } catch (e) {}
   if (p && p.type === "duel") { await duelOpenIncoming(p.value); return; }
   if (p && p.type === "weekly") { await openWeeklyFromDeepLink(); return; }
+  if (p && p.type === "giveaway") { await openGiveaway(); return; }
   if (pendingId) await duelOpenIncoming(pendingId);
 };
 

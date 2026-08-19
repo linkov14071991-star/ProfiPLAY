@@ -2425,6 +2425,121 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
     return {"ok": True, "actual_sec": val, "notified": len(bot_msgs)}
 
 
+# ---- Авто-рассылка анонса розыгрыша ботом (по расписанию МСК) ----
+GIVEAWAY_ANNOUNCE_MAIN = (
+    "🏃‍♂️ <b>РОЗЫГРЫШ ОТ ИГОРЯ: угадай моё время!</b>\n\n"
+    "23 августа я бегу <b>10 км</b> на Большом фестивале бега в Москве (старт 9:00). "
+    "А ты угадай, за сколько я финиширую!\n\n"
+    "🎁 <b>Призы:</b>\n"
+    "🥇 1 место — сертификат OZON <b>1000 ₽</b> + памятная медаль с забега (та самая!)\n"
+    "🥈 2 место — сертификат OZON 1000 ₽*\n"
+    "🥉 3 место — сертификат OZON 1000 ₽**\n"
+    "<i>* за 2 место — при 128+ участниках, ** за 3 место — при 256+. Зови друзей!</i>\n\n"
+    "🏆 Побеждает тот, чей прогноз ближе к моему времени. При равенстве — кто проголосовал раньше.\n"
+    "⏰ Прогноз можно менять до <b>9:00 23 августа (МСК)</b> — засчитается последний.\n\n"
+    "Жми «Сделать прогноз» 👇"
+)
+GIVEAWAY_ANNOUNCE_REMIND = (
+    "⏳ <b>Ты ещё не сделал прогноз!</b>\n\n"
+    "23 августа Игорь бежит <b>10 км</b> — угадай его время на финише и забери приз:\n"
+    "🥇 сертификат OZON 1000 ₽ + памятная медаль с забега\n"
+    "🥈🥉 сертификат OZON 1000 ₽ (при 128+ и 256+ участниках)\n\n"
+    "Приём закроется в <b>9:00 23 августа (МСК)</b>. Менять прогноз можно сколько угодно — "
+    "успей поставить свой!\n\n"
+    "Жми «Сделать прогноз» 👇"
+)
+GIVEAWAY_JOBS = [
+    {"key": "gv_announce_main", "at": "2026-08-20 15:00", "audience": "all",    "caption": GIVEAWAY_ANNOUNCE_MAIN},
+    {"key": "gv_remind_21",     "at": "2026-08-21 15:00", "audience": "novote", "caption": GIVEAWAY_ANNOUNCE_REMIND},
+    {"key": "gv_remind_22",     "at": "2026-08-22 15:00", "audience": "novote", "caption": GIVEAWAY_ANNOUNCE_REMIND},
+]
+
+
+def _flag_get(db, key):
+    r = db.execute("SELECT value FROM app_flags WHERE key = ?", (key,)).fetchone()
+    return r["value"] if r else None
+
+
+def _flag_set(db, key, value="1"):
+    db.execute(
+        "INSERT INTO app_flags (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )
+
+
+def _giveaway_audience_ids(audience):
+    with get_db() as db:
+        if audience == "novote":
+            rows = db.execute(
+                "SELECT telegram_id FROM users WHERE telegram_id NOT IN (SELECT user_id FROM giveaway_prediction)"
+            ).fetchall()
+        else:
+            rows = db.execute("SELECT telegram_id FROM users").fetchall()
+    return [r["telegram_id"] for r in rows]
+
+
+async def _broadcast_giveaway(caption, audience):
+    """Рассылает пост с постером и кнопкой «Сделать прогноз». Возвращает число отправленных."""
+    if not (BOT_TOKEN and WEBAPP_URL):
+        return 0
+    ids = _giveaway_audience_ids(audience)
+    photo = f"{WEBAPP_URL.rstrip('/')}/giveaway-poster.png"
+    markup = {"inline_keyboard": [[{"text": "🎯 Сделать прогноз", "web_app": {"url": f"{WEBAPP_URL}?giveaway=1"}}]]}
+    sent = 0
+    async with httpx.AsyncClient(timeout=20) as client:
+        for uid in ids:
+            try:
+                await client.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                    json={"chat_id": uid, "photo": photo, "caption": caption,
+                          "parse_mode": "HTML", "reply_markup": markup},
+                )
+                sent += 1
+            except Exception:
+                pass
+            await asyncio.sleep(0.05)   # ~20 сообщений/сек — в пределах лимитов Telegram
+    return sent
+
+
+async def _giveaway_announce_scheduler():
+    """Каждую задачу отправляем ОДИН раз в назначенное время МСК. Флаг в app_flags защищает от повторов."""
+    for job in GIVEAWAY_JOBS:
+        try:
+            with get_db() as db:
+                if _flag_get(db, job["key"]):
+                    continue
+            target = datetime.strptime(job["at"], "%Y-%m-%d %H:%M").replace(tzinfo=MSK_TZ)
+            delay = (target - datetime.now(MSK_TZ)).total_seconds()
+            if delay > 0:
+                await asyncio.sleep(delay)
+            with get_db() as db:
+                if _flag_get(db, job["key"]):
+                    continue
+                _flag_set(db, job["key"])   # ставим флаг ДО отправки — защита от дублей при рестарте/гонках
+            n = await _broadcast_giveaway(job["caption"], job["audience"])
+            print(f"[giveaway announce] {job['key']}: отправлено {n}")
+        except Exception as e:
+            print(f"[giveaway announce] {job.get('key')}: {e}")
+
+
+@app.on_event("startup")
+async def _startup_schedule_giveaway():
+    t = asyncio.create_task(_giveaway_announce_scheduler())
+    _bg_tasks.add(t)
+    t.add_done_callback(_bg_tasks.discard)
+
+
+@app.post("/api/giveaway/announce")
+async def giveaway_announce_now(init_data: str = Body(...), audience: str = Body("all")):
+    """Админ: разослать анонс немедленно (тест/ручной запуск). Флаги расписания не трогает."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    cap = GIVEAWAY_ANNOUNCE_REMIND if audience == "novote" else GIVEAWAY_ANNOUNCE_MAIN
+    sent = await _broadcast_giveaway(cap, audience)
+    return {"ok": True, "sent": sent, "audience": audience}
+
+
 # ---------- Python-режим (MVP) ----------
 @app.post("/api/python/telemetry_batch")
 async def python_telemetry_batch(payload: dict = Body(...)):
@@ -2529,7 +2644,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-prizes2-v100"
+BUILD_TAG = "giveaway-broadcast-v101"
 
 
 @app.get("/api/version")
