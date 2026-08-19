@@ -2245,6 +2245,11 @@ def _giveaway_actual(db):
     return r["actual_sec"] if r and r["actual_sec"] is not None else None
 
 
+def _fmt_mmss(sec) -> str:
+    sec = max(0, int(sec or 0))
+    return f"{sec // 60}:{sec % 60:02d}"
+
+
 def _giveaway_ranked(rows, actual):
     """Сортировка прогнозов. Если известен факт — по близости, затем по времени голоса.
     До факта — по времени (возрастание). rows: list of dict-подобных."""
@@ -2360,7 +2365,9 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
     if tg_user["id"] not in ADMIN_IDS:
         raise HTTPException(status_code=403, detail="Not admin")
     val = None if seconds is None or int(seconds) <= 0 else int(seconds)
+    bot_msgs = []
     with get_db() as db:
+        prev = _giveaway_actual(db)
         db.execute(
             """
             INSERT INTO giveaway_result (id, actual_sec) VALUES (1, ?)
@@ -2368,7 +2375,36 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
             """,
             (val,),
         )
-    return {"ok": True, "actual_sec": val}
+        # Результат впервые задан или изменён → уведомляем ВСЕХ участников
+        if val is not None and val != prev:
+            rows = db.execute(
+                "SELECT user_id, username, seconds, updated_at FROM giveaway_prediction"
+            ).fetchall()
+            ranked = _giveaway_ranked(rows, val)
+            total = len(ranked)
+            actual_txt = _fmt_mmss(val)
+            for i, it in enumerate(ranked):
+                rank = i + 1
+                pred = _fmt_mmss(it["seconds"])
+                diff = _fmt_mmss(it["diff"])
+                if rank <= GIVEAWAY["prizes"]:
+                    medal = ["🥇", "🥈", "🥉"][rank - 1]
+                    text = (f"🏁 Розыгрыш от Игоря завершён!\n"
+                            f"Игорь пробежал 10 км за {actual_txt}.\n"
+                            f"Твой прогноз: {pred} (промах ±{diff}).\n"
+                            f"{medal} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉")
+                else:
+                    text = (f"🏁 Розыгрыш от Игоря завершён!\n"
+                            f"Игорь пробежал 10 км за {actual_txt}.\n"
+                            f"Твой прогноз: {pred} (промах ±{diff}).\n"
+                            f"Твоё место: {rank} из {total}. Спасибо за участие! 🙌")
+                _notify(db, it["user_id"], text)
+                bot_msgs.append((it["user_id"], text))
+    if bot_msgs:
+        t = asyncio.create_task(_send_bot_messages(bot_msgs))
+        _bg_tasks.add(t)
+        t.add_done_callback(_bg_tasks.discard)
+    return {"ok": True, "actual_sec": val, "notified": len(bot_msgs)}
 
 
 # ---------- Python-режим (MVP) ----------
@@ -2475,7 +2511,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-v97"
+BUILD_TAG = "giveaway-notify-v98"
 
 
 @app.get("/api/version")
