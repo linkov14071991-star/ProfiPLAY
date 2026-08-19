@@ -2883,10 +2883,21 @@ async function loadGiveaway() {
   document.getElementById("gv-desc").textContent = res.desc;
   document.getElementById("gv-link").href = res.url;
   const pz = document.getElementById("gv-prizes");
-  if (pz) pz.innerHTML =
-    `<div class="gv-prizes-title">🎁 Призы</div>` +
-    `<div class="gv-prize-row"><span class="gv-prize-place">🥇🥈🥉 Топ-3</span><span>${res.prize_top3 || ""}</span></div>` +
-    `<div class="gv-prize-row"><span class="gv-prize-place">🥇 1 место</span><span>дополнительно — ${res.prize_winner || ""}</span></div>`;
+  if (pz) {
+    const cnt = (res.stats && res.stats.count) || 0;
+    const p2 = res.prize2_min, p3 = res.prize3_min;
+    const mark = (n) => cnt >= n ? "✅ уже открыт" : `осталось ${n - cnt} участников`;
+    pz.innerHTML =
+      `<div class="gv-prizes-title">🎁 Призы</div>` +
+      `<div class="gv-prize-row"><span class="gv-prize-place">🥇 1 место</span><span>${res.prize_top3} <b>+ ${res.prize_winner}</b></span></div>` +
+      `<div class="gv-prize-row"><span class="gv-prize-place">🥈 2 место</span><span>${res.prize_top3}<sup>*</sup></span></div>` +
+      `<div class="gv-prize-row"><span class="gv-prize-place">🥉 3 место</span><span>${res.prize_top3}<sup>**</sup></span></div>` +
+      `<div class="gv-prize-note">` +
+        `<div><sup>*</sup> сертификат за 2 место разыгрывается при <b>${p2}+</b> участниках (${mark(p2)}).</div>` +
+        `<div><sup>**</sup> сертификат за 3 место — при <b>${p3}+</b> участниках (${mark(p3)}).</div>` +
+        `<div class="gv-prize-cta">📣 Сейчас участников: <b>${cnt}</b>. Зови друзей — чем нас больше, тем больше призов разыграем!</div>` +
+      `</div>`;
+  }
   if (res.my) {
     document.getElementById("gv-min").value = Math.floor(res.my.seconds / 60);
     document.getElementById("gv-sec").value = res.my.seconds % 60;

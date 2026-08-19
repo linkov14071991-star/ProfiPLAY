@@ -2524,6 +2524,8 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .gv-prize-row { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.4; color: var(--text-on-light); margin-bottom: 6px; }
 .gv-prize-row:last-child { margin-bottom: 0; }
 .gv-prize-place { flex: 0 0 auto; font-weight: 700; min-width: 78px; }
+.gv-prize-note { font-size: 12px; line-height: 1.5; color: var(--text-on-light); opacity: 0.85; margin-top: 8px; border-top: 1px solid rgba(255, 159, 28, 0.3); padding-top: 8px; }
+.gv-prize-cta { margin-top: 6px; font-weight: 600; opacity: 1; }
 .drl-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px dashed rgba(102,54,233,0.15); }
 .drl-row:first-of-type { border-top: none; }
 .drl-lvl { flex-shrink: 0; width: 92px; font-weight: 700; font-size: 12.5px; color: var(--brand-purple); }

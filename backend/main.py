@@ -2231,6 +2231,8 @@ GIVEAWAY = {
     "prizes": 3,                           # сколько призовых мест подсвечиваем
     "prize_top3": "Сертификат OZON на 1000 ₽",
     "prize_winner": "Памятная медаль с забега (та самая, которую получит Игорь) 🏅",
+    "prize2_min": 128,   # сертификат за 2 место разыгрывается при стольких участниках
+    "prize3_min": 256,   # сертификат за 3 место разыгрывается при стольких участниках
 }
 
 
@@ -2312,6 +2314,7 @@ async def giveaway_state(init_data: str = Body(..., embed=True)):
         "min_sec": GIVEAWAY["min_sec"], "max_sec": GIVEAWAY["max_sec"],
         "prizes": GIVEAWAY["prizes"],
         "prize_top3": GIVEAWAY["prize_top3"], "prize_winner": GIVEAWAY["prize_winner"],
+        "prize2_min": GIVEAWAY["prize2_min"], "prize3_min": GIVEAWAY["prize3_min"],
         "locked": _giveaway_locked(),
         "is_admin": my_id in ADMIN_IDS,
         "my": ({"seconds": mine["seconds"], "updated_at": mine["updated_at"]} if mine else None),
@@ -2392,14 +2395,22 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
                 diff = _fmt_mmss(it["diff"])
                 if rank <= GIVEAWAY["prizes"]:
                     medal = ["🥇", "🥈", "🥉"][rank - 1]
-                    prize = GIVEAWAY["prize_top3"]
+                    # приз зависит от числа участников: 2 место — при 128+, 3 место — при 256+
                     if rank == 1:
-                        prize += " + " + GIVEAWAY["prize_winner"]
+                        prize_line = f"🎁 Твой приз: {GIVEAWAY['prize_top3']} + {GIVEAWAY['prize_winner']}"
+                    elif rank == 2:
+                        prize_line = (f"🎁 Твой приз: {GIVEAWAY['prize_top3']}"
+                                      if total >= GIVEAWAY["prize2_min"]
+                                      else f"⚠️ Сертификат за 2 место разыгрывается при {GIVEAWAY['prize2_min']}+ участниках (было {total}) — в этот раз не разыгран.")
+                    else:  # rank == 3
+                        prize_line = (f"🎁 Твой приз: {GIVEAWAY['prize_top3']}"
+                                      if total >= GIVEAWAY["prize3_min"]
+                                      else f"⚠️ Сертификат за 3 место разыгрывается при {GIVEAWAY['prize3_min']}+ участниках (было {total}) — в этот раз не разыгран.")
                     text = (f"🏁 Розыгрыш от Игоря завершён!\n"
                             f"Игорь пробежал 10 км за {actual_txt}.\n"
                             f"Твой прогноз: {pred} (промах ±{diff}).\n"
                             f"{medal} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉\n"
-                            f"🎁 Твой приз: {prize}")
+                            f"{prize_line}")
                 else:
                     text = (f"🏁 Розыгрыш от Игоря завершён!\n"
                             f"Игорь пробежал 10 км за {actual_txt}.\n"
@@ -2518,7 +2529,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-prizes-v99"
+BUILD_TAG = "giveaway-prizes2-v100"
 
 
 @app.get("/api/version")
