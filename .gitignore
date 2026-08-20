@@ -9,3 +9,5 @@ venv/
 .idea/
 *.log
 autopush.bat
+node_modules/
+frontend/node_modules/
