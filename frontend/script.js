@@ -103,25 +103,30 @@ const SCREENS = {
 };
 
 function showScreen(name) {
+  // Смена экрана НИКОГДА не должна падать из-за побочных загрузок (иначе можно
+  // застрять на экране проверки). Сначала переключаем экран, потом хуки в try/catch.
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
-  document.getElementById(SCREENS[name]).classList.add("active");
+  const el = document.getElementById(SCREENS[name]);
+  if (el) el.classList.add("active");
   window.scrollTo(0, 0);
-  // при возврате на меню — обновим плашку рейтинга
-  if (name === "menu") { refreshProfile(); loadWeeklyBanner(); loadGiveawayBanner(); refreshNotifBadge(); }
-  if (name === "profile") loadProfileScreen();
-  if (name === "compHub") loadWeekly();
-  if (name === "duelSetup") loadDuelIncoming();
-  if (name === "sprintSetup") loadDailyRecords("sprint");
-  if (name === "fastmathSetup") loadDailyRecords("fastmath");
-  if (name === "infomathSetup") loadDailyRecords("infomath");
-  if (name === "numguessSetup") loadDailyRecords("numguess");
-  if (name === "schulteSetup") { loadDailyRecords("schulte"); loadGameLeaderboard("schulte", "schulte-lb-list", "all"); }
-  if (name === "gorbovSetup") { loadDailyRecords("gorbov"); loadGameLeaderboard("gorbov", "gorbov-lb-list", "all"); }
-  if (name === "stroopSetup") { loadDailyRecords("stroop"); loadGameLeaderboard("stroop", "stroop-lb-list", "all"); }
-  if (name === "gtSetup") { loadGameLeaderboard("gametheory", "gt-lb-list", "all"); }
-  if (name === "hmSetup") { loadGameLeaderboard("hangman", "hm-lb-list", "all"); }
-  // Рандомная реплика Профика на любом экране с data-profik-context
-  populateProfikChips();
+  try {
+    // при возврате на меню — обновим плашку рейтинга
+    if (name === "menu") { refreshProfile(); loadWeeklyBanner(); loadGiveawayBanner(); refreshNotifBadge(); }
+    if (name === "profile") loadProfileScreen();
+    if (name === "compHub") loadWeekly();
+    if (name === "duelSetup") loadDuelIncoming();
+    if (name === "sprintSetup") loadDailyRecords("sprint");
+    if (name === "fastmathSetup") loadDailyRecords("fastmath");
+    if (name === "infomathSetup") loadDailyRecords("infomath");
+    if (name === "numguessSetup") loadDailyRecords("numguess");
+    if (name === "schulteSetup") { loadDailyRecords("schulte"); loadGameLeaderboard("schulte", "schulte-lb-list", "all"); }
+    if (name === "gorbovSetup") { loadDailyRecords("gorbov"); loadGameLeaderboard("gorbov", "gorbov-lb-list", "all"); }
+    if (name === "stroopSetup") { loadDailyRecords("stroop"); loadGameLeaderboard("stroop", "stroop-lb-list", "all"); }
+    if (name === "gtSetup") { loadGameLeaderboard("gametheory", "gt-lb-list", "all"); }
+    if (name === "hmSetup") { loadGameLeaderboard("hangman", "hm-lb-list", "all"); }
+    // Рандомная реплика Профика на любом экране с data-profik-context
+    populateProfikChips();
+  } catch (e) { console.error("showScreen hook error", name, e); }
 }
 window.showScreen = showScreen;  // для onclick в HTML
 
@@ -433,14 +438,15 @@ async function checkSubscription() {
       // таймаут 6 сек: если бэкенд молчит — не держим ученика на экране проверки,
       // а пускаем внутрь (fail-open). Подписку перепроверим позже.
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 6000);
+      const t = setTimeout(() => ctrl.abort(), 5000);
       const r = await fetch(`/api/check_subscription?user_id=${userId}`, { signal: ctrl.signal });
       clearTimeout(t);
       const data = await r.json();
       subscribed = !!data.subscribed;
     } catch (e) { subscribed = true; }
   }
-  showScreen(subscribed ? "menu" : "needSub");
+  try { showScreen(subscribed ? "menu" : "needSub"); }
+  catch (e) { console.error("showScreen failed", e); document.getElementById("screen-menu")?.classList.add("active"); }
   if (subscribed && typeof window._maybeOpenIncomingDuel === "function") {
     await window._maybeOpenIncomingDuel();
   }
@@ -5987,3 +5993,16 @@ function boot() {
   }, 100);
 }
 boot();
+
+// Страховка: приложение НИКОГДА не должно застревать на экране проверки подписки.
+// Если через 7 сек экран проверки всё ещё активен (SDK не пришёл, бэкенд молчит,
+// упал какой-то хук) — принудительно пускаем в меню (fail-open).
+setTimeout(() => {
+  const chk = document.getElementById("screen-check");
+  if (!chk || !chk.classList.contains("active")) return;
+  try { showScreen("menu"); }
+  catch (e) {
+    chk.classList.remove("active");
+    document.getElementById("screen-menu")?.classList.add("active");
+  }
+}, 7000);
