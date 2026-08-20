@@ -1,10 +1,45 @@
+// ==== Абсолютная страховка от зависания на экране загрузки ====
+// Регистрируется ПЕРВОЙ, до любого другого кода. Даже если ниже случится
+// ошибка верхнего уровня (boot() не выполнится) — пользователь всё равно
+// попадёт в меню, а не застрянет на «Профик проверяет подписку…».
+function _forceMenuIfStuck() {
+  try {
+    var chk = document.getElementById("screen-check");
+    if (!chk || !chk.classList.contains("active")) return;
+    var scr = document.querySelectorAll(".screen");
+    for (var i = 0; i < scr.length; i++) scr[i].classList.remove("active");
+    var m = document.getElementById("screen-menu");
+    if (m) m.classList.add("active");
+  } catch (e) {}
+}
+window.addEventListener("error", _forceMenuIfStuck);
+window.addEventListener("unhandledrejection", _forceMenuIfStuck);
+setTimeout(_forceMenuIfStuck, 5000);
+
 // ==== Telegram WebApp init ====
 // SDK грузится асинхронно (не блокирует страницу, если telegram.org недоступен).
 // tg может появиться чуть позже — присваиваем через let и добираем в boot().
 let tg = window.Telegram?.WebApp;
 if (tg) {
-  tg.ready();
-  tg.expand();
+  try { tg.ready(); tg.expand(); } catch (e) {}
+}
+
+// CloudStorage появился в Bot API 6.9. В обычном браузере Telegram-SDK эмулирует
+// старую версию (6.0), где вызов tg.CloudStorage.* КИДАЕТ WebAppMethodUnsupported.
+// Optional chaining не спасает (метод существует), поэтому проверяем версию и
+// оборачиваем всё в try/catch, чтобы облако никогда не роняло инициализацию.
+function _cloudOk() {
+  try { return !!(tg && tg.CloudStorage && (typeof tg.isVersionAtLeast !== "function" || tg.isVersionAtLeast("6.9"))); }
+  catch (e) { return false; }
+}
+function _cloudSet(key, value) {
+  try { if (_cloudOk()) tg.CloudStorage.setItem(key, String(value), () => {}); } catch (e) {}
+}
+function _cloudGet(key, cb) {
+  try {
+    if (_cloudOk()) { tg.CloudStorage.getItem(key, cb); return; }
+  } catch (e) {}
+  try { cb(null, null); } catch (e) {}
 }
 
 // ==== Экраны ====
@@ -767,13 +802,13 @@ function saveCrocoRecord(score) {
   const key = crocoRecordKey();
   if (score > (crocoRecords[key] || 0)) {
     crocoRecords[key] = score;
-    tg?.CloudStorage?.setItem?.(key, String(score), () => {});
+    _cloudSet(key, String(score), () => {});
     return true;
   }
   return false;
 }
 function loadCrocoRecordsFromCloud() {
-  if (!tg?.CloudStorage) return;
+  if (!_cloudOk()) return;
   const keys = [];
   for (const t of [60, 120, 0]) for (const d of ["easy", "medium", "hard"]) keys.push(`croco_${t}_${d}`);
   tg.CloudStorage.getItems(keys, (err, values) => {
@@ -940,13 +975,13 @@ const gromkoRecords = { bank: 0 };
 function saveGromkoBank(sec) {
   if (sec > gromkoRecords.bank) {
     gromkoRecords.bank = sec;
-    tg?.CloudStorage?.setItem?.("gromko_bank", String(sec), () => {});
+    _cloudSet("gromko_bank", String(sec), () => {});
     return true;
   }
   return false;
 }
 function loadGromkoRecordsFromCloud() {
-  if (!tg?.CloudStorage) return;
+  if (!_cloudOk()) return;
   tg.CloudStorage.getItem("gromko_bank", (err, val) => {
     if (!err && val) { gromkoRecords.bank = parseInt(val, 10) || 0; renderGromkoRecord(); }
   });
@@ -1356,14 +1391,14 @@ function saveRecord(score) {
   if (score > (records[key] || 0)) {
     records[key] = score;
     // Пробуем сохранить в Telegram CloudStorage
-    tg?.CloudStorage?.setItem?.(key, String(score), () => {});
+    _cloudSet(key, String(score), () => {});
     return true;
   }
   return false;
 }
 
 function loadRecordsFromCloud() {
-  if (!tg?.CloudStorage) return;
+  if (!_cloudOk()) return;
   const keys = [];
   for (const d of ["easy", "medium", "hard"]) {
     for (const t of [30, 60, 90]) keys.push(`sprint_${d}_${t}`);
@@ -1685,7 +1720,7 @@ function saveMarathonRecord(score) {
   const k = marathonRecordKey();
   if (score > (records[k] || 0)) {
     records[k] = score;
-    tg?.CloudStorage?.setItem?.(k, String(score), () => {});
+    _cloudSet(k, String(score), () => {});
     return true;
   }
   return false;
@@ -1850,7 +1885,7 @@ document.getElementById("btn-marathon-stop").addEventListener("click", () => mar
 
 // ==== Загрузка рекордов Марафона из облака ====
 (function preloadMarathonRecords() {
-  if (!tg?.CloudStorage) return;
+  if (!_cloudOk()) return;
   const keys = ["easy", "medium", "hard"].map((d) => `marathon_${d}`);
   tg.CloudStorage.getItems(keys, (err, values) => {
     if (err || !values) return;
@@ -3193,11 +3228,11 @@ function fmRecordKey() { return `fastmath_${fastmath.difficulty}_${fastmath.dura
 function fmGetRecord() { return fmRecords[fmRecordKey()] || 0; }
 function fmSaveRecord(score) {
   const k = fmRecordKey();
-  if (score > (fmRecords[k] || 0)) { fmRecords[k] = score; tg?.CloudStorage?.setItem?.(k, String(score), () => {}); return true; }
+  if (score > (fmRecords[k] || 0)) { fmRecords[k] = score; _cloudSet(k, String(score), () => {}); return true; }
   return false;
 }
 function fmLoadRecords() {
-  if (!tg?.CloudStorage) return;
+  if (!_cloudOk()) return;
   const keys = ["easy", "medium", "hard"].map((d) => `fastmath_${d}_60`);
   tg.CloudStorage.getItems(keys, (err, values) => {
     if (err || !values) return;
@@ -3392,11 +3427,11 @@ function imRecordKey() { return `infomath_${infomath.difficulty}_60`; }
 function imGetRecord() { return imRecords[imRecordKey()] || 0; }
 function imSaveRecord(score) {
   const k = imRecordKey();
-  if (score > (imRecords[k] || 0)) { imRecords[k] = score; tg?.CloudStorage?.setItem?.(k, String(score), () => {}); return true; }
+  if (score > (imRecords[k] || 0)) { imRecords[k] = score; _cloudSet(k, String(score), () => {}); return true; }
   return false;
 }
 function imLoadRecords() {
-  if (!tg?.CloudStorage) return;
+  if (!_cloudOk()) return;
   const keys = ["easy", "medium", "hard"].map((d) => `infomath_${d}_60`);
   tg.CloudStorage.getItems(keys, (err, values) => {
     if (err || !values) return;
@@ -3756,7 +3791,7 @@ document.getElementById("btn-tb-blitz-go").addEventListener("click", tbBlitzStar
 // ── Рекорды (имя + очки + дата) ──
 let tbRecords = [];
 function tbLoadRecordsFromCloud() {
-  if (!tg?.CloudStorage) return;
+  if (!_cloudOk()) return;
   tg.CloudStorage.getItem("timebank_records", (err, val) => {
     if (err || !val) return;
     try { tbRecords = JSON.parse(val) || []; } catch (e) { tbRecords = []; }
@@ -3770,7 +3805,7 @@ function tbSaveRecord(name, score) {
   tbRecords.push({ name, score, date: today });
   tbRecords.sort((a, b) => b.score - a.score);
   tbRecords = tbRecords.slice(0, 20);
-  tg?.CloudStorage?.setItem?.("timebank_records", JSON.stringify(tbRecords), () => {});
+  _cloudSet("timebank_records", JSON.stringify(tbRecords), () => {});
   return isRecord;
 }
 function tbRenderRecords(targetId = "tb-records") {
@@ -5982,12 +6017,13 @@ function boot() {
       // ВАЖНО: считываем initData уже после готовности SDK (иначе на медленных
       // устройствах он пустой → авторизация не проходит).
       INIT_DATA = (tg && tg.initData) || INIT_DATA;
-      loadRecordsFromCloud();
-      loadCrocoRecordsFromCloud();
-      loadGromkoRecordsFromCloud();
-      tbLoadRecordsFromCloud();
-      fmLoadRecords();
-      imLoadRecords();
+      // Загрузка облачных рекордов не должна мешать входу — в try/catch каждая.
+      try { loadRecordsFromCloud(); } catch (e) {}
+      try { loadCrocoRecordsFromCloud(); } catch (e) {}
+      try { loadGromkoRecordsFromCloud(); } catch (e) {}
+      try { tbLoadRecordsFromCloud(); } catch (e) {}
+      try { fmLoadRecords(); } catch (e) {}
+      try { imLoadRecords(); } catch (e) {}
       checkSubscription();
     }
   }, 100);
