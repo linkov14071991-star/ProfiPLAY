@@ -3109,7 +3109,6 @@ async function revStartRec() {
     hapticMedium();
     revSetMic("🔴"); revSetStatus("Идёт запись… скажи слово и нажми «Стоп»");
     document.getElementById("btn-rev-rec").textContent = "⏹ Стоп";
-    document.getElementById("btn-rev-play").disabled = true;
     rev.autoStop = setTimeout(revStopRec, 6000);   // страховка: максимум 6 сек
   } catch (e) {
     revSetStatus("❌ Не удалось начать запись: " + (e && e.message || e));

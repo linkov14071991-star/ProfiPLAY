@@ -2653,7 +2653,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "reverse-audio-diag-v108"
+BUILD_TAG = "reverse-playbtn-fix-v109"
 
 
 @app.get("/api/version")
