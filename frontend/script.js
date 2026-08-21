@@ -3060,9 +3060,24 @@ document.getElementById("btn-gv-setresult").addEventListener("click", gvAdminSet
 // ==============================
 // Запись голоса → разворот звуковой волны → воспроизведение. Захват PCM через
 // Web Audio (ScriptProcessor) — самый совместимый способ (в т.ч. iOS-вебвью).
-const rev = { ctx: null, stream: null, src: null, proc: null, chunks: [], buffer: null, recording: false, autoStop: null };
+const rev = { ctx: null, stream: null, src: null, proc: null, chunks: [], buffer: null, recording: false, autoStop: null, url: null, rate: 44100, audio: null };
 function revSetStatus(t) { const el = document.getElementById("rev-status"); if (el) el.textContent = t; }
 function revSetMic(e) { const el = document.getElementById("rev-mic-emoji"); if (el) el.textContent = e; }
+// PCM Float32 → WAV Blob (16-bit). Нужно, чтобы играть реверс через обычный <audio>
+// (на мобильных вывод через WebAudio после микрофона часто беззвучный).
+function _encodeWAV(samples, sampleRate) {
+  const buf = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buf);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, "RIFF"); view.setUint32(4, 36 + samples.length * 2, true); ws(8, "WAVE");
+  ws(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  ws(36, "data"); view.setUint32(40, samples.length * 2, true);
+  let o = 44;
+  for (let i = 0; i < samples.length; i++) { const s = Math.max(-1, Math.min(1, samples[i])); view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2; }
+  return new Blob([view], { type: "audio/wav" });
+}
 
 async function revStartRec() {
   if (rev.recording) { revStopRec(); return; }
@@ -3113,21 +3128,43 @@ function revStopRec() {
   const all = new Float32Array(len);
   let off = 0; rev.chunks.forEach((c) => { all.set(c, off); off += c.length; });
   all.reverse();   // ← собственно разворот звука
+  rev.rate = rate;
+  // WebAudio-буфер (запасной путь) + WAV-URL (основной путь для мобильных)
   rev.buffer = rev.ctx.createBuffer(1, len, rate);
   rev.buffer.getChannelData(0).set(all);
+  try { if (rev.url) URL.revokeObjectURL(rev.url); } catch (e) {}
+  try { rev.url = URL.createObjectURL(_encodeWAV(all, rate)); } catch (e) { rev.url = null; }
   hapticSuccess();
   if (typeof reverseAfterRecord === "function") reverseAfterRecord();
 }
-function revPlay() {
-  if (!rev.buffer || !rev.ctx) { revSetStatus("Сначала запиши слово."); return; }
+function _revPlayWebAudio() {
+  // Запасной путь: воспроизведение через WebAudio (если <audio> не сработал)
+  if (!rev.buffer || !rev.ctx) return;
   try {
     if (rev.ctx.state === "suspended") rev.ctx.resume();
     const s = rev.ctx.createBufferSource();
     s.buffer = rev.buffer; s.connect(rev.ctx.destination); s.start();
     revSetMic("🔁"); revSetStatus("🔁 Играю задом наперёд…");
-    s.onended = () => { revSetMic("✅"); revSetStatus("Ещё раз? Жми «Прослушать» или запиши новое слово."); };
-    hapticLight();
+    s.onended = () => { revSetMic("✅"); revSetStatus("Ещё раз? Жми «Слушать» или запиши новое слово."); };
   } catch (e) { revSetStatus("Не смог воспроизвести: " + (e && e.message || e)); }
+}
+function revPlay() {
+  if (!rev.url && !rev.buffer) { revSetStatus("Сначала запиши слово."); return; }
+  hapticLight();
+  revSetMic("🔁"); revSetStatus("🔁 Играю задом наперёд…");
+  // Основной путь: обычный <audio> с WAV — надёжно звучит на телефонах
+  if (rev.url) {
+    try {
+      if (!rev.audio) rev.audio = new Audio();
+      rev.audio.src = rev.url;
+      rev.audio.currentTime = 0;
+      rev.audio.onended = () => { revSetMic("✅"); revSetStatus("Ещё раз? Жми «Слушать» или запиши новое слово."); };
+      const p = rev.audio.play();
+      if (p && p.catch) p.catch(() => _revPlayWebAudio());
+      return;
+    } catch (e) { /* упадём в WebAudio ниже */ }
+  }
+  _revPlayWebAudio();
 }
 document.getElementById("btn-rev-rec").addEventListener("click", revStartRec);
 document.getElementById("btn-rev-play").addEventListener("click", revPlay);
