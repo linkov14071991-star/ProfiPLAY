@@ -3060,12 +3060,13 @@ document.getElementById("btn-gv-setresult").addEventListener("click", gvAdminSet
 // ==============================
 // Запись голоса → разворот звуковой волны → воспроизведение. Захват PCM через
 // Web Audio (ScriptProcessor) — самый совместимый способ (в т.ч. iOS-вебвью).
-const rev = { ctx: null, stream: null, src: null, proc: null, chunks: [], buffer: null, recording: false, autoStop: null, url: null, rate: 44100, audio: null };
+const rev = { ctx: null, stream: null, src: null, proc: null, chunks: [], buffer: null, recording: false, autoStop: null, url: null, dataUrl: null, rate: 44100, durSec: 0, audio: null };
 function revSetStatus(t) { const el = document.getElementById("rev-status"); if (el) el.textContent = t; }
+function revSetListen(t) { const el = document.getElementById("rev-listen-status"); if (el) el.textContent = t; }
 function revSetMic(e) { const el = document.getElementById("rev-mic-emoji"); if (el) el.textContent = e; }
-// PCM Float32 → WAV Blob (16-bit). Нужно, чтобы играть реверс через обычный <audio>
+// PCM Float32 → WAV-байты (16-bit). Играем реверс через обычный <audio>
 // (на мобильных вывод через WebAudio после микрофона часто беззвучный).
-function _encodeWAV(samples, sampleRate) {
+function _encodeWAVBytes(samples, sampleRate) {
   const buf = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buf);
   const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
@@ -3076,7 +3077,12 @@ function _encodeWAV(samples, sampleRate) {
   ws(36, "data"); view.setUint32(40, samples.length * 2, true);
   let o = 44;
   for (let i = 0; i < samples.length; i++) { const s = Math.max(-1, Math.min(1, samples[i])); view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2; }
-  return new Blob([view], { type: "audio/wav" });
+  return new Uint8Array(buf);
+}
+function _u8ToBase64(u8) {
+  let s = ""; const chunk = 0x8000;
+  for (let i = 0; i < u8.length; i += chunk) s += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+  return btoa(s);
 }
 
 async function revStartRec() {
@@ -3129,41 +3135,45 @@ function revStopRec() {
   let off = 0; rev.chunks.forEach((c) => { all.set(c, off); off += c.length; });
   all.reverse();   // ← собственно разворот звука
   rev.rate = rate;
-  // WebAudio-буфер (запасной путь) + WAV-URL (основной путь для мобильных)
+  rev.durSec = len / rate;
+  // WebAudio-буфер (запасной путь) + WAV blob-URL + WAV data-URL (для мобильных)
   rev.buffer = rev.ctx.createBuffer(1, len, rate);
   rev.buffer.getChannelData(0).set(all);
+  const bytes = _encodeWAVBytes(all, rate);
   try { if (rev.url) URL.revokeObjectURL(rev.url); } catch (e) {}
-  try { rev.url = URL.createObjectURL(_encodeWAV(all, rate)); } catch (e) { rev.url = null; }
+  try { rev.url = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" })); } catch (e) { rev.url = null; }
+  try { rev.dataUrl = "data:audio/wav;base64," + _u8ToBase64(bytes); } catch (e) { rev.dataUrl = null; }
   hapticSuccess();
   if (typeof reverseAfterRecord === "function") reverseAfterRecord();
 }
 function _revPlayWebAudio() {
   // Запасной путь: воспроизведение через WebAudio (если <audio> не сработал)
-  if (!rev.buffer || !rev.ctx) return;
+  if (!rev.buffer || !rev.ctx) { revSetListen("Нет записи для воспроизведения."); return; }
   try {
     if (rev.ctx.state === "suspended") rev.ctx.resume();
     const s = rev.ctx.createBufferSource();
     s.buffer = rev.buffer; s.connect(rev.ctx.destination); s.start();
-    revSetMic("🔁"); revSetStatus("🔁 Играю задом наперёд…");
-    s.onended = () => { revSetMic("✅"); revSetStatus("Ещё раз? Жми «Слушать» или запиши новое слово."); };
-  } catch (e) { revSetStatus("Не смог воспроизвести: " + (e && e.message || e)); }
+    revSetListen("🔁 Играю (WebAudio, " + rev.durSec.toFixed(1) + "с)…");
+    s.onended = () => revSetListen("Готово. Ещё раз или дальше.");
+  } catch (e) { revSetListen("WebAudio не смог: " + (e && e.message || e)); }
 }
 function revPlay() {
-  if (!rev.url && !rev.buffer) { revSetStatus("Сначала запиши слово."); return; }
+  if (!rev.url && !rev.dataUrl && !rev.buffer) { revSetListen("Сначала запиши слово."); return; }
   hapticLight();
-  revSetMic("🔁"); revSetStatus("🔁 Играю задом наперёд…");
-  // Основной путь: обычный <audio> с WAV — надёжно звучит на телефонах
-  if (rev.url) {
+  const tryAudio = (src, label, next) => {
     try {
       if (!rev.audio) rev.audio = new Audio();
-      rev.audio.src = rev.url;
-      rev.audio.currentTime = 0;
-      rev.audio.onended = () => { revSetMic("✅"); revSetStatus("Ещё раз? Жми «Слушать» или запиши новое слово."); };
+      rev.audio.muted = false; rev.audio.volume = 1.0;
+      rev.audio.onerror = () => { revSetListen("✗ " + label + ": ошибка загрузки. Пробую иначе…"); if (next) next(); };
+      rev.audio.onended = () => revSetListen("Готово. Ещё раз или «Показать ответ».");
+      rev.audio.src = src; rev.audio.currentTime = 0;
       const p = rev.audio.play();
-      if (p && p.catch) p.catch(() => _revPlayWebAudio());
-      return;
-    } catch (e) { /* упадём в WebAudio ниже */ }
-  }
+      revSetListen("🔁 Играю (" + label + ", " + rev.durSec.toFixed(1) + "с)…");
+      if (p && p.catch) p.catch((e) => { revSetListen("✗ " + label + " play(): " + (e && e.name || e) + ". Пробую иначе…"); if (next) next(); });
+    } catch (e) { revSetListen("✗ " + label + ": " + (e && e.message || e)); if (next) next(); }
+  };
+  if (rev.dataUrl) { tryAudio(rev.dataUrl, "data", () => { if (rev.url) tryAudio(rev.url, "blob", _revPlayWebAudio); else _revPlayWebAudio(); }); return; }
+  if (rev.url) { tryAudio(rev.url, "blob", _revPlayWebAudio); return; }
   _revPlayWebAudio();
 }
 document.getElementById("btn-rev-rec").addEventListener("click", revStartRec);
@@ -3217,6 +3227,7 @@ function reverseAfterRecord() {
   if (document.getElementById("screen-reverse-play").classList.contains("active")) {
     revSetStatus("");
     reverseShowStep("listen");
+    revSetListen("Записано " + (rev.durSec ? rev.durSec.toFixed(1) : "0") + " сек. Жми «🔁 Слушать наоборот».");
   }
 }
 function reverseGuess(ok) {
