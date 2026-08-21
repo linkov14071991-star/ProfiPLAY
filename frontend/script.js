@@ -117,7 +117,9 @@ const SCREENS = {
   hmPlay: "screen-hm-play",
   hmResult: "screen-hm-result",
   giveaway: "screen-giveaway",
-  reverseTest: "screen-reverse-test",
+  reverseSetup: "screen-reverse-setup",
+  reversePlay: "screen-reverse-play",
+  reverseResult: "screen-reverse-result",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -160,6 +162,7 @@ function showScreen(name) {
     if (name === "stroopSetup") { loadDailyRecords("stroop"); loadGameLeaderboard("stroop", "stroop-lb-list", "all"); }
     if (name === "gtSetup") { loadGameLeaderboard("gametheory", "gt-lb-list", "all"); }
     if (name === "hmSetup") { loadGameLeaderboard("hangman", "hm-lb-list", "all"); }
+    if (name === "reverseSetup") reverseRenderRecord();
     // Рандомная реплика Профика на любом экране с data-profik-context
     populateProfikChips();
   } catch (e) { console.error("showScreen hook error", name, e); }
@@ -584,7 +587,7 @@ function routeToGame(game) {
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
   if (game === "spy") { showScreen("spySetup"); return; }
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); return; }
-  if (game === "reverse") { showScreen("reverseTest"); return; }
+  if (game === "reverse") { showScreen("reverseSetup"); return; }
   if (game === "duel") { showScreen("duelSetup"); return; }
   if (game === "python") { window.location.href = "python/index.html"; return; }
   if (game === "gametheory") { currentGame = "gametheory"; resetLbTabs("gt-lb"); showScreen("gtSetup"); return; }
@@ -3112,9 +3115,8 @@ function revStopRec() {
   all.reverse();   // ← собственно разворот звука
   rev.buffer = rev.ctx.createBuffer(1, len, rate);
   rev.buffer.getChannelData(0).set(all);
-  revSetMic("✅"); revSetStatus("Готово! Жми «Прослушать наоборот».");
-  document.getElementById("btn-rev-play").disabled = false;
   hapticSuccess();
+  if (typeof reverseAfterRecord === "function") reverseAfterRecord();
 }
 function revPlay() {
   if (!rev.buffer || !rev.ctx) { revSetStatus("Сначала запиши слово."); return; }
@@ -3129,6 +3131,94 @@ function revPlay() {
 }
 document.getElementById("btn-rev-rec").addEventListener("click", revStartRec);
 document.getElementById("btn-rev-play").addEventListener("click", revPlay);
+
+// ---- Полная игра «Задом наперёд» ----
+const rgame = { topic: "math", word: "", pool: [], score: 0, count: 0, best: 0, lastWord: "" };
+function reverseBuildPool(topic) {
+  const bank = window.HANGMAN_WORDS || {};
+  const themes = topic === "all" ? ["math", "physics", "info"] : [topic];
+  let all = [];
+  for (const th of themes) for (const lv of ["easy", "medium", "hard"]) {
+    const arr = (bank[th] && bank[th][lv]) || [];
+    all = all.concat(arr.map((x) => x.w));
+  }
+  return all;
+}
+function reversePickWord() {
+  if (!rgame.pool.length) rgame.pool = reverseBuildPool(rgame.topic);
+  let w = rgame.pool[Math.floor(Math.random() * rgame.pool.length)];
+  if (rgame.pool.length > 1) { let g = 0; while (w === rgame.lastWord && g++ < 10) w = rgame.pool[Math.floor(Math.random() * rgame.pool.length)]; }
+  rgame.lastWord = w;
+  return w;
+}
+function reverseShowStep(step) {
+  document.getElementById("rev-step-record").style.display = step === "record" ? "" : "none";
+  document.getElementById("rev-step-listen").style.display = step === "listen" ? "" : "none";
+  document.getElementById("rev-step-reveal").style.display = step === "reveal" ? "" : "none";
+}
+function reverseNextWord() {
+  if (rev.recording) { try { revStopRec(); } catch (e) {} }
+  rev.buffer = null;
+  rgame.word = reversePickWord();
+  document.getElementById("rev-word").textContent = rgame.word;
+  document.getElementById("rev-answer").textContent = rgame.word;
+  revSetMic("🎤"); revSetStatus("Готов к записи");
+  document.getElementById("btn-rev-rec").textContent = "🎤 Записать";
+  reverseShowStep("record");
+}
+function reverseStart() {
+  hapticMedium();
+  rgame.pool = reverseBuildPool(rgame.topic);
+  rgame.score = 0; rgame.count = 0;
+  document.getElementById("rev-score").textContent = 0;
+  document.getElementById("rev-count").textContent = 0;
+  reverseNextWord();
+  showScreen("reversePlay");
+}
+// вызывается из revStopRec, когда запись готова
+function reverseAfterRecord() {
+  if (document.getElementById("screen-reverse-play").classList.contains("active")) {
+    revSetStatus("");
+    reverseShowStep("listen");
+  }
+}
+function reverseGuess(ok) {
+  hapticLight();
+  rgame.count++;
+  if (ok) { rgame.score++; hapticSuccess(); }
+  document.getElementById("rev-score").textContent = rgame.score;
+  document.getElementById("rev-count").textContent = rgame.count;
+  reverseNextWord();
+}
+function reverseFinish() {
+  if (rev.recording) { try { revStopRec(); } catch (e) {} }
+  if (rgame.score > rgame.best) { rgame.best = rgame.score; _cloudSet("reverse_record", rgame.best); }
+  document.getElementById("rev-r-score").textContent = rgame.score;
+  document.getElementById("rev-r-total").textContent = rgame.count;
+  document.getElementById("rev-result-sub").textContent = rgame.count
+    ? `Из ${rgame.count} ${gtPlural(rgame.count, "слова", "слов", "слов")} угадали ${rgame.score}. Кто был лучшим угадчиком? 😄`
+    : "В этот раз не сыграли ни слова.";
+  document.getElementById("rev-record-line").textContent = `Лучший результат: ${rgame.best} угадано за партию`;
+  showScreen("reverseResult");
+}
+function reverseRenderRecord() {
+  const el = document.getElementById("reverse-record");
+  if (el) el.textContent = rgame.best;
+}
+function reverseLoadRecord() {
+  _cloudGet("reverse_record", (err, val) => {
+    const n = parseInt(val, 10);
+    if (!err && !isNaN(n)) { rgame.best = n; reverseRenderRecord(); }
+  });
+}
+setupPills("reverse-topic", (v) => { rgame.topic = v; });
+document.getElementById("btn-reverse-start").addEventListener("click", reverseStart);
+document.getElementById("btn-reverse-again").addEventListener("click", reverseStart);
+document.getElementById("btn-rev-reveal").addEventListener("click", () => { hapticMedium(); reverseShowStep("reveal"); });
+document.getElementById("btn-rev-yes").addEventListener("click", () => reverseGuess(true));
+document.getElementById("btn-rev-no").addEventListener("click", () => reverseGuess(false));
+document.getElementById("btn-rev-finish").addEventListener("click", reverseFinish);
+try { reverseLoadRecord(); } catch (e) {}
 
 // ===== Дуэль «Струп» (общая последовательность, кто больше верных за 30 сек) =====
 function duelStroopStart(info) {

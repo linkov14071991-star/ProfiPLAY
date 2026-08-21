@@ -477,25 +477,88 @@
   <button class="btn btn-link btn-back" data-back="menu" style="margin-top:16px;">← На арену</button>
 </section>
 
-<!-- ==== Экран: тест микрофона для «Задом наперёд» ==== -->
-<section id="screen-reverse-test" class="screen">
+<!-- ==== Экраны: Задом наперёд ==== -->
+<section id="screen-reverse-setup" class="screen">
   <div class="brand-header">
     <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
   <div class="card">
     <h1>🔁 Задом наперёд</h1>
-    <p class="subtitle">Проверка микрофона. Нажми «Записать», скажи любое слово, останови запись и послушай, как оно звучит задом наперёд. Если слышишь перевёрнутый звук — всё работает, соберу полную игру.</p>
+    <p class="subtitle">Один игрок говорит слово в телефон — приложение переворачивает звук. Сосед слушает «кракозябру» и угадывает слово. Передавайте телефон по кругу!</p>
 
-    <div class="rev-mic" id="rev-mic-emoji">🎤</div>
-    <div class="rev-status" id="rev-status">Готов к записи</div>
-
-    <button id="btn-rev-rec" class="btn btn-primary btn-big">🎤 Записать</button>
-    <button id="btn-rev-play" class="btn btn-secondary btn-big" disabled>🔁 Прослушать наоборот</button>
-
-    <div class="rev-hint">Если браузер спросит доступ к микрофону — разреши. На iPhone может потребоваться открыть через Telegram (не в обычном браузере).</div>
-
+    <label class="field">Тема слов</label>
+    <div class="pills" id="reverse-topic">
+      <button class="pill active" data-value="math">🔢 Матеша</button>
+      <button class="pill" data-value="physics">🧲 Физика</button>
+      <button class="pill" data-value="info">💻 Инфа</button>
+      <button class="pill" data-value="all">🎲 Всё</button>
+    </div>
+    <p class="gt-rule">Слово видит только тот, кто говорит. Остальные угадывают на слух.</p>
+    <div style="text-align:center;">
+      <div class="mult-hint">Лучший результат: <b id="reverse-record">0</b> угадано за партию</div>
+    </div>
+    <button id="btn-reverse-start" class="btn btn-primary btn-big">Играть</button>
     <button class="btn btn-link btn-back" data-back="party">← Назад</button>
+  </div>
+</section>
+
+<section id="screen-reverse-play" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <div class="rev-score">Угадано: <b id="rev-score">0</b> · слов: <b id="rev-count">0</b></div>
+
+    <!-- Шаг 1: записывает говорящий -->
+    <div id="rev-step-record">
+      <div class="rev-role">🎤 Говорит игрок с телефоном</div>
+      <p class="rev-instr">Не показывай экран другим! Нажми «Записать», чётко произнеси слово и нажми «Стоп»:</p>
+      <div class="rev-word" id="rev-word">СЛОВО</div>
+      <div class="rev-mic" id="rev-mic-emoji">🎤</div>
+      <div class="rev-status" id="rev-status">Готов к записи</div>
+      <button id="btn-rev-rec" class="btn btn-primary btn-big">🎤 Записать</button>
+    </div>
+
+    <!-- Шаг 2: слушает угадывающий -->
+    <div id="rev-step-listen" style="display:none;">
+      <div class="rev-role">👂 Теперь угадывает следующий игрок</div>
+      <p class="rev-instr">Передай телефон соседу. Слушай слово задом наперёд и называй вслух свою догадку!</p>
+      <div class="rev-mic">🔁</div>
+      <button id="btn-rev-play" class="btn btn-primary btn-big">🔁 Слушать наоборот</button>
+      <button id="btn-rev-reveal" class="btn btn-secondary btn-big">👁 Показать ответ</button>
+    </div>
+
+    <!-- Шаг 3: ответ -->
+    <div id="rev-step-reveal" style="display:none;">
+      <div class="rev-role">Правильный ответ:</div>
+      <div class="rev-word" id="rev-answer">СЛОВО</div>
+      <p class="rev-instr">Угадали?</p>
+      <div style="display:flex; gap:10px;">
+        <button id="btn-rev-yes" class="btn btn-primary" style="flex:1; margin:0;">✅ Угадал</button>
+        <button id="btn-rev-no" class="btn btn-secondary" style="flex:1; margin:0;">❌ Мимо</button>
+      </div>
+    </div>
+
+    <button id="btn-rev-finish" class="btn btn-link" style="margin-top:14px;">Завершить партию</button>
+  </div>
+</section>
+
+<section id="screen-reverse-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1 id="rev-result-title">🎉 Партия сыграна!</h1>
+    <p class="subtitle" id="rev-result-sub"></p>
+    <div class="reward-strip">
+      <div class="reward-chip xp pos">🎯 Угадано: <span id="rev-r-score">0</span> из <span id="rev-r-total">0</span></div>
+    </div>
+    <p id="rev-record-line" style="text-align:center; opacity:0.7; margin:12px 0 8px;"></p>
+    <button id="btn-reverse-again" class="btn btn-primary btn-big">🔄 Ещё партия</button>
+    <button class="btn btn-secondary btn-back" data-back="party">В меню игр</button>
   </div>
 </section>
 
@@ -2823,6 +2886,6 @@
 </div>
 
 <script src="/hangman-words.js?v=2"></script>
-<script src="/script.js?v=94"></script>
+<script src="/script.js?v=95"></script>
 </body>
 </html>
