@@ -117,6 +117,7 @@ const SCREENS = {
   hmPlay: "screen-hm-play",
   hmResult: "screen-hm-result",
   giveaway: "screen-giveaway",
+  reverseTest: "screen-reverse-test",
   tbSetup: "screen-tb-setup",
   tbNumSetup: "screen-tb-num-setup",
   tbNumPlay: "screen-tb-num-play",
@@ -583,6 +584,7 @@ function routeToGame(game) {
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
   if (game === "spy") { showScreen("spySetup"); return; }
   if (game === "gromko") { renderGromkoRecord(); showScreen("gromkoSetup"); return; }
+  if (game === "reverse") { showScreen("reverseTest"); return; }
   if (game === "duel") { showScreen("duelSetup"); return; }
   if (game === "python") { window.location.href = "python/index.html"; return; }
   if (game === "gametheory") { currentGame = "gametheory"; resetLbTabs("gt-lb"); showScreen("gtSetup"); return; }
@@ -3049,6 +3051,84 @@ async function gvAdminSetResult() {
 }
 document.getElementById("btn-gv-save").addEventListener("click", gvSave);
 document.getElementById("btn-gv-setresult").addEventListener("click", gvAdminSetResult);
+
+// ==============================
+// ===== ЗАДОМ НАПЕРЁД (тест) ====
+// ==============================
+// Запись голоса → разворот звуковой волны → воспроизведение. Захват PCM через
+// Web Audio (ScriptProcessor) — самый совместимый способ (в т.ч. iOS-вебвью).
+const rev = { ctx: null, stream: null, src: null, proc: null, chunks: [], buffer: null, recording: false, autoStop: null };
+function revSetStatus(t) { const el = document.getElementById("rev-status"); if (el) el.textContent = t; }
+function revSetMic(e) { const el = document.getElementById("rev-mic-emoji"); if (el) el.textContent = e; }
+
+async function revStartRec() {
+  if (rev.recording) { revStopRec(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    revSetStatus("❌ Браузер не поддерживает запись с микрофона."); return;
+  }
+  try {
+    rev.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    revSetStatus("❌ Нет доступа к микрофону (" + (e && (e.name || e.message) || "ошибка") + "). Разреши доступ и попробуй снова.");
+    return;
+  }
+  try {
+    rev.ctx = rev.ctx || new (window.AudioContext || window.webkitAudioContext)();
+    if (rev.ctx.state === "suspended") { try { await rev.ctx.resume(); } catch (e) {} }
+    rev.src = rev.ctx.createMediaStreamSource(rev.stream);
+    rev.proc = rev.ctx.createScriptProcessor(4096, 1, 1);
+    rev.chunks = [];
+    rev.proc.onaudioprocess = (e) => { rev.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    const mute = rev.ctx.createGain(); mute.gain.value = 0;   // без эха: не выводим живой микрофон
+    rev.src.connect(rev.proc); rev.proc.connect(mute); mute.connect(rev.ctx.destination);
+    rev.recording = true;
+    hapticMedium();
+    revSetMic("🔴"); revSetStatus("Идёт запись… скажи слово и нажми «Стоп»");
+    document.getElementById("btn-rev-rec").textContent = "⏹ Стоп";
+    document.getElementById("btn-rev-play").disabled = true;
+    rev.autoStop = setTimeout(revStopRec, 6000);   // страховка: максимум 6 сек
+  } catch (e) {
+    revSetStatus("❌ Не удалось начать запись: " + (e && e.message || e));
+    revCleanupStream();
+  }
+}
+function revCleanupStream() {
+  try { if (rev.proc) rev.proc.disconnect(); } catch (e) {}
+  try { if (rev.src) rev.src.disconnect(); } catch (e) {}
+  try { if (rev.stream) rev.stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+  rev.proc = null; rev.src = null; rev.stream = null;
+}
+function revStopRec() {
+  if (!rev.recording) return;
+  rev.recording = false;
+  clearTimeout(rev.autoStop);
+  const rate = rev.ctx.sampleRate;
+  revCleanupStream();
+  document.getElementById("btn-rev-rec").textContent = "🎤 Записать заново";
+  let len = 0; rev.chunks.forEach((c) => (len += c.length));
+  if (len < rate * 0.2) { revSetMic("🎤"); revSetStatus("Слишком коротко — ничего не записалось. Попробуй ещё раз."); return; }
+  const all = new Float32Array(len);
+  let off = 0; rev.chunks.forEach((c) => { all.set(c, off); off += c.length; });
+  all.reverse();   // ← собственно разворот звука
+  rev.buffer = rev.ctx.createBuffer(1, len, rate);
+  rev.buffer.getChannelData(0).set(all);
+  revSetMic("✅"); revSetStatus("Готово! Жми «Прослушать наоборот».");
+  document.getElementById("btn-rev-play").disabled = false;
+  hapticSuccess();
+}
+function revPlay() {
+  if (!rev.buffer || !rev.ctx) { revSetStatus("Сначала запиши слово."); return; }
+  try {
+    if (rev.ctx.state === "suspended") rev.ctx.resume();
+    const s = rev.ctx.createBufferSource();
+    s.buffer = rev.buffer; s.connect(rev.ctx.destination); s.start();
+    revSetMic("🔁"); revSetStatus("🔁 Играю задом наперёд…");
+    s.onended = () => { revSetMic("✅"); revSetStatus("Ещё раз? Жми «Прослушать» или запиши новое слово."); };
+    hapticLight();
+  } catch (e) { revSetStatus("Не смог воспроизвести: " + (e && e.message || e)); }
+}
+document.getElementById("btn-rev-rec").addEventListener("click", revStartRec);
+document.getElementById("btn-rev-play").addEventListener("click", revPlay);
 
 // ===== Дуэль «Струп» (общая последовательность, кто больше верных за 30 сек) =====
 function duelStroopStart(info) {

@@ -2653,7 +2653,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "cloudstorage-fix-v104"
+BUILD_TAG = "reverse-mictest-v105"
 
 
 @app.get("/api/version")
