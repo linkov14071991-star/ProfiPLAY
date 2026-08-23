@@ -2410,21 +2410,23 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
                     elif rank == 2:
                         prize_line = (f"🎁 Твой приз: {GIVEAWAY['prize_top3']}"
                                       if total >= GIVEAWAY["prize2_min"]
-                                      else f"⚠️ Сертификат за 2 место разыгрывается при {GIVEAWAY['prize2_min']}+ участниках (было {total}) — в этот раз не разыгран.")
+                                      else f"Второе место 🥈! Но сертификат за него разыгрывается только при {GIVEAWAY['prize2_min']}+ участниках, а в этот раз нас было {total}. В следующий раз — обязательно!")
                     else:  # rank == 3
                         prize_line = (f"🎁 Твой приз: {GIVEAWAY['prize_top3']}"
                                       if total >= GIVEAWAY["prize3_min"]
-                                      else f"⚠️ Сертификат за 3 место разыгрывается при {GIVEAWAY['prize3_min']}+ участниках (было {total}) — в этот раз не разыгран.")
+                                      else f"Третье место 🥉! Но сертификат за него разыгрывается только при {GIVEAWAY['prize3_min']}+ участниках, а в этот раз нас было {total}. В следующий раз — обязательно!")
                     text = (f"🏁 Розыгрыш от Игоря завершён!\n"
                             f"Игорь пробежал 10 км за {actual_txt}.\n"
                             f"Твой прогноз: {pred} (промах ±{diff}).\n"
                             f"{medal} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉\n"
-                            f"{prize_line}")
+                            f"{prize_line}\n\n"
+                            f"Уже через месяц Игорь бежит новый забег — и мы повторим розыгрыш! 🏃‍♂️")
                 else:
                     text = (f"🏁 Розыгрыш от Игоря завершён!\n"
                             f"Игорь пробежал 10 км за {actual_txt}.\n"
                             f"Твой прогноз: {pred} (промах ±{diff}).\n"
-                            f"Твоё место: {rank} из {total}. Спасибо за участие! 🙌")
+                            f"Твоё место: {rank} из {total}. Спасибо за участие! 🙌\n\n"
+                            f"Не грусти — уже через месяц новый забег Игоря и новый розыгрыш. Следи за ботом! 🏃‍♂️")
                 _notify(db, it["user_id"], text)
                 bot_msgs.append((it["user_id"], text))
     if bot_msgs:
@@ -2554,25 +2556,40 @@ def _giveaway_results_caption(db, actual):
     rows = db.execute("SELECT user_id, username, seconds, updated_at FROM giveaway_prediction").fetchall()
     ranked = _giveaway_ranked(rows, actual)
     total = len(ranked)
+    # сколько сертификатов реально разыграно (2-е при 128+, 3-е при 256+)
+    awarded = 1 + (1 if total >= GIVEAWAY["prize2_min"] else 0) + (1 if total >= GIVEAWAY["prize3_min"] else 0)
+
     lines = ["🏁 <b>РОЗЫГРЫШ ОТ ИГОРЯ — ИТОГИ!</b>", "",
              f"Игорь пробежал 10 км за <b>{_fmt_mmss(actual)}</b>! 🔥", ""]
-    if ranked:
-        lines.append("🏆 <b>Кто угадал ближе всех:</b>")
-        medals = ["🥇", "🥈", "🥉"]
-        for i, it in enumerate(ranked[:3]):
-            rank = i + 1
-            base = f"{medals[i]} {it['nick']} — {_fmt_mmss(it['seconds'])} (±{_fmt_mmss(it['diff'])})"
-            if rank == 1:
-                base += " — сертификат OZON 1000 ₽ + медаль с забега 🏅"
-            elif rank == 2:
-                base += " — сертификат OZON 1000 ₽" if total >= GIVEAWAY["prize2_min"] else " — (сертификат за 2 место — при 128+ участниках)"
-            elif rank == 3:
-                base += " — сертификат OZON 1000 ₽" if total >= GIVEAWAY["prize3_min"] else " — (сертификат за 3 место — при 256+ участниках)"
-            lines.append(base)
-    else:
+
+    if not ranked:
         lines.append("В этот раз прогнозов не было 🙈")
-    lines += ["", f"Участников: <b>{total}</b>. Спасибо всем за игру! 🙌",
-              "Впереди новые розыгрыши и игры — оставайтесь в боте! 🎮"]
+    else:
+        w = ranked[0]
+        lines.append(f"🥇 <b>Победитель — {w['nick']}!</b>")
+        lines.append(f"Прогноз {_fmt_mmss(w['seconds'])} — промах всего <b>±{_fmt_mmss(w['diff'])}</b>. "
+                     f"Забирает сертификат OZON <b>1000 ₽</b> и памятную медаль с забега 🏅🎉")
+        # призёры, получившие сертификат сверх первого места (если порог пройден)
+        for i in range(1, min(awarded, len(ranked))):
+            it = ranked[i]
+            medal = ["🥇", "🥈", "🥉"][i]
+            lines.append(f"{medal} {it['nick']} — {_fmt_mmss(it['seconds'])} (±{_fmt_mmss(it['diff'])}) — тоже сертификат OZON 1000 ₽!")
+        # кто был близко, но без приза
+        near = ranked[max(awarded, 1):3]
+        if near:
+            names = ", ".join(f"{it['nick']} ({_fmt_mmss(it['seconds'])})" for it in near)
+            lines.append("")
+            lines.append(f"Совсем рядом были: {names} — красавчики! 👏")
+        # мягкое пояснение, почему разыгран только один сертификат
+        if awarded < 3 and total > 0:
+            lines.append("")
+            lines.append(f"В этот раз в розыгрыше участвовало <b>{total}</b> человек, поэтому по правилам "
+                         f"разыгран <b>один сертификат</b> (второй открывался при 128 участниках, третий — при 256).")
+
+    lines += ["",
+              "Но расстраиваться не о чем! 🙌 Уже <b>через месяц Игорь бежит новый забег</b> — "
+              "и мы обязательно повторим розыгрыш, ещё интереснее. Следите за ботом! 🏃‍♂️🎮",
+              "", "Спасибо всем за участие ❤️"]
     return "\n".join(lines)
 
 
@@ -2722,7 +2739,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-results-video-v112"
+BUILD_TAG = "giveaway-results-text-v113"
 
 
 @app.get("/api/version")
