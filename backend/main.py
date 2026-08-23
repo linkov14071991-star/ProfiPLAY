@@ -2426,7 +2426,7 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
                             f"Игорь пробежал 10 км за {actual_txt}.\n"
                             f"Твой прогноз: {pred} (промах ±{diff}).\n"
                             f"Твоё место: {rank} из {total}. Спасибо за участие! 🙌\n\n"
-                            f"Не грусти — уже через месяц новый забег Игоря и новый розыгрыш. Следи за ботом! 🏃‍♂️")
+                            f"Не грусти — уже через месяц новый забег Игоря и новый розыгрыш. Следи за новостями! 🏃‍♂️")
                 _notify(db, it["user_id"], text)
                 bot_msgs.append((it["user_id"], text))
     if bot_msgs:
@@ -2588,7 +2588,7 @@ def _giveaway_results_caption(db, actual):
 
     lines += ["",
               "Но расстраиваться не о чем! 🙌 Уже <b>через месяц Игорь бежит новый забег</b> — "
-              "и мы обязательно повторим розыгрыш, ещё интереснее. Следите за ботом! 🏃‍♂️🎮",
+              "и мы обязательно повторим розыгрыш, ещё интереснее. Следите за новостями! 🏃‍♂️🎮",
               "", "Спасибо всем за участие ❤️"]
     return "\n".join(lines)
 
@@ -2739,7 +2739,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-results-text-v113"
+BUILD_TAG = "giveaway-results-text-v114"
 
 
 @app.get("/api/version")
