@@ -2549,6 +2549,75 @@ async def giveaway_announce_now(init_data: str = Body(...), audience: str = Body
     return {"ok": True, "sent": sent, "audience": audience}
 
 
+def _giveaway_results_caption(db, actual):
+    """Текст поста-итогов с победителями (для рассылки видео всем)."""
+    rows = db.execute("SELECT user_id, username, seconds, updated_at FROM giveaway_prediction").fetchall()
+    ranked = _giveaway_ranked(rows, actual)
+    total = len(ranked)
+    lines = ["🏁 <b>РОЗЫГРЫШ ОТ ИГОРЯ — ИТОГИ!</b>", "",
+             f"Игорь пробежал 10 км за <b>{_fmt_mmss(actual)}</b>! 🔥", ""]
+    if ranked:
+        lines.append("🏆 <b>Кто угадал ближе всех:</b>")
+        medals = ["🥇", "🥈", "🥉"]
+        for i, it in enumerate(ranked[:3]):
+            rank = i + 1
+            base = f"{medals[i]} {it['nick']} — {_fmt_mmss(it['seconds'])} (±{_fmt_mmss(it['diff'])})"
+            if rank == 1:
+                base += " — сертификат OZON 1000 ₽ + медаль с забега 🏅"
+            elif rank == 2:
+                base += " — сертификат OZON 1000 ₽" if total >= GIVEAWAY["prize2_min"] else " — (сертификат за 2 место — при 128+ участниках)"
+            elif rank == 3:
+                base += " — сертификат OZON 1000 ₽" if total >= GIVEAWAY["prize3_min"] else " — (сертификат за 3 место — при 256+ участниках)"
+            lines.append(base)
+    else:
+        lines.append("В этот раз прогнозов не было 🙈")
+    lines += ["", f"Участников: <b>{total}</b>. Спасибо всем за игру! 🙌",
+              "Впереди новые розыгрыши и игры — оставайтесь в боте! 🎮"]
+    return "\n".join(lines)
+
+
+async def _broadcast_giveaway_results():
+    """Рассылает пост-итоги с видео забега ВСЕМ пользователям."""
+    if not (BOT_TOKEN and WEBAPP_URL):
+        return 0
+    with get_db() as db:
+        actual = _giveaway_actual(db)
+        if actual is None:
+            return 0
+        caption = _giveaway_results_caption(db, actual)
+        ids = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
+    video = f"{WEBAPP_URL.rstrip('/')}/giveaway-result.mp4"
+    markup = {"inline_keyboard": [[{"text": "🎮 В Профик ARENA", "web_app": {"url": WEBAPP_URL}}]]}
+    sent = 0
+    async with httpx.AsyncClient(timeout=60) as client:
+        for uid in ids:
+            try:
+                await client.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendVideo",
+                    json={"chat_id": uid, "video": video, "caption": caption,
+                          "parse_mode": "HTML", "reply_markup": markup},
+                )
+                sent += 1
+            except Exception:
+                pass
+            await asyncio.sleep(0.05)
+    return sent
+
+
+@app.post("/api/giveaway/announce_results")
+async def giveaway_announce_results(init_data: str = Body(...)):
+    """Админ: разослать ВСЕМ пост-итоги розыгрыша с видео забега. Результат должен быть уже проставлен."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        actual = _giveaway_actual(db)
+    if actual is None:
+        raise HTTPException(status_code=400, detail="Сначала укажи результат забега")
+    sent = await _broadcast_giveaway_results()
+    return {"ok": True, "sent": sent, "actual_sec": actual}
+
+
 # ---------- Python-режим (MVP) ----------
 @app.post("/api/python/telemetry_batch")
 async def python_telemetry_batch(payload: dict = Body(...)):
@@ -2653,7 +2722,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-lock-check-v111"
+BUILD_TAG = "giveaway-results-video-v112"
 
 
 @app.get("/api/version")

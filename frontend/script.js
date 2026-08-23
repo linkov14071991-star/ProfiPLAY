@@ -3059,6 +3059,17 @@ async function gvAdminSetResult() {
 }
 document.getElementById("btn-gv-save").addEventListener("click", gvSave);
 document.getElementById("btn-gv-setresult").addEventListener("click", gvAdminSetResult);
+async function gvAnnounceResults() {
+  if (!gvState || gvState.actual_sec == null) { alert("Сначала укажи результат забега («⚙️ Указать результат»)."); return; }
+  if (!confirm("Разослать ВСЕМ пользователям пост-итоги с видео забега? Отправится один раз каждому.")) return;
+  const btn = document.getElementById("btn-gv-announce-results");
+  btn.disabled = true; btn.textContent = "Рассылаю…";
+  const res = await apiPost("/api/giveaway/announce_results", { init_data: INIT_DATA });
+  btn.disabled = false; btn.textContent = "📣 Разослать итоги с видео всем";
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось разослать."); return; }
+  alert(`Готово! Пост-итоги с видео отправлены: ${res.sent}.`);
+}
+document.getElementById("btn-gv-announce-results").addEventListener("click", gvAnnounceResults);
 
 // ==============================
 // ===== ЗАДОМ НАПЕРЁД (тест) ====
