@@ -2973,6 +2973,11 @@ function gvStartCountdown(res) {
       el.className = "gv-countdown closed";
       el.innerHTML = "⏱️ Приём прогнозов закрыт";
       if (gvCountdownTimer) { clearInterval(gvCountdownTimer); gvCountdownTimer = null; }
+      // Блокируем ввод и на клиенте (если страница была открыта до дедлайна)
+      const mn = document.getElementById("gv-min"); if (mn) mn.disabled = true;
+      const sc = document.getElementById("gv-sec"); if (sc) sc.disabled = true;
+      const sb = document.getElementById("btn-gv-save"); if (sb) { sb.disabled = true; sb.textContent = "Приём закрыт"; }
+      if (gvState) gvState.locked = true;
       return;
     }
     const d = Math.floor(left / 86400); left -= d * 86400;
