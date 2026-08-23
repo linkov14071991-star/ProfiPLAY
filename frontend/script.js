@@ -3163,12 +3163,12 @@ function revPlay() {
     try {
       if (!rev.audio) rev.audio = new Audio();
       rev.audio.muted = false; rev.audio.volume = 1.0;
-      rev.audio.onerror = () => { revSetListen("✗ " + label + ": ошибка загрузки. Пробую иначе…"); if (next) next(); };
-      rev.audio.onended = () => revSetListen("Готово. Ещё раз или «Показать ответ».");
+      rev.audio.onerror = () => { if (next) next(); };
+      rev.audio.onended = () => revSetListen("Ещё раз послушать или «Показать ответ».");
       rev.audio.src = src; rev.audio.currentTime = 0;
       const p = rev.audio.play();
-      revSetListen("🔁 Играю (" + label + ", " + rev.durSec.toFixed(1) + "с)…");
-      if (p && p.catch) p.catch((e) => { revSetListen("✗ " + label + " play(): " + (e && e.name || e) + ". Пробую иначе…"); if (next) next(); });
+      revSetListen("🔁 Играю задом наперёд…");
+      if (p && p.catch) p.catch(() => { if (next) next(); });
     } catch (e) { revSetListen("✗ " + label + ": " + (e && e.message || e)); if (next) next(); }
   };
   if (rev.dataUrl) { tryAudio(rev.dataUrl, "data", () => { if (rev.url) tryAudio(rev.url, "blob", _revPlayWebAudio); else _revPlayWebAudio(); }); return; }
@@ -3226,8 +3226,18 @@ function reverseAfterRecord() {
   if (document.getElementById("screen-reverse-play").classList.contains("active")) {
     revSetStatus("");
     reverseShowStep("listen");
-    revSetListen("Записано " + (rev.durSec ? rev.durSec.toFixed(1) : "0") + " сек. Жми «🔁 Слушать наоборот».");
+    revSetListen("Готово! Передай телефон соседу и жми «🔁 Слушать наоборот».");
   }
+}
+// Перезаписать текущее слово (запись получилась плохой) — то же слово, шаг записи заново
+function reverseRerecord() {
+  hapticMedium();
+  if (rev.recording) { try { revStopRec(); } catch (e) {} }
+  try { if (rev.url) URL.revokeObjectURL(rev.url); } catch (e) {}
+  rev.buffer = null; rev.url = null; rev.dataUrl = null;
+  revSetMic("🎤"); revSetStatus("Готов к записи");
+  document.getElementById("btn-rev-rec").textContent = "🎤 Записать";
+  reverseShowStep("record");
 }
 function reverseGuess(ok) {
   hapticLight();
@@ -3262,6 +3272,7 @@ setupPills("reverse-topic", (v) => { rgame.topic = v; });
 document.getElementById("btn-reverse-start").addEventListener("click", reverseStart);
 document.getElementById("btn-reverse-again").addEventListener("click", reverseStart);
 document.getElementById("btn-rev-reveal").addEventListener("click", () => { hapticMedium(); reverseShowStep("reveal"); });
+document.getElementById("btn-rev-rerec").addEventListener("click", reverseRerecord);
 document.getElementById("btn-rev-yes").addEventListener("click", () => reverseGuess(true));
 document.getElementById("btn-rev-no").addEventListener("click", () => reverseGuess(false));
 document.getElementById("btn-rev-finish").addEventListener("click", reverseFinish);
