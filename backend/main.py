@@ -2558,39 +2558,40 @@ def _giveaway_results_caption(db, actual):
     total = len(ranked)
     # сколько сертификатов реально разыграно (2-е при 128+, 3-е при 256+)
     awarded = 1 + (1 if total >= GIVEAWAY["prize2_min"] else 0) + (1 if total >= GIVEAWAY["prize3_min"] else 0)
+    medals = ["🥇", "🥈", "🥉"]
 
-    lines = ["🏁 <b>РОЗЫГРЫШ ОТ ИГОРЯ — ИТОГИ!</b>", "",
-             f"Игорь пробежал 10 км за <b>{_fmt_mmss(actual)}</b>! 🔥", ""]
+    L = ["🏁 <b>РОЗЫГРЫШ ОТ ИГОРЯ — ИТОГИ!</b>", "",
+         f"Игорь пробежал 10 км за <b>{_fmt_mmss(actual)}</b>! 🔥", ""]
 
     if not ranked:
-        lines.append("В этот раз прогнозов не было 🙈")
+        L.append("В этот раз прогнозов не было 🙈")
     else:
-        w = ranked[0]
-        lines.append(f"🥇 <b>Победитель — {w['nick']}!</b>")
-        lines.append(f"Прогноз {_fmt_mmss(w['seconds'])} — промах всего <b>±{_fmt_mmss(w['diff'])}</b>. "
-                     f"Забирает сертификат OZON <b>1000 ₽</b> и памятную медаль с забега 🏅🎉")
-        # призёры, получившие сертификат сверх первого места (если порог пройден)
-        for i in range(1, min(awarded, len(ranked))):
-            it = ranked[i]
-            medal = ["🥇", "🥈", "🥉"][i]
-            lines.append(f"{medal} {it['nick']} — {_fmt_mmss(it['seconds'])} (±{_fmt_mmss(it['diff'])}) — тоже сертификат OZON 1000 ₽!")
-        # кто был близко, но без приза
-        near = ranked[max(awarded, 1):3]
-        if near:
-            names = ", ".join(f"{it['nick']} ({_fmt_mmss(it['seconds'])})" for it in near)
-            lines.append("")
-            lines.append(f"Совсем рядом были: {names} — красавчики! 👏")
-        # мягкое пояснение, почему разыгран только один сертификат
-        if awarded < 3 and total > 0:
-            lines.append("")
-            lines.append(f"В этот раз в розыгрыше участвовало <b>{total}</b> человек, поэтому по правилам "
-                         f"разыгран <b>один сертификат</b> (второй открывался при 128 участниках, третий — при 256).")
+        L.append("🏆 <b>Ближе всех угадали:</b>")
+        for i, it in enumerate(ranked[:3]):
+            L.append(f"{medals[i]} {it['nick']} — {_fmt_mmss(it['seconds'])} (промах ±{_fmt_mmss(it['diff'])})")
+        L.append("")
+        # кто реально получает сертификат
+        winner = ranked[0]["nick"]
+        cert_names = [ranked[i]["nick"] for i in range(min(awarded, len(ranked)))]
+        if len(cert_names) == 1:
+            L.append(f"🎁 Сертификат OZON <b>1000 ₽</b> и памятную медаль с забега забирает победитель — <b>{winner}</b>! 🏅🎉")
+        else:
+            L.append(f"🎁 Сертификаты OZON <b>1000 ₽</b> забирают: {', '.join(cert_names)}. "
+                     f"А победитель {winner} — ещё и памятную медаль с забега 🏅🎉")
+        # тёплое слово тем из тройки, кто без сертификата (порог участников не набрали)
+        if awarded < 3:
+            near = [ranked[i]["nick"] for i in range(1, min(3, len(ranked)))]
+            note = (f"Участников в этот раз было <b>{total}</b>, поэтому по правилам разыгран "
+                    f"<b>один сертификат</b> (второй открывался при 128 участниках, третий — при 256).")
+            if near:
+                note += f" {' и '.join(near)} — вы были буквально в секундах, обнимаем! 🤗"
+            L += ["", note]
 
-    lines += ["",
-              "Но расстраиваться не о чем! 🙌 Уже <b>через месяц Игорь бежит новый забег</b> — "
-              "и мы обязательно повторим розыгрыш, ещё интереснее. Следите за новостями! 🏃‍♂️🎮",
-              "", "Спасибо всем за участие ❤️"]
-    return "\n".join(lines)
+    L += ["",
+          "Но расстраиваться не о чем! 🙌 Уже <b>через месяц Игорь бежит новый забег</b> — "
+          "и мы обязательно повторим розыгрыш, ещё интереснее. Следите за новостями! 🏃‍♂️🎮",
+          "", "Спасибо всем за участие ❤️"]
+    return "\n".join(L)
 
 
 async def _broadcast_giveaway_results():
@@ -2739,7 +2740,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-results-text-v114"
+BUILD_TAG = "giveaway-results-final-v115"
 
 
 @app.get("/api/version")
