@@ -1156,6 +1156,13 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .weekly-sub { font-size: 14px; opacity: 0.92; }
 .weekly-status { margin-top: 8px; font-size: 14px; font-weight: 700; }
 .weekly-status.ok { color: var(--brand-lime); }
+.weekly-timer { margin-top: 8px; font-size: 16px; font-weight: 800; background: rgba(0, 0, 0, 0.18); border-radius: 10px; padding: 6px 10px; display: inline-block; }
+.weekly-hint { margin-top: 10px; font-size: 12px; opacity: 0.75; line-height: 1.4; }
+.weekly-stats { margin-top: 10px; }
+.weekly-stats .ws-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; margin-bottom: 5px; background: rgba(255, 255, 255, 0.06); font-size: 14px; }
+.weekly-stats .ws-row b { font-size: 17px; }
+.weekly-stats .ws-row.ok { background: rgba(180, 242, 77, 0.18); }
+.weekly-stats .ws-row.bad { background: rgba(229, 72, 77, 0.14); }
 
 /* Матчмейкинг: выбор соперника / входящие вызовы */
 .pick-row {

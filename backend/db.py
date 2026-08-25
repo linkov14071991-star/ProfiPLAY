@@ -252,6 +252,15 @@ def init_db():
         """
     )
 
+    # --- Миграции: колонки для «Вызова от Игоря» с таймером/статистикой ---
+    _wc_cols = {r[1] for r in conn.execute("PRAGMA table_info(weekly_challenge)").fetchall()}
+    if "expires_at" not in _wc_cols:
+        conn.execute("ALTER TABLE weekly_challenge ADD COLUMN expires_at TEXT")
+    if "state" not in _wc_cols:
+        conn.execute("ALTER TABLE weekly_challenge ADD COLUMN state TEXT NOT NULL DEFAULT 'open'")
+    if "stats_json" not in _wc_cols:
+        conn.execute("ALTER TABLE weekly_challenge ADD COLUMN stats_json TEXT")
+
     conn.commit()
     conn.close()
 

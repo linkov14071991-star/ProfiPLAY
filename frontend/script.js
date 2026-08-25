@@ -149,7 +149,7 @@ function showScreen(name) {
   window.scrollTo(0, 0);
   try {
     // при возврате на меню — обновим плашку рейтинга
-    if (name === "menu") { refreshProfile(); loadWeeklyBanner(); loadGiveawayBanner(); refreshNotifBadge(); }
+    if (name === "menu") { refreshProfile(); loadWeeklyBanner(); refreshNotifBadge(); }
     if (name === "profile") loadProfileScreen();
     if (name === "compHub") loadWeekly();
     if (name === "duelSetup") loadDuelIncoming();
@@ -5986,6 +5986,43 @@ function weeklyGoalHtml(fmt, score) {
 let weeklyActive = null;
 const weeklyAdmin = { format: "sprint", difficulty: "medium" };
 
+// ---- Таймер обратного отсчёта вызова ----
+let weeklyDeadlineTs = 0;
+let weeklyTicker = null;
+function weeklyFmtLeft(ms) {
+  let s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400); s -= d * 86400;
+  const h = Math.floor(s / 3600); s -= h * 3600;
+  const m = Math.floor(s / 60), ss = s % 60;
+  if (d > 0) return `${d}д ${h}ч ${m}м`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
+function weeklyUpdateTimers() {
+  const left = weeklyDeadlineTs - Date.now();
+  const txt = left > 0 ? "⏳ Осталось: " + weeklyFmtLeft(left) : "⏱️ Время вышло";
+  document.querySelectorAll(".weekly-timer").forEach((e) => (e.textContent = txt));
+  if (left <= 0 && weeklyTicker) {
+    clearInterval(weeklyTicker); weeklyTicker = null;
+    setTimeout(() => { loadWeeklyBanner(); if (document.getElementById(SCREENS.compHub)?.classList.contains("active")) loadWeekly(); }, 2000);
+  }
+}
+function weeklyStartTicker(secondsLeft) {
+  if (weeklyTicker) { clearInterval(weeklyTicker); weeklyTicker = null; }
+  if (secondsLeft == null) { weeklyDeadlineTs = 0; return; }
+  weeklyDeadlineTs = Date.now() + secondsLeft * 1000;
+  weeklyUpdateTimers();
+  weeklyTicker = setInterval(weeklyUpdateTimers, 1000);
+}
+function weeklyStatsHtml(s) {
+  if (!s) return "";
+  return `<div class="weekly-stats">
+    <div class="ws-row"><span>⚔ Приняли вызов</span><b>${s.accepted}</b></div>
+    <div class="ws-row ok"><span>🏆 Обыграли Игоря</span><b>${s.won}</b></div>
+    <div class="ws-row"><span>😅 Не побили счёт</span><b>${s.lost}</b></div>
+    <div class="ws-row bad"><span>🙈 Проигнорировали</span><b>${s.ignored}</b></div>
+  </div>`;
+}
+
 async function loadWeekly() {
   const block = document.getElementById("weekly-block");
   const createBtn = document.getElementById("btn-weekly-create");
@@ -5993,12 +6030,26 @@ async function loadWeekly() {
   if (!block) return;
   block.innerHTML = '<div class="weekly-card weekly-empty">Загрузка…</div>';
   const res = await apiPost("/api/weekly/active", { init_data: INIT_DATA });
-  weeklyActive = (res && res.active) ? res : null;
-  if (!weeklyActive) {
-    block.innerHTML = '<div class="weekly-card weekly-empty">Сейчас активного Вызова от Игоря нет.</div>';
+  const a = (res && res.state && res.state !== "none") ? res : null;
+  weeklyActive = (a && a.state === "open") ? a : null;
+  if (!a) {
+    block.innerHTML = '<div class="weekly-card weekly-empty">Сейчас активного Вызова от Игоря нет.<br>Следующий — по вт / чт / сб.</div>';
+    weeklyStartTicker(null);
     return;
   }
-  const a = weeklyActive;
+  const title = WEEKLY_FMT_TITLES_JS[a.format] || a.format;
+  if (a.state === "closed") {
+    block.innerHTML = `
+      <div class="weekly-card">
+        <div class="weekly-title">🏁 Вызов от Игоря завершён</div>
+        <div class="weekly-sub">Формат: <b>${title}</b> · счёт Игоря: <b>${weeklyScoreText(a.format, a.admin_score)}</b></div>
+        ${weeklyStatsHtml(a.stats)}
+        <div class="weekly-hint">Следующий вызов — по вт / чт / сб. Не пропусти: за игнор списывается 5 рейтинга.</div>
+      </div>`;
+    weeklyStartTicker(null);
+    return;
+  }
+  // открыт
   const played = a.my_attempt;
   let status = "";
   if (played) {
@@ -6013,33 +6064,51 @@ async function loadWeekly() {
   block.innerHTML = `
     <div class="weekly-card">
       <div class="weekly-title">🔥 Вызов от Игоря</div>
-      <div class="weekly-sub">Формат: <b>${WEEKLY_FMT_TITLES_JS[a.format] || a.format}</b> · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
+      <div class="weekly-sub">Формат: <b>${title}</b> · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
+      <div class="weekly-timer"></div>
       ${status}${btn}
+      <div class="weekly-hint">⏱ На вызов даётся 24 часа. Если не принять — <b>−5</b> рейтинга за игнор.</div>
     </div>`;
+  weeklyStartTicker(a.seconds_left);
 }
 
-// Баннер вызова на главном экране — виден всем, кто ещё не играл активный вызов
+// Баннер вызова на главном экране
 async function loadWeeklyBanner() {
   const el = document.getElementById("weekly-banner");
   if (!el) return;
   let res = null;
   try { res = await apiPost("/api/weekly/active", { init_data: INIT_DATA }); } catch (e) {}
-  weeklyActive = (res && res.active) ? res : null;
-  const a = weeklyActive;
-  // Показываем только если вызов активен, игрок его ещё не проходил и он не автор
-  if (!a || a.is_admin || a.my_attempt) { el.style.display = "none"; el.innerHTML = ""; return; }
+  const a = (res && res.state && res.state !== "none") ? res : null;
+  if (!a) { el.style.display = "none"; el.innerHTML = ""; weeklyStartTicker(null); return; }
+  const title = WEEKLY_FMT_TITLES_JS[a.format] || a.format;
+  if (a.state === "closed") {
+    el.style.display = "";
+    el.innerHTML = `
+      <div class="weekly-card" onclick="showScreen('compHub')" style="cursor:pointer;">
+        <div class="weekly-title">🏁 Вызов от Игоря завершён</div>
+        <div class="weekly-sub">Итоги: приняли ${a.stats ? a.stats.accepted : 0} · обыграли ${a.stats ? a.stats.won : 0} 👀 Смотри статистику</div>
+      </div>`;
+    weeklyStartTicker(null);
+    return;
+  }
+  // открыт: баннер с таймером тем, кто ещё не принял и не автор
+  weeklyActive = a;
+  if (a.is_admin || a.my_attempt) { el.style.display = "none"; el.innerHTML = ""; weeklyStartTicker(a.seconds_left); return; }
   el.style.display = "";
   el.innerHTML = `
     <div class="weekly-card" onclick="openWeeklyPlay()" style="cursor:pointer;">
       <div class="weekly-title">🔥 Вызов от Игоря</div>
-      <div class="weekly-sub">«${WEEKLY_FMT_TITLES_JS[a.format] || a.format}» · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b> к рейтингу</div>
+      <div class="weekly-timer"></div>
+      <div class="weekly-sub">«${title}» · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
       <button class="btn btn-primary" style="margin-top:8px;">⚔ Принять вызов</button>
     </div>`;
+  weeklyStartTicker(a.seconds_left);
 }
 
 function openWeeklyPlay() {
   const a = weeklyActive;
   if (!a) return;
+  if (a.state && a.state !== "open") { alert("Время вызова истекло — приём закрыт."); showScreen("compHub"); return; }
   hapticMedium();
   duel.mode = "weekly";
   duel.weeklyId = a.id;

@@ -2061,6 +2061,8 @@ WEEKLY_FMT_TITLES = {
     "hangman": "Виселица",
 }
 WEEKLY_BONUS = 50
+WEEKLY_DURATION_HOURS = 24          # вызов от Игоря активен 24 часа
+WEEKLY_IGNORE_PENALTY = 5           # штраф за игнор вызова (−5 рейтинга, не ниже 0)
 _bg_tasks: set = set()
 
 
@@ -2094,6 +2096,70 @@ async def _broadcast_weekly(fmt: str, admin_score: int, exclude_id: int = 0):
             await asyncio.sleep(0.05)  # ~20 сообщений/сек — в пределах лимитов Telegram
 
 
+def _weekly_close(db, ch):
+    """Атомарно закрывает истёкший вызов: статистика, штраф −5 не принявшим, пометка closed.
+    Возвращает (stats, bot_msgs). Если вызов уже закрыт кем-то — (None, [])."""
+    cur = db.execute(
+        "UPDATE weekly_challenge SET state = 'closed', active = 0 WHERE id = ? AND state = 'open'",
+        (ch["id"],),
+    )
+    if cur.rowcount == 0:
+        return None, []
+    cid, creator_id, fmt, admin_score = ch["id"], ch["creator_id"], ch["format"], ch["admin_score"]
+
+    attempts = db.execute("SELECT user_id, beat FROM weekly_attempt WHERE challenge_id = ?", (cid,)).fetchall()
+    beat_map = {a["user_id"]: bool(a["beat"]) for a in attempts}
+    attempted = set(beat_map.keys())
+    accepted = len(attempted)
+    won = sum(1 for b in beat_map.values() if b)
+    lost = accepted - won
+
+    all_users = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
+    ignored_ids = [u for u in all_users if u != creator_id and u not in attempted]
+    ignored = len(ignored_ids)
+
+    # штраф −5 (не ниже 0); запоминаем реально списанное
+    deducted = {}
+    for uid in ignored_ids:
+        row = db.execute("SELECT rating FROM users WHERE telegram_id = ?", (uid,)).fetchone()
+        r = row["rating"] if row else 0
+        d = min(WEEKLY_IGNORE_PENALTY, max(0, r))
+        if d > 0:
+            db.execute("UPDATE users SET rating = rating - ? WHERE telegram_id = ?", (d, uid))
+            nr = db.execute("SELECT rating FROM users WHERE telegram_id = ?", (uid,)).fetchone()["rating"]
+            db.execute(
+                "INSERT INTO rating_log (user_id, delta, source, balance_after) VALUES (?, ?, 'weekly_ignore', ?)",
+                (uid, -d, nr),
+            )
+        deducted[uid] = d
+    penalized = sum(1 for d in deducted.values() if d > 0)
+
+    stats = {"accepted": accepted, "won": won, "lost": lost, "ignored": ignored,
+             "penalized": penalized, "total_users": len(all_users), "penalty": WEEKLY_IGNORE_PENALTY}
+    db.execute("UPDATE weekly_challenge SET stats_json = ? WHERE id = ?", (json.dumps(stats), cid))
+
+    title = WEEKLY_FMT_TITLES.get(fmt, fmt)
+    summary = (f"🏁 <b>Вызов от Игоря завершён!</b>\nФормат: <b>{title}</b>, счёт Игоря: <b>{admin_score}</b>\n\n"
+               f"⚔ Приняли вызов: <b>{accepted}</b>\n"
+               f"🏆 Обыграли Игоря: <b>{won}</b>\n"
+               f"😅 Не побили счёт: <b>{lost}</b>\n"
+               f"🙈 Проигнорировали: <b>{ignored}</b>")
+    bot_msgs = []
+    for uid in all_users:
+        if uid == creator_id:
+            personal = "Это был твой вызов — спасибо, что двигаешь Арену! 🙌"
+        elif uid in attempted:
+            personal = "🏆 Ты обыграл Игоря — красавчик!" if beat_map[uid] else "Ты принял вызов — уважение! Счёт не побил, но рейтинг не потерял."
+        else:
+            d = deducted.get(uid, 0)
+            personal = (f"⚠️ Ты не принял вызов — списано <b>{d}</b> рейтинга (штраф за игнор). Не пропускай в следующий раз!"
+                        if d > 0 else "⚠️ Ты не принял вызов. Списывать нечего (рейтинг 0). Не пропускай в следующий раз!")
+        text = summary + "\n\n" + personal
+        _notify(db, uid, re.sub(r"</?b>", "", text))   # в приложение (без HTML)
+        bot_msgs.append((uid, text))
+    return stats, bot_msgs
+
+
 @app.post("/api/weekly/promote")
 async def weekly_promote(init_data: str = Body(...), duel_id: str = Body(...)):
     """Админ: делает свою сыгранную дуэль активным «Вызовом от Игоря» и рассылает его."""
@@ -2109,9 +2175,9 @@ async def weekly_promote(init_data: str = Body(...), duel_id: str = Body(...)):
             raise HTTPException(status_code=400, detail="Play the duel first")
         db.execute("UPDATE weekly_challenge SET active = 0 WHERE active = 1")
         cur = db.execute(
-            """
-            INSERT INTO weekly_challenge (creator_id, format, difficulty, payload_json, admin_score, active)
-            VALUES (?, ?, ?, ?, ?, 1)
+            f"""
+            INSERT INTO weekly_challenge (creator_id, format, difficulty, payload_json, admin_score, active, state, expires_at)
+            VALUES (?, ?, ?, ?, ?, 1, 'open', datetime('now', '+{WEEKLY_DURATION_HOURS} hours'))
             """,
             (me["telegram_id"], duel["format"] or "sprint", duel["difficulty"],
              duel["questions_json"], duel["creator_score"]),
@@ -2133,26 +2199,40 @@ async def weekly_promote(init_data: str = Body(...), duel_id: str = Body(...)):
 
 @app.post("/api/weekly/active")
 async def weekly_active(init_data: str = Body(..., embed=True)):
-    """Текущий активный Вызов от Игоря + моя попытка (если играл)."""
+    """Последний Вызов от Игоря: активный (с таймером) или закрытый (со статистикой)."""
     tg_user = get_verified_user(init_data)
+    lazy_msgs = []
     with get_db() as db:
         me = upsert_user(db, tg_user)
-        ch = db.execute(
-            "SELECT * FROM weekly_challenge WHERE active = 1 ORDER BY id DESC LIMIT 1"
-        ).fetchone()
+        ch = db.execute("SELECT * FROM weekly_challenge ORDER BY id DESC LIMIT 1").fetchone()
         if not ch:
-            return {"active": False}
-        creator = db.execute(
-            "SELECT * FROM users WHERE telegram_id = ?", (ch["creator_id"],)
-        ).fetchone()
+            return {"active": False, "state": "none"}
+        # Ленивое закрытие: если истёк, но фоновый воркер ещё не закрыл — закрываем сейчас
+        if ch["state"] == "open" and ch["expires_at"]:
+            exp = db.execute(
+                "SELECT (expires_at <= datetime('now')) AS e FROM weekly_challenge WHERE id = ?", (ch["id"],)
+            ).fetchone()
+            if exp and exp["e"]:
+                _stats, lazy_msgs = _weekly_close(db, ch)
+                ch = db.execute("SELECT * FROM weekly_challenge WHERE id = ?", (ch["id"],)).fetchone()
+
+        creator = db.execute("SELECT * FROM users WHERE telegram_id = ?", (ch["creator_id"],)).fetchone()
         attempt = db.execute(
             "SELECT score, beat, bonus FROM weekly_attempt WHERE challenge_id = ? AND user_id = ?",
             (ch["id"], me["telegram_id"]),
         ).fetchone()
         fmt = ch["format"]
-        payload = json.loads(ch["payload_json"])
+        state = ch["state"] or "open"
+        sl = db.execute(
+            "SELECT CAST((julianday(expires_at) - julianday('now')) * 86400 AS INTEGER) AS s "
+            "FROM weekly_challenge WHERE id = ?", (ch["id"],)
+        ).fetchone()
+        seconds_left = max(0, sl["s"]) if (sl and sl["s"] is not None) else None
+        stats = json.loads(ch["stats_json"]) if ch["stats_json"] else None
+
         res = {
-            "active": True,
+            "active": state == "open",
+            "state": state,
             "id": ch["id"],
             "format": fmt,
             "difficulty": ch["difficulty"],
@@ -2160,22 +2240,29 @@ async def weekly_active(init_data: str = Body(..., embed=True)):
             "admin_score": ch["admin_score"],
             "is_admin": me["telegram_id"] == ch["creator_id"],
             "my_attempt": (dict(attempt) if attempt else None),
+            "seconds_left": seconds_left,
+            "stats": stats,
         }
-        if fmt == "numguess":
-            res.update({"maxN": payload["maxN"], "secret": payload["secret"],
-                        "time_limit_ms": payload["time_ms"]})
-        elif fmt == "schulte":
-            res.update({"size": payload["size"], "order": payload["order"]})
-        elif fmt == "gorbov":
-            res.update({"size": payload["size"], "cells": payload["cells"]})
-        elif fmt == "stroop":
-            res.update({"keys": payload["keys"], "trials": payload["trials"], "time_ms": STROOP_DUEL_MS})
-        elif fmt == "hangman":
-            res.update({"words": payload["words"]})
-        else:
-            res["questions"] = [{"q": q["q"], "options": q["options"]} for q in payload]
-            res["time_limit_ms"] = DUEL_TIME_LIMIT_MS
-        return res
+        if state == "open":
+            payload = json.loads(ch["payload_json"])
+            if fmt == "numguess":
+                res.update({"maxN": payload["maxN"], "secret": payload["secret"], "time_limit_ms": payload["time_ms"]})
+            elif fmt == "schulte":
+                res.update({"size": payload["size"], "order": payload["order"]})
+            elif fmt == "gorbov":
+                res.update({"size": payload["size"], "cells": payload["cells"]})
+            elif fmt == "stroop":
+                res.update({"keys": payload["keys"], "trials": payload["trials"], "time_ms": STROOP_DUEL_MS})
+            elif fmt == "hangman":
+                res.update({"words": payload["words"]})
+            else:
+                res["questions"] = [{"q": q["q"], "options": q["options"]} for q in payload]
+                res["time_limit_ms"] = DUEL_TIME_LIMIT_MS
+    if lazy_msgs:
+        t = asyncio.create_task(_send_bot_messages(lazy_msgs))
+        _bg_tasks.add(t)
+        t.add_done_callback(_bg_tasks.discard)
+    return res
 
 
 @app.post("/api/weekly/{challenge_id}/attempt")
@@ -2198,6 +2285,13 @@ async def weekly_attempt(
             raise HTTPException(status_code=404, detail="Challenge not found")
         if my_id == ch["creator_id"]:
             raise HTTPException(status_code=400, detail="Own challenge")
+        # приём закрыт по таймеру
+        if (ch["state"] or "open") != "open":
+            raise HTTPException(status_code=403, detail="Время вызова истекло")
+        if ch["expires_at"]:
+            exp = db.execute("SELECT (expires_at <= datetime('now')) AS e FROM weekly_challenge WHERE id = ?", (challenge_id,)).fetchone()
+            if exp and exp["e"]:
+                raise HTTPException(status_code=403, detail="Время вызова истекло")
         existing = db.execute(
             "SELECT score, beat, bonus FROM weekly_attempt WHERE challenge_id = ? AND user_id = ?",
             (challenge_id, my_id),
@@ -2562,6 +2656,34 @@ async def _startup_schedule_giveaway():
     t.add_done_callback(_bg_tasks.discard)
 
 
+async def _weekly_expiry_loop():
+    """Каждые 2 минуты закрывает истёкшие вызовы: статистика + штрафы + рассылка всем."""
+    while True:
+        try:
+            bot_msgs_all = []
+            with get_db() as db:
+                expired = db.execute(
+                    "SELECT * FROM weekly_challenge WHERE state = 'open' "
+                    "AND expires_at IS NOT NULL AND expires_at <= datetime('now')"
+                ).fetchall()
+                for ch in expired:
+                    _stats, msgs = _weekly_close(db, ch)
+                    if msgs:
+                        bot_msgs_all += msgs
+            if bot_msgs_all:
+                await _send_bot_messages(bot_msgs_all)
+        except Exception as e:
+            print(f"[weekly expiry] {e}")
+        await asyncio.sleep(120)
+
+
+@app.on_event("startup")
+async def _startup_weekly_expiry():
+    t = asyncio.create_task(_weekly_expiry_loop())
+    _bg_tasks.add(t)
+    t.add_done_callback(_bg_tasks.discard)
+
+
 @app.post("/api/giveaway/announce")
 async def giveaway_announce_now(init_data: str = Body(...), audience: str = Body("all")):
     """Админ: разослать анонс немедленно (тест/ручной запуск). Флаги расписания не трогает."""
@@ -2762,7 +2884,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "duel-notif-accept-decline-v117"
+BUILD_TAG = "weekly-timer-stats-v118"
 
 
 @app.get("/api/version")
