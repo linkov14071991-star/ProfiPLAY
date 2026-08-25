@@ -2980,7 +2980,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "strict-subscription-v121"
+BUILD_TAG = "giveaway-hub-archive-v122"
 
 
 @app.get("/api/version")

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=90">
+<link rel="stylesheet" href="/style.css?v=91">
 </head>
 <body>
 
@@ -122,10 +122,10 @@
   <h3 style="padding-left:4px;" id="modes-anchor">🎮 Разделы</h3>
   <div class="games-grid">
     <div class="game-card" data-game="giveaway">
-      <div class="icon" style="background:#FFD166;">🏃</div>
+      <div class="icon" style="background:#FFD166;">🎁</div>
       <div class="info">
-        <div class="title">Розыгрыш от Игоря</div>
-        <div class="desc">Угадай, за сколько Игорь пробежит 10 км 23 августа. Ближе всех и раньше всех — победа!</div>
+        <div class="title">Розыгрыши от Игоря</div>
+        <div class="desc">Зал славы прошлых розыгрышей и анонсы будущих. Угадывай и выигрывай призы!</div>
       </div>
     </div>
     <div class="game-card" data-game="sec-sprint">
@@ -2179,6 +2179,32 @@
   </div>
 </div>
 
+<!-- ==== Экран: Хаб розыгрышей ==== -->
+<section id="screen-giveaway-hub" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <h1 style="text-align:center; margin-bottom:6px;">🎁 Розыгрыши от Игоря</h1>
+  <p class="subtitle" style="text-align:center;">Угадывай — выигрывай призы</p>
+  <div class="games-grid" id="gv-hub-list"></div>
+  <button class="btn btn-link btn-back" data-back="menu" style="margin-top:14px;">← В меню</button>
+</section>
+
+<!-- ==== Экран: Зал славы (архив розыгрышей) ==== -->
+<section id="screen-giveaway-archive" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🏆 Зал славы</h1>
+    <p class="subtitle">Прошедшие розыгрыши и их победители.</p>
+    <div id="gv-archive-list"></div>
+    <button class="btn btn-link btn-back" data-back="giveawayHub">← Назад</button>
+  </div>
+</section>
+
 <!-- ==== Экран: Розыгрыш от Игоря ==== -->
 <section id="screen-giveaway" class="screen">
   <div class="brand-header">
@@ -2889,6 +2915,6 @@
 </div>
 
 <script src="/hangman-words.js?v=2"></script>
-<script src="/script.js?v=105"></script>
+<script src="/script.js?v=106"></script>
 </body>
 </html>

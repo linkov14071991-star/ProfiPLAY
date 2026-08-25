@@ -114,6 +114,8 @@ const SCREENS = {
   hmPlay: "screen-hm-play",
   hmResult: "screen-hm-result",
   giveaway: "screen-giveaway",
+  giveawayHub: "screen-giveaway-hub",
+  giveawayArchive: "screen-giveaway-archive",
   reverseSetup: "screen-reverse-setup",
   reversePlay: "screen-reverse-play",
   reverseResult: "screen-reverse-result",
@@ -631,7 +633,7 @@ function routeToGame(game) {
   if (game === "python") { window.location.href = "python/index.html"; return; }
   if (game === "gametheory") { currentGame = "gametheory"; resetLbTabs("gt-lb"); showScreen("gtSetup"); return; }
   if (game === "hangman") { currentGame = "hangman"; resetLbTabs("hm-lb"); showScreen("hmSetup"); return; }
-  if (game === "giveaway") { openGiveaway(); return; }
+  if (game === "giveaway") { hapticMedium(); openGiveawayHub(); return; }
 }
 
 document.body.addEventListener("click", (e) => {
@@ -2958,6 +2960,71 @@ async function loadGiveawayBanner() {
       <button class="btn btn-primary" style="margin-top:8px;">${cta}</button>
     </div>`;
 }
+// Прошедшие розыгрыши (Зал славы). Новые добавляем сюда после завершения.
+const GIVEAWAY_ARCHIVE = [
+  {
+    title: "Забег 10 км · Большой фестиваль бега",
+    date: "23 августа 2026",
+    result: "49:45",
+    winner: "@shefka93",
+    winner_pred: "49:57 (промах ±0:12)",
+    runners_up: "🥈 @steephuman (50:00) · 🥉 @paac20 (49:30)",
+    participants: 74,
+    prize: "Сертификат OZON 1000 ₽ + памятная медаль с забега 🏅",
+  },
+];
+// Будущие розыгрыши (пока анонсы «скоро»)
+const GIVEAWAY_UPCOMING = [
+  { title: "Розыгрыш 29 августа", date: "29 августа 2026", icon: "🎯", note: "Детали объявим совсем скоро — следи за новостями!" },
+  { title: "Забег 10 км", date: "26 сентября 2026", icon: "🏃", note: "Снова угадываем время Игоря на 10 км! Приём прогнозов откроем ближе к дате." },
+];
+function gvUpcomingInfo(i) {
+  const g = GIVEAWAY_UPCOMING[i]; if (!g) return;
+  hapticLight();
+  alert(`${g.title}\n📅 ${g.date}\n\n${g.note}`);
+}
+window.gvUpcomingInfo = gvUpcomingInfo;
+
+function openGiveawayHub() {
+  showScreen("giveawayHub");
+  const el = document.getElementById("gv-hub-list");
+  if (!el) return;
+  let html = `
+    <div class="game-card" onclick="openGiveawayArchive()">
+      <div class="icon" style="background:#FFD166;">🏆</div>
+      <div class="info"><div class="title">Зал славы</div><div class="desc">История розыгрышей и победители — заходи и смотри!</div></div>
+    </div>`;
+  html += GIVEAWAY_UPCOMING.map((g, i) => `
+    <div class="game-card" onclick="gvUpcomingInfo(${i})">
+      <div class="icon">${g.icon}</div>
+      <div class="info"><div class="title">${escapeHtml(g.title)}</div><div class="desc">📅 ${g.date}</div></div>
+      <div class="badge-soon">🔜 Скоро</div>
+    </div>`).join("");
+  el.innerHTML = html;
+}
+window.openGiveawayHub = openGiveawayHub;
+
+function openGiveawayArchive() {
+  hapticMedium();
+  showScreen("giveawayArchive");
+  const el = document.getElementById("gv-archive-list");
+  if (!el) return;
+  if (!GIVEAWAY_ARCHIVE.length) {
+    el.innerHTML = '<p style="text-align:center; opacity:0.7; padding:16px;">Пока пусто. Первый розыгрыш совсем скоро!</p>';
+    return;
+  }
+  el.innerHTML = GIVEAWAY_ARCHIVE.map((g) => `
+    <div class="gv-arch-item">
+      <div class="gv-arch-title">🏃 ${escapeHtml(g.title)}</div>
+      <div class="gv-arch-date">${g.date} · участников: <b>${g.participants}</b></div>
+      <div class="gv-arch-row">Результат Игоря: <b>${g.result}</b></div>
+      <div class="gv-arch-win">🥇 Победитель: <b>${escapeHtml(g.winner)}</b> — ${escapeHtml(g.winner_pred)}</div>
+      <div class="gv-arch-row" style="opacity:0.85;">${escapeHtml(g.runners_up)}</div>
+      <div class="gv-arch-prize">🎁 ${escapeHtml(g.prize)}</div>
+    </div>`).join("");
+}
+window.openGiveawayArchive = openGiveawayArchive;
+
 async function openGiveaway() { hapticMedium(); showScreen("giveaway"); await loadGiveaway(); }
 window.openGiveaway = openGiveaway;
 async function loadGiveaway() {
@@ -6238,7 +6305,7 @@ window._maybeOpenIncomingDuel = async function() {
   } catch (e) {}
   if (p && p.type === "duel") { await duelOpenIncoming(p.value); return; }
   if (p && p.type === "weekly") { await openWeeklyFromDeepLink(); return; }
-  if (p && p.type === "giveaway") { await openGiveaway(); return; }
+  if (p && p.type === "giveaway") { openGiveawayHub(); return; }
   if (pendingId) await duelOpenIncoming(pendingId);
 };
 
