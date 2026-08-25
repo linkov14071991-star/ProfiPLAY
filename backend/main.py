@@ -2684,6 +2684,92 @@ async def _startup_weekly_expiry():
     t.add_done_callback(_bg_tasks.discard)
 
 
+WEEKLY_REMINDER_DAYS = {1, 3, 5}       # вт, чт, сб (Пн=0 … Вс=6)
+WEEKLY_REMINDER_HOUR_MSK = 10          # напоминание в 10:00 МСК
+
+
+async def _weekly_reminder_loop():
+    """По вт/чт/сб в 10:00 МСК напоминает админам создать Вызов от Игоря (один раз в день)."""
+    while True:
+        try:
+            now = datetime.now(MSK_TZ)
+            if now.weekday() in WEEKLY_REMINDER_DAYS and now.hour >= WEEKLY_REMINDER_HOUR_MSK:
+                key = "weekly_reminder_" + now.date().isoformat()
+                send = False
+                with get_db() as db:
+                    if not _flag_get(db, key):
+                        open_exists = db.execute("SELECT 1 FROM weekly_challenge WHERE state = 'open' LIMIT 1").fetchone()
+                        _flag_set(db, key)          # помечаем день, чтобы не напоминать повторно
+                        send = not open_exists       # не нужно, если вызов уже идёт
+                if send and BOT_TOKEN:
+                    text = ("🔔 <b>Сегодня день Вызова от Игоря!</b> (вт/чт/сб)\n\n"
+                            "Создай новый вызов: сыграй партию в любой игре Спринта → сделай её «Вызовом от Игоря». "
+                            "Таймер 24 часа, статистика и штрафы за игнор запустятся сами.")
+                    await _send_bot_messages([(uid, text) for uid in ADMIN_IDS])
+        except Exception as e:
+            print(f"[weekly reminder] {e}")
+        await asyncio.sleep(300)
+
+
+@app.on_event("startup")
+async def _startup_weekly_reminder():
+    t = asyncio.create_task(_weekly_reminder_loop())
+    _bg_tasks.add(t)
+    t.add_done_callback(_bg_tasks.discard)
+
+
+async def _bot_send_all(ids, text, markup=None):
+    """Отправить одинаковое сообщение (с кнопкой) списку пользователей."""
+    if not BOT_TOKEN:
+        return 0
+    sent = 0
+    async with httpx.AsyncClient(timeout=20) as client:
+        for uid in ids:
+            try:
+                payload = {"chat_id": uid, "text": text, "parse_mode": "HTML"}
+                if markup:
+                    payload["reply_markup"] = markup
+                await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload)
+                sent += 1
+            except Exception:
+                pass
+            await asyncio.sleep(0.05)
+    return sent
+
+
+DAILY_REMINDER_HOUR_MSK = 12           # ежедневное напоминание зайти в приложение
+
+
+async def _daily_reminder_loop():
+    """Раз в день (в 12:00 МСК) напоминает ВСЕМ зайти в приложение — чтобы заходили минимум раз в день."""
+    while True:
+        try:
+            now = datetime.now(MSK_TZ)
+            if now.hour >= DAILY_REMINDER_HOUR_MSK:
+                key = "daily_reminder_" + now.date().isoformat()
+                ids = []
+                with get_db() as db:
+                    if not _flag_get(db, key):
+                        _flag_set(db, key)
+                        ids = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
+                if ids and BOT_TOKEN and WEBAPP_URL:
+                    text = ("👋 <b>Загляни в Профик ARENA!</b>\n\n"
+                            "Ежедневные задания, серия дней и рейтинг ждут — заходи хотя бы на минутку. "
+                            "А по вт/чт/сб — Вызов от Игоря (за игнор списывается 5 рейтинга ⚠️).")
+                    markup = {"inline_keyboard": [[{"text": "🎮 Открыть Профик ARENA", "web_app": {"url": WEBAPP_URL}}]]}
+                    await _bot_send_all(ids, text, markup)
+        except Exception as e:
+            print(f"[daily reminder] {e}")
+        await asyncio.sleep(300)
+
+
+@app.on_event("startup")
+async def _startup_daily_reminder():
+    t = asyncio.create_task(_daily_reminder_loop())
+    _bg_tasks.add(t)
+    t.add_done_callback(_bg_tasks.discard)
+
+
 @app.post("/api/giveaway/announce")
 async def giveaway_announce_now(init_data: str = Body(...), audience: str = Body("all")):
     """Админ: разослать анонс немедленно (тест/ручной запуск). Флаги расписания не трогает."""
@@ -2884,7 +2970,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "weekly-timer-stats-v118"
+BUILD_TAG = "reminders-v119"
 
 
 @app.get("/api/version")
