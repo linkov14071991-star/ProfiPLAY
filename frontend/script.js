@@ -220,8 +220,12 @@ async function refreshNotifBadge() {
   const badge = document.getElementById("notif-badge");
   if (!badge) return;
   try {
-    const res = await apiPost("/api/notifications", { init_data: INIT_DATA });
-    const n = (res && res.unread) || 0;
+    const [res, inc] = await Promise.all([
+      apiPost("/api/notifications", { init_data: INIT_DATA }),
+      apiPost("/api/duel/incoming", { init_data: INIT_DATA }),
+    ]);
+    const incN = (inc && inc.incoming && inc.incoming.length) || 0;
+    const n = ((res && res.unread) || 0) + incN;   // непрочитанные + активные вызовы
     if (n > 0) { badge.textContent = n > 9 ? "9+" : String(n); badge.style.display = ""; }
     else badge.style.display = "none";
   } catch (e) {}
@@ -231,19 +235,54 @@ async function openNotifications() {
   showScreen("notifications");
   const wrap = document.getElementById("notif-list");
   wrap.innerHTML = '<p class="notif-empty">Загружаем…</p>';
-  const res = await apiPost("/api/notifications", { init_data: INIT_DATA });
+  const [incRes, res] = await Promise.all([
+    apiPost("/api/duel/incoming", { init_data: INIT_DATA }),
+    apiPost("/api/notifications", { init_data: INIT_DATA }),
+  ]);
+  const inc = (incRes && incRes.incoming) || [];
   const items = (res && res.items) || [];
-  wrap.innerHTML = items.length
-    ? items.map((it) => `
+  let html = "";
+  // Сверху — активные вызовы на дуэль с кнопками Принять/Отклонить
+  html += inc.map((d) => {
+    const lg = d.from_league ? (d.from_league.emoji + " " + (d.from_league.display || d.from_league.name)) : "";
+    return `<div class="notif-challenge" id="nc-${d.duel_id}">
+        <div class="nc-title">⚔ Тебя вызвали на дуэль!</div>
+        <div class="nc-sub"><b>${escapeHtml(d.from_name)}</b>${lg ? " · " + lg : ""} · ${WEEKLY_FMT_TITLES_JS[d.format] || d.format}</div>
+        <div class="nc-actions">
+          <button class="btn btn-primary" onclick="duelAcceptFromNotif('${d.duel_id}')">✅ Принять</button>
+          <button class="btn btn-secondary" onclick="duelDeclineFromNotif('${d.duel_id}')">✖ Отклонить</button>
+        </div>
+      </div>`;
+  }).join("");
+  // Ниже — обычные текстовые уведомления
+  html += items.map((it) => `
       <div class="notif-item${it.read ? "" : " unread"}">
         <div class="notif-text">${escapeHtml(it.text)}</div>
         <div class="notif-time">${fmtNotifTime(it.created_at)}</div>
-      </div>`).join("")
-    : '<p class="notif-empty">Пока пусто. Здесь появятся результаты твоих дуэлей.</p>';
+      </div>`).join("");
+  if (!inc.length && !items.length) html = '<p class="notif-empty">Пока пусто. Здесь появятся вызовы на дуэль и результаты.</p>';
+  wrap.innerHTML = html;
   apiPost("/api/notifications/read", { init_data: INIT_DATA }).catch(() => {});
-  const badge = document.getElementById("notif-badge");
-  if (badge) badge.style.display = "none";
+  refreshNotifBadge();   // бейдж останется, если есть активные вызовы
 }
+function duelAcceptFromNotif(id) { hapticMedium(); duelOpenIncoming(id); }
+async function duelDeclineFromNotif(id) {
+  if (!confirm("Отклонить этот вызов на дуэль?")) return;
+  hapticLight();
+  const res = await apiPost(`/api/duel/${id}/decline`, { init_data: INIT_DATA });
+  if (res && res.ok) {
+    const el = document.getElementById("nc-" + id);
+    if (el) el.remove();
+    refreshNotifBadge();
+    if (!document.querySelector(".notif-challenge") && !document.querySelector(".notif-item")) {
+      document.getElementById("notif-list").innerHTML = '<p class="notif-empty">Пока пусто. Здесь появятся вызовы на дуэль и результаты.</p>';
+    }
+  } else {
+    alert((res && res.detail) || "Не удалось отклонить вызов.");
+  }
+}
+window.duelAcceptFromNotif = duelAcceptFromNotif;
+window.duelDeclineFromNotif = duelDeclineFromNotif;
 function fmtNotifTime(s) {
   try {
     const d = new Date(String(s).replace(" ", "T") + "Z");

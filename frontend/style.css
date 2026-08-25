@@ -1197,6 +1197,15 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .notif-item .notif-text { font-size: 14px; font-weight: 600; }
 .notif-item .notif-time { font-size: 11px; opacity: 0.55; margin-top: 2px; }
 .notif-empty { text-align: center; opacity: 0.7; padding: 24px; }
+.notif-challenge {
+  background: linear-gradient(135deg, rgba(102, 54, 233, 0.18), rgba(180, 242, 77, 0.12));
+  border: 1px solid rgba(102, 54, 233, 0.35);
+  border-radius: 14px; padding: 12px 14px; margin: 8px 0;
+}
+.notif-challenge .nc-title { font-weight: 800; font-size: 15px; }
+.notif-challenge .nc-sub { font-size: 13px; opacity: 0.85; margin: 4px 0 10px; }
+.notif-challenge .nc-actions { display: flex; gap: 8px; }
+.notif-challenge .nc-actions .btn { flex: 1; margin: 0; padding: 10px; font-size: 14px; }
 
 /* Мини-плашка множителя в панели игры */
 .mult-badge {

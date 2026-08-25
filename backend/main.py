@@ -1957,6 +1957,26 @@ async def duel_incoming(init_data: str = Body(..., embed=True)):
     return {"incoming": out}
 
 
+@app.post("/api/duel/{duel_id}/decline")
+async def duel_decline(duel_id: str, init_data: str = Body(..., embed=True)):
+    """Соперник отклоняет адресный вызов. Освобождаем дуэль и уведомляем создателя."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        duel = db.execute("SELECT * FROM duels WHERE id = ?", (duel_id,)).fetchone()
+        if not duel:
+            raise HTTPException(status_code=404, detail="Duel not found")
+        if duel["opponent_id"] != me["telegram_id"]:
+            raise HTTPException(status_code=400, detail="Это не твой вызов")
+        if duel["status"] == "complete":
+            return {"ok": True, "already": True}
+        # снимаем себя как соперника (дуэль снова свободна) и чистим приглашение
+        db.execute("UPDATE duels SET opponent_id = NULL WHERE id = ?", (duel_id,))
+        db.execute("DELETE FROM pending_duel WHERE user_id = ? AND duel_id = ?", (me["telegram_id"], duel_id))
+        _notify(db, duel["creator_id"], f"🙅 {_display_name(me)} отклонил твой вызов на дуэль.")
+    return {"ok": True}
+
+
 @app.post("/api/duel/{duel_id}/challenge")
 async def duel_challenge(
     duel_id: str,
@@ -2742,7 +2762,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "duel-accept-deeplink-v116"
+BUILD_TAG = "duel-notif-accept-decline-v117"
 
 
 @app.get("/api/version")
