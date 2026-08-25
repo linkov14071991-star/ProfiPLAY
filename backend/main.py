@@ -1906,7 +1906,7 @@ async def duel_pending(init_data: str = Body(..., embed=True)):
         return {"duel_id": row["duel_id"]}
 
 
-async def _notify_challenge(target_id: int, from_name: str, league: dict, rating: int):
+async def _notify_challenge(target_id: int, from_name: str, league: dict, rating: int, duel_id: str = ""):
     """Личное сообщение игроку от бота: тебя вызвали на дуэль."""
     if not (BOT_TOKEN and WEBAPP_URL):
         return
@@ -1915,7 +1915,9 @@ async def _notify_challenge(target_id: int, from_name: str, league: dict, rating
         f"🔥 <b>{from_name}</b> ({lg}, рейтинг {rating}) вызвал тебя на Блиц-дуэль!\n\n"
         f"Прими вызов — сыграешь те же вопросы. Победа <b>+20</b> к рейтингу."
     )
-    markup = {"inline_keyboard": [[{"text": "⚔ Принять вызов", "web_app": {"url": WEBAPP_URL}}]]}
+    # ID дуэли зашит в ссылку — приложение откроет вызов напрямую (а не просто меню)
+    url = f"{WEBAPP_URL}?duel={duel_id}" if duel_id else WEBAPP_URL
+    markup = {"inline_keyboard": [[{"text": "⚔ Принять вызов", "web_app": {"url": url}}]]}
     async with httpx.AsyncClient(timeout=15) as client:
         try:
             await client.post(
@@ -2003,7 +2005,7 @@ async def duel_challenge(
         from_league = get_league(from_rating)
         target_name = _display_name(target)
         _notify(db, target_id, f"⚔ {from_name} вызвал тебя на Блиц-дуэль! Прими вызов во «Входящих».")
-    t = asyncio.create_task(_notify_challenge(target_id, from_name, from_league, from_rating))
+    t = asyncio.create_task(_notify_challenge(target_id, from_name, from_league, from_rating, duel_id))
     _bg_tasks.add(t)
     t.add_done_callback(_bg_tasks.discard)
     return {"ok": True, "name": target_name}
@@ -2740,7 +2742,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-results-final-v115"
+BUILD_TAG = "duel-accept-deeplink-v116"
 
 
 @app.get("/api/version")
