@@ -2144,17 +2144,27 @@ def _weekly_close(db, ch):
                f"🏆 Обыграли Игоря: <b>{won}</b>\n"
                f"😅 Не побили счёт: <b>{lost}</b>\n"
                f"🙈 Проигнорировали: <b>{ignored}</b>")
+    # Отдельный подробный отчёт создателю (админу) — вместо общего сообщения
+    admin_report = (
+        f"📊 <b>Отчёт по твоему Вызову</b> ({title})\nСчёт Игоря: <b>{admin_score}</b>\n\n"
+        f"⚔ Приняли вызов: <b>{accepted}</b>\n"
+        f"🏆 Обыграли тебя: <b>{won}</b>\n"
+        f"😅 Не побили счёт: <b>{lost}</b>\n"
+        f"🙈 Проигнорировали: <b>{ignored}</b> (оштрафовано {penalized})\n"
+        f"👥 Всего игроков в базе: <b>{len(all_users)}</b>"
+    )
     bot_msgs = []
     for uid in all_users:
         if uid == creator_id:
-            personal = "Это был твой вызов — спасибо, что двигаешь Арену! 🙌"
-        elif uid in attempted:
-            personal = "🏆 Ты обыграл Игоря — красавчик!" if beat_map[uid] else "Ты принял вызов — уважение! Счёт не побил, но рейтинг не потерял."
+            text = admin_report
         else:
-            d = deducted.get(uid, 0)
-            personal = (f"⚠️ Ты не принял вызов — списано <b>{d}</b> рейтинга (штраф за игнор). Не пропускай в следующий раз!"
-                        if d > 0 else "⚠️ Ты не принял вызов. Списывать нечего (рейтинг 0). Не пропускай в следующий раз!")
-        text = summary + "\n\n" + personal
+            if uid in attempted:
+                personal = "🏆 Ты обыграл Игоря — красавчик!" if beat_map[uid] else "Ты принял вызов — уважение! Счёт не побил, но рейтинг не потерял."
+            else:
+                d = deducted.get(uid, 0)
+                personal = (f"⚠️ Ты не принял вызов — списано <b>{d}</b> рейтинга (штраф за игнор). Не пропускай в следующий раз!"
+                            if d > 0 else "⚠️ Ты не принял вызов. Списывать нечего (рейтинг 0). Не пропускай в следующий раз!")
+            text = summary + "\n\n" + personal
         _notify(db, uid, re.sub(r"</?b>", "", text))   # в приложение (без HTML)
         bot_msgs.append((uid, text))
     return stats, bot_msgs
@@ -2970,7 +2980,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "reminders-v119"
+BUILD_TAG = "weekly-admin-report-v120"
 
 
 @app.get("/api/version")
