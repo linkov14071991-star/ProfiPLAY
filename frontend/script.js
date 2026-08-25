@@ -1,20 +1,17 @@
-// ==== Абсолютная страховка от зависания на экране загрузки ====
-// Регистрируется ПЕРВОЙ, до любого другого кода. Даже если ниже случится
-// ошибка верхнего уровня (boot() не выполнится) — пользователь всё равно
-// попадёт в меню, а не застрянет на «Профик проверяет подписку…».
-function _forceMenuIfStuck() {
+// ==== Страховка от вечной загрузки (не в обход подписки) ====
+// Подписка на канал ОБЯЗАТЕЛЬНА. Если экран проверки завис (крайне редко —
+// упал boot() или сеть), не пускаем в меню, а показываем экран «подпишись»
+// с кнопкой перепроверки — так гейт не обходится.
+function _forceNeedSubIfStuck() {
   try {
     var chk = document.getElementById("screen-check");
     if (!chk || !chk.classList.contains("active")) return;
     var scr = document.querySelectorAll(".screen");
     for (var i = 0; i < scr.length; i++) scr[i].classList.remove("active");
-    var m = document.getElementById("screen-menu");
-    if (m) m.classList.add("active");
+    var ns = document.getElementById("screen-need-sub");
+    if (ns) ns.classList.add("active");
   } catch (e) {}
 }
-window.addEventListener("error", _forceMenuIfStuck);
-window.addEventListener("unhandledrejection", _forceMenuIfStuck);
-setTimeout(_forceMenuIfStuck, 5000);
 
 // ==== Telegram WebApp init ====
 // SDK грузится асинхронно (не блокирует страницу, если telegram.org недоступен).
@@ -510,21 +507,24 @@ else initMenuExtras();
 // ==== Проверка подписки ====
 async function checkSubscription() {
   const userId = tg?.initDataUnsafe?.user?.id;
-  let subscribed = true;
-  if (userId) {
+  let subscribed;
+  if (!userId) {
+    // Вне Telegram (обычный браузер) подписку проверить нельзя — пускаем (для теста).
+    subscribed = true;
+  } else {
+    // СТРОГО: подписка на канал обязательна. Не смогли проверить (таймаут/ошибка)
+    // → просим подписаться (можно перепроверить кнопкой). Гейт не обходится.
     try {
-      // таймаут 6 сек: если бэкенд молчит — не держим ученика на экране проверки,
-      // а пускаем внутрь (fail-open). Подписку перепроверим позже.
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 5000);
+      const t = setTimeout(() => ctrl.abort(), 7000);
       const r = await fetch(`/api/check_subscription?user_id=${userId}`, { signal: ctrl.signal });
       clearTimeout(t);
       const data = await r.json();
       subscribed = !!data.subscribed;
-    } catch (e) { subscribed = true; }
+    } catch (e) { subscribed = false; }
   }
   try { showScreen(subscribed ? "menu" : "needSub"); }
-  catch (e) { console.error("showScreen failed", e); document.getElementById("screen-menu")?.classList.add("active"); }
+  catch (e) { console.error("showScreen failed", e); document.getElementById("screen-need-sub")?.classList.add("active"); }
   if (subscribed && typeof window._maybeOpenIncomingDuel === "function") {
     await window._maybeOpenIncomingDuel();
   }
@@ -6382,15 +6382,8 @@ function boot() {
 }
 boot();
 
-// Страховка: приложение НИКОГДА не должно застревать на экране проверки подписки.
-// Если через 7 сек экран проверки всё ещё активен (SDK не пришёл, бэкенд молчит,
-// упал какой-то хук) — принудительно пускаем в меню (fail-open).
-setTimeout(() => {
-  const chk = document.getElementById("screen-check");
-  if (!chk || !chk.classList.contains("active")) return;
-  try { showScreen("menu"); }
-  catch (e) {
-    chk.classList.remove("active");
-    document.getElementById("screen-menu")?.classList.add("active");
-  }
-}, 7000);
+// Страховка от вечной загрузки: если через 12 сек экран проверки всё ещё активен
+// (проверка подписки не завершилась) — показываем экран «подпишись» с кнопкой
+// перепроверки. НЕ пускаем в меню, чтобы обязательная подписка не обходилась.
+// 12с > таймаута проверки (7с), поэтому нормальную проверку не перебиваем.
+setTimeout(_forceNeedSubIfStuck, 12000);
