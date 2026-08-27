@@ -2240,6 +2240,12 @@ async def weekly_active(init_data: str = Body(..., embed=True)):
         seconds_left = max(0, sl["s"]) if (sl and sl["s"] is not None) else None
         stats = json.loads(ch["stats_json"]) if ch["stats_json"] else None
 
+        # Живая статистика по текущему вызову (видна всем): приняли / обыграли / не смогли
+        att = db.execute("SELECT beat FROM weekly_attempt WHERE challenge_id = ?", (ch["id"],)).fetchall()
+        accepted_live = len(att)
+        won_live = sum(1 for a in att if a["beat"])
+        live_stats = {"accepted": accepted_live, "won": won_live, "lost": accepted_live - won_live}
+
         res = {
             "active": state == "open",
             "state": state,
@@ -2252,6 +2258,7 @@ async def weekly_active(init_data: str = Body(..., embed=True)):
             "my_attempt": (dict(attempt) if attempt else None),
             "seconds_left": seconds_left,
             "stats": stats,
+            "live_stats": live_stats,
         }
         if state == "open":
             payload = json.loads(ch["payload_json"])
@@ -2980,7 +2987,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-hub-archive-v122"
+BUILD_TAG = "weekly-live-stats-v123"
 
 
 @app.get("/api/version")

@@ -6080,6 +6080,14 @@ function weeklyStartTicker(secondsLeft) {
   weeklyUpdateTimers();
   weeklyTicker = setInterval(weeklyUpdateTimers, 1000);
 }
+function weeklyLiveStatsHtml(ls) {
+  if (!ls) return "";
+  return `<div class="weekly-live">
+    <span>⚔ Приняли <b>${ls.accepted}</b></span>
+    <span class="ok">🏆 Обыграли Игоря <b>${ls.won}</b></span>
+    <span>😅 Не смогли <b>${ls.lost}</b></span>
+  </div>`;
+}
 function weeklyStatsHtml(s) {
   if (!s) return "";
   return `<div class="weekly-stats">
@@ -6133,6 +6141,7 @@ async function loadWeekly() {
       <div class="weekly-title">🔥 Вызов от Игоря</div>
       <div class="weekly-sub">Формат: <b>${title}</b> · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
       <div class="weekly-timer"></div>
+      ${weeklyLiveStatsHtml(a.live_stats)}
       ${status}${btn}
       <div class="weekly-hint">⏱ На вызов даётся 24 часа. Если не принять — <b>−5</b> рейтинга за игнор.</div>
     </div>`;
@@ -6167,6 +6176,7 @@ async function loadWeeklyBanner() {
       <div class="weekly-title">🔥 Вызов от Игоря</div>
       <div class="weekly-timer"></div>
       <div class="weekly-sub">«${title}» · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
+      ${weeklyLiveStatsHtml(a.live_stats)}
       <button class="btn btn-primary" style="margin-top:8px;">⚔ Принять вызов</button>
     </div>`;
   weeklyStartTicker(a.seconds_left);
