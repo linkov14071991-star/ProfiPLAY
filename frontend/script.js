@@ -6148,6 +6148,15 @@ async function loadWeekly() {
   weeklyStartTicker(a.seconds_left);
 }
 
+// Пока баннер вызова виден на главной — освежаем статистику раз в 30 сек (живой счёт)
+setInterval(() => {
+  try {
+    const el = document.getElementById("weekly-banner");
+    const menu = document.getElementById("screen-menu");
+    if (el && el.style.display !== "none" && menu && menu.classList.contains("active")) loadWeeklyBanner();
+  } catch (e) {}
+}, 30000);
+
 // Баннер вызова на главном экране
 async function loadWeeklyBanner() {
   const el = document.getElementById("weekly-banner");
@@ -6156,28 +6165,36 @@ async function loadWeeklyBanner() {
   try { res = await apiPost("/api/weekly/active", { init_data: INIT_DATA }); } catch (e) {}
   const a = (res && res.state && res.state !== "none") ? res : null;
   if (!a) { el.style.display = "none"; el.innerHTML = ""; weeklyStartTicker(null); return; }
+  weeklyActive = a;
   const title = WEEKLY_FMT_TITLES_JS[a.format] || a.format;
+
   if (a.state === "closed") {
+    // Итоги видны ВСЕМ прямо в баннере (раздел «Соревнования» закрыт для игроков)
     el.style.display = "";
     el.innerHTML = `
-      <div class="weekly-card" onclick="showScreen('compHub')" style="cursor:pointer;">
+      <div class="weekly-card">
         <div class="weekly-title">🏁 Вызов от Игоря завершён</div>
-        <div class="weekly-sub">Итоги: приняли ${a.stats ? a.stats.accepted : 0} · обыграли ${a.stats ? a.stats.won : 0} 👀 Смотри статистику</div>
+        <div class="weekly-sub">Формат: <b>${title}</b> · счёт Игоря <b>${weeklyScoreText(a.format, a.admin_score)}</b></div>
+        ${weeklyStatsHtml(a.stats)}
       </div>`;
     weeklyStartTicker(null);
     return;
   }
-  // открыт: баннер с таймером тем, кто ещё не принял и не автор
-  weeklyActive = a;
-  if (a.is_admin || a.my_attempt) { el.style.display = "none"; el.innerHTML = ""; weeklyStartTicker(a.seconds_left); return; }
+
+  // ОТКРЫТ: баннер со статистикой видят ВСЕ — вся компания следит за битвой на главном
   el.style.display = "";
+  const canPlay = !a.is_admin && !a.my_attempt;
+  let action;
+  if (canPlay) action = `<button class="btn btn-primary" style="margin-top:8px;">⚔ Принять вызов</button>`;
+  else if (a.is_admin) action = `<div class="weekly-status">Это твой вызов — следи за битвой! 👀</div>`;
+  else action = `<div class="weekly-status ok">✅ Ты уже принял — следи за счётом!</div>`;
   el.innerHTML = `
-    <div class="weekly-card" onclick="openWeeklyPlay()" style="cursor:pointer;">
+    <div class="weekly-card"${canPlay ? ' onclick="openWeeklyPlay()" style="cursor:pointer;"' : ""}>
       <div class="weekly-title">🔥 Вызов от Игоря</div>
       <div class="weekly-timer"></div>
       <div class="weekly-sub">«${title}» · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
       ${weeklyLiveStatsHtml(a.live_stats)}
-      <button class="btn btn-primary" style="margin-top:8px;">⚔ Принять вызов</button>
+      ${action}
     </div>`;
   weeklyStartTicker(a.seconds_left);
 }

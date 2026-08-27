@@ -3052,7 +3052,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "daily-rank-notify-v124"
+BUILD_TAG = "weekly-banner-stats-all-v125"
 
 
 @app.get("/api/version")
