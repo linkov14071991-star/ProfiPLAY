@@ -252,6 +252,17 @@ def init_db():
         """
     )
 
+    # Снимок места игрока в общем рейтинге (для «изменение за день» в оповещении)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS daily_rank (
+            user_id    INTEGER PRIMARY KEY,
+            rank       INTEGER,
+            updated_at TEXT
+        )
+        """
+    )
+
     # --- Миграции: колонки для «Вызова от Игоря» с таймером/статистикой ---
     _wc_cols = {r[1] for r in conn.execute("PRAGMA table_info(weekly_challenge)").fetchall()}
     if "expires_at" not in _wc_cols:

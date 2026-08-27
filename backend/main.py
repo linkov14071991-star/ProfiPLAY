@@ -2757,24 +2757,89 @@ async def _bot_send_all(ids, text, markup=None):
 DAILY_REMINDER_HOUR_MSK = 12           # ежедневное напоминание зайти в приложение
 
 
+def _plural_ru(n, one, few, many):
+    n10, n100 = n % 10, n % 100
+    if n10 == 1 and n100 != 11:
+        return one
+    if 2 <= n10 <= 4 and not (12 <= n100 <= 14):
+        return few
+    return many
+
+
+def _compute_ranks(db):
+    """Место каждого игрока в общем рейтинге (competition ranking: 1,2,2,4…)."""
+    rows = db.execute("SELECT telegram_id, rating FROM users ORDER BY rating DESC, telegram_id ASC").fetchall()
+    ranks = {}
+    rank = 0
+    count = 0
+    prev_rating = None
+    for r in rows:
+        count += 1
+        if r["rating"] != prev_rating:
+            rank = count
+            prev_rating = r["rating"]
+        ranks[r["telegram_id"]] = rank
+    return ranks
+
+
+async def _bot_send_personal(messages, markup=None):
+    """Персональные тексты: messages = [(chat_id, text)], общая кнопка markup."""
+    if not BOT_TOKEN:
+        return 0
+    sent = 0
+    async with httpx.AsyncClient(timeout=20) as client:
+        for chat_id, text in messages:
+            try:
+                payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+                if markup:
+                    payload["reply_markup"] = markup
+                await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload)
+                sent += 1
+            except Exception:
+                pass
+            await asyncio.sleep(0.05)
+    return sent
+
+
 async def _daily_reminder_loop():
-    """Раз в день (в 12:00 МСК) напоминает ВСЕМ зайти в приложение — чтобы заходили минимум раз в день."""
+    """Раз в день (12:00 МСК) — персональное напоминание: место в рейтинге и изменение за день."""
     while True:
         try:
             now = datetime.now(MSK_TZ)
             if now.hour >= DAILY_REMINDER_HOUR_MSK:
                 key = "daily_reminder_" + now.date().isoformat()
-                ids = []
+                messages = []
                 with get_db() as db:
                     if not _flag_get(db, key):
                         _flag_set(db, key)
-                        ids = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
-                if ids and BOT_TOKEN and WEBAPP_URL:
-                    text = ("👋 <b>Загляни в Профик ARENA!</b>\n\n"
-                            "Ежедневные задания, серия дней и рейтинг ждут — заходи хотя бы на минутку. "
-                            "А по вт/чт/сб — Вызов от Игоря (за игнор списывается 5 рейтинга ⚠️).")
+                        ranks = _compute_ranks(db)
+                        total = len(ranks)
+                        prev = {r["user_id"]: r["rank"] for r in db.execute("SELECT user_id, rank FROM daily_rank").fetchall()}
+                        now_iso = now.isoformat()
+                        for uid, cur in ranks.items():
+                            place = f"📊 Твоё место в рейтинге: <b>#{cur}</b> из {total}"
+                            p = prev.get(uid)
+                            if p is not None:
+                                d = p - cur   # >0 — поднялся, <0 — опустился
+                                if d > 0:
+                                    place += f"\n📈 За день: <b>+{d}</b> {_plural_ru(d, 'позиция', 'позиции', 'позиций')} вверх — так держать!"
+                                elif d < 0:
+                                    place += f"\n📉 За день: <b>−{abs(d)}</b> {_plural_ru(abs(d), 'позиция', 'позиции', 'позиций')} вниз — пора наверстать!"
+                                else:
+                                    place += "\n➖ За день без изменений — не сбавляй темп!"
+                            body = ("👋 <b>Загляни в Профик ARENA!</b>\n\n"
+                                    f"{place}\n\n"
+                                    "Ежедневные задания, серия дней и новые игры ждут. "
+                                    "По вт/чт/сб — Вызов от Игоря (за игнор −5 рейтинга ⚠️).")
+                            messages.append((uid, body))
+                            db.execute(
+                                "INSERT INTO daily_rank (user_id, rank, updated_at) VALUES (?, ?, ?) "
+                                "ON CONFLICT(user_id) DO UPDATE SET rank = excluded.rank, updated_at = excluded.updated_at",
+                                (uid, cur, now_iso),
+                            )
+                if messages and BOT_TOKEN and WEBAPP_URL:
                     markup = {"inline_keyboard": [[{"text": "🎮 Открыть Профик ARENA", "web_app": {"url": WEBAPP_URL}}]]}
-                    await _bot_send_all(ids, text, markup)
+                    await _bot_send_personal(messages, markup)
         except Exception as e:
             print(f"[daily reminder] {e}")
         await asyncio.sleep(300)
@@ -2987,7 +3052,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "weekly-live-stats-v123"
+BUILD_TAG = "daily-rank-notify-v124"
 
 
 @app.get("/api/version")
