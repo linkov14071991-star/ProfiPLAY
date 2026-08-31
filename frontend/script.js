@@ -116,6 +116,7 @@ const SCREENS = {
   giveaway: "screen-giveaway",
   giveawayHub: "screen-giveaway-hub",
   giveawayArchive: "screen-giveaway-archive",
+  giveaway29: "screen-giveaway29",
   reverseSetup: "screen-reverse-setup",
   reversePlay: "screen-reverse-play",
   reverseResult: "screen-reverse-result",
@@ -2975,7 +2976,7 @@ const GIVEAWAY_ARCHIVE = [
 ];
 // Будущие розыгрыши (пока анонсы «скоро»)
 const GIVEAWAY_UPCOMING = [
-  { title: "Розыгрыш 29 августа", date: "29 августа 2026", icon: "🎯", note: "Детали объявим совсем скоро — следи за новостями!" },
+  { title: "Розыгрыш 29 августа", date: "Топ-20 недели · сертификат OZON / ЗЯ", icon: "🎯", screen: "giveaway29" },
   { title: "Забег 10 км", date: "26 сентября 2026", icon: "🏃", note: "Снова угадываем время Игоря на 10 км! Приём прогнозов откроем ближе к дате." },
 ];
 function gvUpcomingInfo(i) {
@@ -2994,12 +2995,15 @@ function openGiveawayHub() {
       <div class="icon" style="background:#FFD166;">🏆</div>
       <div class="info"><div class="title">Зал славы</div><div class="desc">История розыгрышей и победители — заходи и смотри!</div></div>
     </div>`;
-  html += GIVEAWAY_UPCOMING.map((g, i) => `
-    <div class="game-card" onclick="gvUpcomingInfo(${i})">
+  html += GIVEAWAY_UPCOMING.map((g, i) => {
+    const onclick = g.screen ? `openGiveaway29()` : `gvUpcomingInfo(${i})`;
+    const badge = g.screen ? "" : `<div class="badge-soon">🔜 Скоро</div>`;
+    return `<div class="game-card" onclick="${onclick}">
       <div class="icon">${g.icon}</div>
-      <div class="info"><div class="title">${escapeHtml(g.title)}</div><div class="desc">📅 ${g.date}</div></div>
-      <div class="badge-soon">🔜 Скоро</div>
-    </div>`).join("");
+      <div class="info"><div class="title">${escapeHtml(g.title)}</div><div class="desc">${escapeHtml(g.date)}</div></div>
+      ${badge}
+    </div>`;
+  }).join("");
   el.innerHTML = html;
 }
 window.openGiveawayHub = openGiveawayHub;
@@ -3024,6 +3028,48 @@ function openGiveawayArchive() {
     </div>`).join("");
 }
 window.openGiveawayArchive = openGiveawayArchive;
+
+function gv29Name(t) { return t.username ? "@" + escapeHtml(t.username) : escapeHtml(t.name || "Игрок"); }
+async function openGiveaway29() {
+  hapticMedium();
+  showScreen("giveaway29");
+  document.getElementById("gv29-top").innerHTML = '<div style="text-align:center; opacity:.6; padding:12px;">Загрузка…</div>';
+  const res = await apiPost("/api/giveaway29/state", { init_data: INIT_DATA });
+  gv29Render(res);
+}
+window.openGiveaway29 = openGiveaway29;
+function gv29Render(res) {
+  if (!res) return;
+  const winnerIds = new Set((res.winners || []).map((w) => w.user_id));
+  // призёры
+  const wEl = document.getElementById("gv29-winners");
+  if (res.drawn && res.winners && res.winners.length) {
+    wEl.style.display = "";
+    wEl.innerHTML = `<div class="gv29-win-title">🎉 Призёры розыгрыша!</div>` +
+      res.winners.map((w, i) => `<div class="gv29-winner">${["🥇", "🥈", "🥉"][i] || "🏅"} <b>${gv29Name(w)}</b> <span>был #${w.place} · +${w.gain} за неделю</span></div>`).join("") +
+      `<div class="gv29-win-note">Призы: сертификат OZON / Золотое Яблоко. Скоро свяжемся с победителями!</div>`;
+  } else { wEl.style.display = "none"; wEl.innerHTML = ""; }
+  // топ-20
+  const t = res.top20 || [];
+  document.getElementById("gv29-count").textContent = t.length ? `(${t.length})` : "";
+  document.getElementById("gv29-top").innerHTML = t.length
+    ? t.map((r) => `<div class="gv29-row${winnerIds.has(r.user_id) ? " winner" : ""}"><span class="gv29-place">${r.place}</span><span class="gv29-name">${gv29Name(r)}</span><span class="gv29-gain">+${r.gain}</span></div>`).join("")
+    : '<div style="text-align:center; opacity:.6; padding:12px;">Пока нет участников с приростом рейтинга за неделю.</div>';
+  // кнопка розыгрыша — только админу и пока не разыграно
+  const btn = document.getElementById("btn-gv29-draw");
+  btn.style.display = (res.is_admin && !res.drawn) ? "" : "none";
+}
+async function gv29Draw() {
+  if (!confirm("Разыграть 3 призёров? Случайно, но у кого выше рейтинг — выше шанс. Результат зафиксируется для всех и не изменится.")) return;
+  const btn = document.getElementById("btn-gv29-draw");
+  btn.disabled = true; btn.textContent = "Разыгрываю…";
+  const res = await apiPost("/api/giveaway29/draw", { init_data: INIT_DATA });
+  btn.disabled = false; btn.textContent = "🎲 Разыграть 3 призёров";
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось разыграть."); return; }
+  hapticSuccess();
+  await openGiveaway29();   // перезагружаем полное состояние (с призёрами)
+}
+document.getElementById("btn-gv29-draw").addEventListener("click", gv29Draw);
 
 async function openGiveaway() { hapticMedium(); showScreen("giveaway"); await loadGiveaway(); }
 window.openGiveaway = openGiveaway;

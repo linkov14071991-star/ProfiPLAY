@@ -252,6 +252,17 @@ def init_db():
         """
     )
 
+    # Результаты жеребьёвок розыгрышей (фиксируем топ-20 и призёров на момент розыгрыша)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS giveaway_draws (
+            key        TEXT PRIMARY KEY,
+            data_json  TEXT NOT NULL,
+            created_at TEXT
+        )
+        """
+    )
+
     # Снимок места игрока в общем рейтинге (для «изменение за день» в оповещении)
     conn.execute(
         """

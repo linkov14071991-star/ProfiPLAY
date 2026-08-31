@@ -2559,6 +2559,19 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .gv-arch-row { font-size: 14px; line-height: 1.5; }
 .gv-arch-win { font-size: 14.5px; line-height: 1.5; margin: 4px 0; }
 .gv-arch-prize { font-size: 13.5px; margin-top: 6px; color: var(--brand-purple); font-weight: 700; }
+.gv29-rules { background: rgba(102, 54, 233, 0.06); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; font-size: 13.5px; line-height: 1.6; color: var(--text-on-light); }
+.gv29-rules-title { font-weight: 800; margin-bottom: 6px; color: var(--brand-purple); }
+.gv29-winners { background: linear-gradient(135deg, rgba(255, 209, 102, 0.28), rgba(180, 242, 77, 0.18)); border: 1px solid rgba(255, 159, 28, 0.4); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; }
+.gv29-win-title { font-weight: 800; font-size: 16px; text-align: center; color: var(--text-on-light); margin-bottom: 8px; }
+.gv29-winner { font-size: 15px; padding: 4px 0; color: var(--text-on-light); }
+.gv29-winner span { font-size: 12px; opacity: 0.7; }
+.gv29-win-note { font-size: 12px; opacity: 0.8; text-align: center; margin-top: 8px; color: var(--text-on-light); }
+.gv29-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; font-size: 14px; color: var(--text-on-light); }
+.gv29-row:nth-child(odd) { background: rgba(102, 54, 233, 0.04); }
+.gv29-row.winner { background: rgba(255, 209, 102, 0.4); font-weight: 700; }
+.gv29-place { width: 26px; text-align: center; font-weight: 700; opacity: 0.75; }
+.gv29-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gv29-gain { font-weight: 800; color: var(--brand-lime); }
 .gv-prize-note { font-size: 12px; line-height: 1.5; color: var(--text-on-light); opacity: 0.85; margin-top: 8px; border-top: 1px solid rgba(255, 159, 28, 0.3); padding-top: 8px; }
 .gv-prize-cta { margin-top: 6px; font-weight: 600; opacity: 1; }
 .drl-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px dashed rgba(102,54,233,0.15); }

@@ -2948,6 +2948,96 @@ async def giveaway_announce_results(init_data: str = Body(...)):
     return {"ok": True, "sent": sent, "actual_sec": actual}
 
 
+# ============ Розыгрыш 29 августа: жеребьёвка 3 призёров из топ-20 недели ============
+GIVEAWAY29_KEY = "aug29"
+GIVEAWAY29_TOP = 20
+GIVEAWAY29_WINNERS = 3
+
+
+def _weekly_leaders(db, limit):
+    """Топ по приросту рейтинга за 7 дней (для жеребьёвки)."""
+    rows = db.execute(
+        """
+        SELECT u.telegram_id, u.first_name, u.username, u.rating,
+               COALESCE(SUM(rl.delta), 0) AS gain
+        FROM users u
+        LEFT JOIN rating_log rl ON rl.user_id = u.telegram_id AND rl.created_at >= datetime('now', '-7 days')
+        GROUP BY u.telegram_id
+        HAVING gain > 0
+        ORDER BY gain DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [{"place": i, "name": (r["first_name"] or "Игрок"), "username": r["username"],
+             "gain": r["gain"], "rating": r["rating"], "user_id": r["telegram_id"]}
+            for i, r in enumerate(rows, start=1)]
+
+
+def _weighted_sample(items, weights, k):
+    """Выбор k различных элементов, вероятность пропорциональна весу (вес=прирост)."""
+    items = list(items)
+    weights = [max(0.0, float(w)) for w in weights]
+    chosen = []
+    for _ in range(min(k, len(items))):
+        total = sum(weights)
+        if total <= 0:
+            idx = random.randrange(len(items))
+        else:
+            r = random.uniform(0, total)
+            acc = 0.0
+            idx = len(items) - 1
+            for i, w in enumerate(weights):
+                acc += w
+                if r <= acc:
+                    idx = i
+                    break
+        chosen.append(items[idx])
+        items.pop(idx)
+        weights.pop(idx)
+    return chosen
+
+
+def _giveaway29_get(db):
+    r = db.execute("SELECT data_json FROM giveaway_draws WHERE key = ?", (GIVEAWAY29_KEY,)).fetchone()
+    return json.loads(r["data_json"]) if r else None
+
+
+@app.post("/api/giveaway29/state")
+async def giveaway29_state(init_data: str = Body(..., embed=True)):
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        is_admin = me["telegram_id"] in ADMIN_IDS
+        drawn = _giveaway29_get(db)
+        if drawn:
+            return {"drawn": True, "is_admin": is_admin, "top20": drawn["top20"],
+                    "winners": drawn["winners"], "drawn_at": drawn.get("drawn_at")}
+        top = _weekly_leaders(db, GIVEAWAY29_TOP)   # превью текущего топа до жеребьёвки
+        return {"drawn": False, "is_admin": is_admin, "top20": top, "winners": None}
+
+
+@app.post("/api/giveaway29/draw")
+async def giveaway29_draw(init_data: str = Body(..., embed=True)):
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        existing = _giveaway29_get(db)
+        if existing:
+            return {"ok": True, "already": True, **existing}
+        top = _weekly_leaders(db, GIVEAWAY29_TOP)
+        if len(top) < GIVEAWAY29_WINNERS:
+            raise HTTPException(status_code=400, detail="Пока мало участников в топе для розыгрыша")
+        winners = _weighted_sample(top, [t["gain"] for t in top], GIVEAWAY29_WINNERS)
+        data = {"drawn_at": datetime.now(MSK_TZ).isoformat(), "top20": top, "winners": winners}
+        db.execute(
+            "INSERT INTO giveaway_draws (key, data_json, created_at) VALUES (?, ?, ?)",
+            (GIVEAWAY29_KEY, json.dumps(data, ensure_ascii=False), data["drawn_at"]),
+        )
+    return {"ok": True, "already": False, **data}
+
+
 # ---------- Python-режим (MVP) ----------
 @app.post("/api/python/telemetry_batch")
 async def python_telemetry_batch(payload: dict = Body(...)):
@@ -3052,7 +3142,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "weekly-banner-stats-all-v125"
+BUILD_TAG = "giveaway29-draw-v126"
 
 
 @app.get("/api/version")
