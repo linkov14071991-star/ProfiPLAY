@@ -2400,6 +2400,7 @@ async def weekly_attempt(
 MSK_TZ = timezone(timedelta(hours=3))
 GIVEAWAY = {
     "active": True,
+    "edition": "run_20260926",   # выпуск розыгрыша: при смене старые прогнозы авто-очищаются
     "title": "Розыгрыш от Игоря",
     "event": "Забег 10 км",
     "date": "26 сентября 2026, Москва",
@@ -2443,6 +2444,19 @@ def _giveaway_locked():
     return datetime.now(MSK_TZ) >= _giveaway_deadline()
 
 
+def _giveaway_ensure_edition(db):
+    """Если сменился выпуск розыгрыша (новый забег) — авто-очищаем прогнозы и результат
+    прошлого забега. Так прогнозы августа не переносятся на сентябрьский розыгрыш."""
+    cur = _flag_get(db, "giveaway_edition")
+    want = GIVEAWAY.get("edition", "default")
+    if cur != want:
+        db.execute("DELETE FROM giveaway_prediction")
+        db.execute("DELETE FROM giveaway_result")
+        _flag_set(db, "giveaway_edition", want)
+        return True
+    return False
+
+
 def _giveaway_actual(db):
     r = db.execute("SELECT actual_sec FROM giveaway_result WHERE id = 1").fetchone()
     return r["actual_sec"] if r and r["actual_sec"] is not None else None
@@ -2478,6 +2492,7 @@ async def giveaway_state(init_data: str = Body(..., embed=True)):
     with get_db() as db:
         me = upsert_user(db, tg_user)
         my_id = me["telegram_id"]
+        _giveaway_ensure_edition(db)   # авто-очистка прогнозов прошлого забега при смене выпуска
         mine = db.execute(
             "SELECT seconds, updated_at FROM giveaway_prediction WHERE user_id = ?", (my_id,)
         ).fetchone()
@@ -2558,6 +2573,7 @@ async def giveaway_predict(init_data: str = Body(...), seconds: int = Body(...))
         raise HTTPException(status_code=400, detail="Время вне допустимого диапазона")
     with get_db() as db:
         me = upsert_user(db, tg_user)
+        _giveaway_ensure_edition(db)   # на случай, если прогноз шлют раньше открытия экрана
         nick = me["username"] if ("username" in me.keys() and me["username"]) else (me["first_name"] or "Игрок")
         now_iso = datetime.now(MSK_TZ).isoformat()
         db.execute(
@@ -3379,7 +3395,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "tb-retake-top-v129"
+BUILD_TAG = "giveaway-edition-autoclear-v130"
 
 
 @app.get("/api/version")
