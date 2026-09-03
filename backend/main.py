@@ -3254,7 +3254,7 @@ def _tb_top(db, limit=20):
     rows = db.execute(
         """
         SELECT t.user_id, t.correct, t.score, t.passed, t.attempts, t.best_at,
-               u.username, u.first_name, u.last_name
+               u.username, u.first_name
         FROM tb_quiz_result t
         JOIN users u ON u.telegram_id = t.user_id
         ORDER BY t.score DESC, (t.best_at IS NULL) ASC, t.best_at ASC, t.user_id ASC
@@ -3461,7 +3461,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-results-manual-send-v131"
+BUILD_TAG = "tbquiz-top-fix-v132"
 
 
 @app.get("/api/version")
