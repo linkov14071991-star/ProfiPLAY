@@ -296,6 +296,16 @@ def init_db():
     if "stats_json" not in _wc_cols:
         conn.execute("ALTER TABLE weekly_challenge ADD COLUMN stats_json TEXT")
 
+    # --- Миграции: многоразовое прохождение теста по ТБ ---
+    _tb_cols = {r[1] for r in conn.execute("PRAGMA table_info(tb_quiz_result)").fetchall()}
+    if "attempts" not in _tb_cols:
+        conn.execute("ALTER TABLE tb_quiz_result ADD COLUMN attempts INTEGER NOT NULL DEFAULT 1")
+    if "rating_awarded" not in _tb_cols:
+        # существующие строки = первая попытка уже начислена
+        conn.execute("ALTER TABLE tb_quiz_result ADD COLUMN rating_awarded INTEGER NOT NULL DEFAULT 1")
+    if "best_at" not in _tb_cols:
+        conn.execute("ALTER TABLE tb_quiz_result ADD COLUMN best_at TEXT")
+
     conn.commit()
     conn.close()
 

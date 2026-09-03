@@ -3167,18 +3167,63 @@ def _tb_grade(score):
     return "повтор"
 
 
+def _tb_top(db, limit=20):
+    """Топ лучших по ТБ: по лучшему счёту (убыв.), при равенстве — кто раньше его достиг."""
+    rows = db.execute(
+        """
+        SELECT t.user_id, t.correct, t.score, t.passed, t.attempts, t.best_at,
+               u.username, u.first_name, u.last_name
+        FROM tb_quiz_result t
+        JOIN users u ON u.telegram_id = t.user_id
+        ORDER BY t.score DESC, (t.best_at IS NULL) ASC, t.best_at ASC, t.user_id ASC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    out = []
+    for i, r in enumerate(rows):
+        out.append({
+            "place": i + 1,
+            "user_id": r["user_id"],
+            "username": r["username"],
+            "name": _display_name(r),
+            "correct": r["correct"],
+            "score": r["score"],
+            "passed": bool(r["passed"]),
+            "grade": _tb_grade(r["score"]),
+            "attempts": r["attempts"] if r["attempts"] is not None else 1,
+        })
+    return out
+
+
 @app.post("/api/tbquiz/state")
 async def tbquiz_state(init_data: str = Body(..., embed=True)):
     tg_user = get_verified_user(init_data)
     with get_db() as db:
         me = upsert_user(db, tg_user)
-        r = db.execute("SELECT correct, score, passed FROM tb_quiz_result WHERE user_id = ?", (me["telegram_id"],)).fetchone()
+        r = db.execute(
+            "SELECT correct, score, passed, attempts, rating_awarded FROM tb_quiz_result WHERE user_id = ?",
+            (me["telegram_id"],),
+        ).fetchone()
+        top = _tb_top(db)
     questions = [{"q": q["q"], "options": q["options"]} for q in TB_QUIZ]
+    result = None
     if r:
-        return {"done": True, "questions": questions, "total": len(TB_QUIZ),
-                "result": {"correct": r["correct"], "score": r["score"], "passed": bool(r["passed"]),
-                           "grade": _tb_grade(r["score"])}}
-    return {"done": False, "questions": questions, "total": len(TB_QUIZ)}
+        result = {"correct": r["correct"], "score": r["score"], "passed": bool(r["passed"]),
+                  "grade": _tb_grade(r["score"]), "attempts": r["attempts"] if r["attempts"] is not None else 1,
+                  "rating_awarded": bool(r["rating_awarded"])}
+    # done оставляем для обратной совместимости, но переигрывать можно всегда
+    return {"done": bool(r), "questions": questions, "total": len(TB_QUIZ),
+            "max_score": len(TB_QUIZ) * TB_POINTS_PER, "result": result, "top": top}
+
+
+@app.post("/api/tbquiz/top")
+async def tbquiz_top(init_data: str = Body(..., embed=True)):
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        upsert_user(db, tg_user)
+        top = _tb_top(db)
+    return {"top": top}
 
 
 @app.post("/api/tbquiz/submit")
@@ -3188,27 +3233,46 @@ async def tbquiz_submit(init_data: str = Body(...), answers: list = Body(...)):
     with get_db() as db:
         me = upsert_user(db, tg_user)
         uid = me["telegram_id"]
-        existing = db.execute("SELECT correct, score, passed FROM tb_quiz_result WHERE user_id = ?", (uid,)).fetchone()
-        if existing:
-            return {"already": True, "correct": existing["correct"], "score": existing["score"],
-                    "passed": bool(existing["passed"]), "grade": _tb_grade(existing["score"]),
-                    "correct_answers": correct_key}
         ans = list(answers or [])
         correct = sum(1 for i, k in enumerate(correct_key) if i < len(ans) and ans[i] == k)
         score = correct * TB_POINTS_PER
         passed = 1 if score >= TB_PASS_SCORE else 0
-        # разовое начисление рейтинга (без дневного капа — одноразовый тест)
-        if score > 0:
-            db.execute("UPDATE users SET rating = rating + ? WHERE telegram_id = ?", (score, uid))
-            nr = db.execute("SELECT rating FROM users WHERE telegram_id = ?", (uid,)).fetchone()["rating"]
-            db.execute("INSERT INTO rating_log (user_id, delta, source, balance_after) VALUES (?, ?, 'tb_quiz', ?)", (uid, score, nr))
-        db.execute(
-            "INSERT INTO tb_quiz_result (user_id, correct, score, passed, created_at) VALUES (?, ?, ?, ?, datetime('now'))",
-            (uid, correct, score, passed),
-        )
+
+        existing = db.execute(
+            "SELECT correct, score, passed, attempts, rating_awarded FROM tb_quiz_result WHERE user_id = ?",
+            (uid,),
+        ).fetchone()
+
+        awarded_now = 0
+        if existing is None:
+            # ПЕРВАЯ попытка — начисляем рейтинг
+            if score > 0:
+                db.execute("UPDATE users SET rating = rating + ? WHERE telegram_id = ?", (score, uid))
+                nr = db.execute("SELECT rating FROM users WHERE telegram_id = ?", (uid,)).fetchone()["rating"]
+                db.execute("INSERT INTO rating_log (user_id, delta, source, balance_after) VALUES (?, ?, 'tb_quiz', ?)", (uid, score, nr))
+                awarded_now = score
+            db.execute(
+                "INSERT INTO tb_quiz_result (user_id, correct, score, passed, attempts, rating_awarded, best_at, created_at) "
+                "VALUES (?, ?, ?, ?, 1, 1, datetime('now'), datetime('now'))",
+                (uid, correct, score, passed),
+            )
+        else:
+            # ПОВТОРНАЯ попытка — рейтинг НЕ начисляем; храним лучший результат
+            new_attempts = (existing["attempts"] or 1) + 1
+            if score > existing["score"]:
+                db.execute(
+                    "UPDATE tb_quiz_result SET correct = ?, score = ?, passed = ?, attempts = ?, best_at = datetime('now') WHERE user_id = ?",
+                    (correct, score, passed, new_attempts, uid),
+                )
+            else:
+                db.execute("UPDATE tb_quiz_result SET attempts = ? WHERE user_id = ?", (new_attempts, uid))
+
         _check_and_grant_achievements(db, uid)
-    return {"already": False, "correct": correct, "score": score, "passed": bool(passed),
-            "grade": _tb_grade(score), "correct_answers": correct_key}
+        top = _tb_top(db)
+    first = existing is None
+    return {"already": not first, "first_attempt": first, "awarded": awarded_now,
+            "correct": correct, "score": score, "passed": bool(passed),
+            "grade": _tb_grade(score), "correct_answers": correct_key, "top": top}
 
 
 # ---------- Python-режим (MVP) ----------
@@ -3315,7 +3379,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway0926-vs-v128"
+BUILD_TAG = "tb-retake-top-v129"
 
 
 @app.get("/api/version")

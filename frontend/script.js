@@ -3099,22 +3099,43 @@ document.getElementById("btn-gv29-draw").addEventListener("click", gv29Draw);
 // ======= ТЕСТ ПО ТБ ===========
 // ==============================
 const tbq = { questions: [], answers: [], qIndex: 0 };
+function tbName(t) { return t.username ? "@" + escapeHtml(t.username) : escapeHtml(t.name || "Игрок"); }
+function tbRenderTop(top) {
+  const el = document.getElementById("tb-top");
+  if (!el) return;
+  if (!top || !top.length) { el.innerHTML = ""; return; }
+  const medal = (p) => ["🥇", "🥈", "🥉"][p - 1] || `${p}`;
+  el.innerHTML =
+    `<div class="tb-top-title">🏆 Топ лучших по ТБ</div>` +
+    top.map((r) => {
+      const myId = tg?.initDataUnsafe?.user?.id;
+      const mine = (myId && r.user_id === myId);
+      return `<div class="tb-top-row${mine ? " me" : ""}">
+        <span class="tb-top-place">${medal(r.place)}</span>
+        <span class="tb-top-name">${tbName(r)}${r.attempts > 1 ? ` <span class="tb-top-att">·${r.attempts} поп.</span>` : ""}</span>
+        <span class="tb-top-score">${r.score} б.${r.passed ? " ✅" : ""}</span>
+      </div>`;
+    }).join("");
+}
 async function openTbQuiz() {
   hapticMedium();
   showScreen("tbquizIntro");
   const st = await apiPost("/api/tbquiz/state", { init_data: INIT_DATA });
   tbq.questions = (st && st.questions) || [];
   const statusEl = document.getElementById("tb-intro-status");
-  const startBtn = document.getElementById("btn-tb-start");
-  if (st && st.done && st.result) {
-    statusEl.innerHTML = `Ты уже проходил тест: <b>${st.result.score} б.</b> — ${st.result.passed ? "✅ допущен" : "⛔ не допущен"}. Повторно пройти нельзя.`;
-    startBtn.textContent = "Смотреть результат";
-    startBtn.onclick = () => tbShowStoredResult(st.result);
+  const startBtn = document.getElementById("btn-tbq-start");
+  if (st && st.result) {
+    const r = st.result;
+    statusEl.innerHTML = `Твой лучший результат: <b>${r.score} б.</b> — ${r.passed ? "✅ допущен" : "⛔ не допущен"}` +
+      (r.attempts > 1 ? ` · попыток: ${r.attempts}` : "") +
+      `.<br><span class="tb-note-small">Баллы к рейтингу начислены за первую попытку. Можно перепройти для практики — рейтинг не изменится.</span>`;
+    startBtn.textContent = "Пройти ещё раз";
   } else {
     statusEl.textContent = "";
     startBtn.textContent = "Начать тест";
-    startBtn.onclick = tbqStart;
   }
+  startBtn.onclick = tbqStart;
+  tbRenderTop(st && st.top);
 }
 window.openTbQuiz = openTbQuiz;
 function tbqStart() {
@@ -3145,24 +3166,34 @@ async function tbSubmit() {
   const res = await apiPost("/api/tbquiz/submit", { init_data: INIT_DATA, answers: tbq.answers });
   if (!res) { alert("Не удалось отправить ответы. Попробуй ещё раз."); return; }
   refreshProfile();
+  tbRenderTop(res.top);
   tbRenderResult(res);
 }
-function tbShowVerdictSummary(correct, score, passed, grade) {
+function tbShowVerdictSummary(correct, score, passed, grade, opts) {
+  opts = opts || {};
   const v = document.getElementById("tb-verdict");
   v.className = "tb-verdict " + (passed ? "ok" : "bad");
   v.innerHTML = passed
     ? "✅ ДОПУЩЕН<br><span>к работе за компьютером</span>"
     : "⛔ НЕ ДОПУЩЕН<br><span>материал по ТБ нужно повторить</span>";
   const total = tbq.questions.length || 20;
+  // строка про рейтинг: начислено только за первую попытку
+  let ratingRow;
+  if (opts.first_attempt === false) {
+    ratingRow = `<tr><td>Рейтинг</td><td><b>не начисляется</b> (учтена 1-я попытка)</td></tr>`;
+  } else {
+    ratingRow = `<tr><td>Начислено баллов</td><td><b>+${opts.awarded != null ? opts.awarded : score}</b> к рейтингу</td></tr>`;
+  }
   document.getElementById("tb-summary").innerHTML = `<table class="tb-table">
     <tr><td>Правильных ответов</td><td><b>${correct} из ${total}</b></td></tr>
-    <tr><td>Начислено баллов</td><td><b>+${score}</b> к рейтингу</td></tr>
+    ${ratingRow}
     <tr><td>Оценка</td><td><b>${grade === "повтор" ? "повторить" : grade}</b></td></tr>
   </table>`;
 }
 function tbRenderResult(res) {
   if (res.passed) hapticSuccess(); else hapticError();
-  tbShowVerdictSummary(res.correct, res.score, res.passed, res.grade);
+  tbShowVerdictSummary(res.correct, res.score, res.passed, res.grade,
+    { first_attempt: res.first_attempt, awarded: res.awarded });
   const letters = ["а", "б", "в", "г"];
   const rev = document.getElementById("tb-review");
   if (res.correct_answers) {
@@ -3178,10 +3209,15 @@ function tbRenderResult(res) {
   showScreen("tbquizResult");
 }
 function tbShowStoredResult(result) {
-  tbShowVerdictSummary(result.correct, result.score, result.passed, result.grade);
-  document.getElementById("tb-review").innerHTML = "<div class='tb-note'>Тест уже пройден — результат зафиксирован.</div>";
+  tbShowVerdictSummary(result.correct, result.score, result.passed, result.grade,
+    { first_attempt: false });
+  document.getElementById("tb-review").innerHTML = "<div class='tb-note'>Показан твой лучший результат.</div>";
   showScreen("tbquizResult");
 }
+(function () {
+  const rb = document.getElementById("btn-tbq-retry");
+  if (rb) rb.addEventListener("click", tbqStart);
+})();
 
 async function openGiveaway() { hapticMedium(); showScreen("giveaway"); await loadGiveaway(); }
 window.openGiveaway = openGiveaway;

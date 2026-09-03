@@ -2597,6 +2597,15 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .tb-rev-q { font-weight: 600; margin-bottom: 3px; }
 .tb-rev-right { color: #2c6e00; font-weight: 600; margin-top: 2px; }
 .tb-note { text-align: center; opacity: 0.7; font-size: 13px; padding: 10px; color: var(--text-on-light); }
+.tb-note-small { display: inline-block; margin-top: 4px; font-size: 12px; opacity: 0.75; }
+.tb-top { margin-top: 16px; }
+.tb-top-title { font-weight: 800; font-size: 15px; margin-bottom: 8px; color: var(--text-on-light); text-align: center; }
+.tb-top-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(0,0,0,0.04); margin-bottom: 5px; font-size: 14px; color: var(--text-on-light); }
+.tb-top-row.me { background: rgba(180, 242, 77, 0.28); font-weight: 700; }
+.tb-top-place { width: 26px; text-align: center; font-weight: 700; }
+.tb-top-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-top-att { font-size: 11px; opacity: 0.6; font-weight: 400; }
+.tb-top-score { font-weight: 700; white-space: nowrap; }
 .gv-prize-note { font-size: 12px; line-height: 1.5; color: var(--text-on-light); opacity: 0.85; margin-top: 8px; border-top: 1px solid rgba(255, 159, 28, 0.3); padding-top: 8px; }
 .gv-prize-cta { margin-top: 6px; font-weight: 600; opacity: 1; }
 .drl-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px dashed rgba(102,54,233,0.15); }
