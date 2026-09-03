@@ -10,6 +10,7 @@ Backend: FastAPI
 """
 
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
@@ -2590,13 +2591,13 @@ async def giveaway_predict(init_data: str = Body(...), seconds: int = Body(...))
 
 @app.post("/api/giveaway/set_result")
 async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(...)):
+    """Админ: сохранить результат забега. Только сохраняет — таблица лидеров сортируется в state.
+    Рассылка участникам НЕ делается здесь (отдельная кнопка «Отправить результаты»)."""
     tg_user = get_verified_user(init_data)
     if tg_user["id"] not in ADMIN_IDS:
         raise HTTPException(status_code=403, detail="Not admin")
     val = None if seconds is None or int(seconds) <= 0 else int(seconds)
-    bot_msgs = []
     with get_db() as db:
-        prev = _giveaway_actual(db)
         db.execute(
             """
             INSERT INTO giveaway_result (id, actual_sec) VALUES (1, ?)
@@ -2604,45 +2605,110 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
             """,
             (val,),
         )
-        # Результат впервые задан или изменён → уведомляем ВСЕХ участников
-        if val is not None and val != prev:
-            rows = db.execute(
-                "SELECT user_id, username, seconds, updated_at FROM giveaway_prediction"
-            ).fetchall()
-            ranked = _giveaway_ranked(rows, val)
-            total = len(ranked)
-            prize_count = _giveaway_prize_count(total)
-            actual_txt = _fmt_mmss(val)
-            for i, it in enumerate(ranked):
-                rank = i + 1
-                pred = _fmt_mmss(it["seconds"])
-                diff = _fmt_mmss(it["diff"])
-                if rank <= prize_count:
-                    if rank == 1:
-                        head = "🥇"
-                        prize_line = f"🎁 Твой приз: главный {GIVEAWAY['prize_cert']}!"
+        participants = db.execute("SELECT COUNT(*) AS c FROM giveaway_prediction").fetchone()["c"]
+    return {"ok": True, "actual_sec": val, "participants": participants}
+
+
+def _giveaway_personal_text(rank, total, prize_count, actual_txt, pred, diff):
+    """Персональный текст итога для участника по его месту."""
+    if rank <= prize_count:
+        if rank == 1:
+            head = "🥇"
+            prize_line = f"🎁 Твой приз: главный {GIVEAWAY['prize_cert']}!"
+        else:
+            head = "🎉"
+            prize_line = f"🎁 Твой приз: {GIVEAWAY['prize_cert']}!"
+        return (f"🏁 Розыгрыш от Игоря завершён!\n"
+                f"Игорь пробежал 10 км за {actual_txt}.\n"
+                f"Твой прогноз: {pred} (промах ±{diff}).\n"
+                f"{head} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉\n"
+                f"{prize_line}\n\n"
+                f"Уже через месяц Игорь бежит новый забег — и мы повторим розыгрыш! 🏃‍♂️")
+    return (f"🏁 Розыгрыш от Игоря завершён!\n"
+            f"Игорь пробежал 10 км за {actual_txt}.\n"
+            f"Твой прогноз: {pred} (промах ±{diff}).\n"
+            f"Твоё место: {rank} из {total}. Спасибо за участие! 🙌\n\n"
+            f"Не грусти — уже через месяц новый забег Игоря и новый розыгрыш. Следи за новостями! 🏃‍♂️")
+
+
+async def _send_giveaway_personal(messages, img_bytes=None, markup=None):
+    """Персональные сообщения участникам. Если есть img_bytes — шлём фото с подписью,
+    загрузив один раз и переиспользуя file_id для остальных получателей."""
+    if not BOT_TOKEN:
+        return 0
+    api = f"https://api.telegram.org/bot{BOT_TOKEN}"
+    sent = 0
+    file_id = None
+    async with httpx.AsyncClient(timeout=60) as client:
+        for chat_id, text in messages:
+            try:
+                if img_bytes:
+                    if file_id is None:
+                        data = {"chat_id": str(chat_id), "caption": text, "parse_mode": "HTML"}
+                        if markup:
+                            data["reply_markup"] = json.dumps(markup)
+                        files = {"photo": ("certificate.jpg", img_bytes, "image/jpeg")}
+                        resp = await client.post(f"{api}/sendPhoto", data=data, files=files)
+                        j = resp.json()
+                        if j.get("ok"):
+                            photos = j["result"].get("photo", [])
+                            if photos:
+                                file_id = photos[-1]["file_id"]
                     else:
-                        head = "🎉"
-                        prize_line = f"🎁 Твой приз: {GIVEAWAY['prize_cert']}!"
-                    text = (f"🏁 Розыгрыш от Игоря завершён!\n"
-                            f"Игорь пробежал 10 км за {actual_txt}.\n"
-                            f"Твой прогноз: {pred} (промах ±{diff}).\n"
-                            f"{head} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉\n"
-                            f"{prize_line}\n\n"
-                            f"Уже через месяц Игорь бежит новый забег — и мы повторим розыгрыш! 🏃‍♂️")
+                        payload = {"chat_id": chat_id, "photo": file_id, "caption": text, "parse_mode": "HTML"}
+                        if markup:
+                            payload["reply_markup"] = markup
+                        await client.post(f"{api}/sendPhoto", json=payload)
                 else:
-                    text = (f"🏁 Розыгрыш от Игоря завершён!\n"
-                            f"Игорь пробежал 10 км за {actual_txt}.\n"
-                            f"Твой прогноз: {pred} (промах ±{diff}).\n"
-                            f"Твоё место: {rank} из {total}. Спасибо за участие! 🙌\n\n"
-                            f"Не грусти — уже через месяц новый забег Игоря и новый розыгрыш. Следи за новостями! 🏃‍♂️")
-                _notify(db, it["user_id"], text)
-                bot_msgs.append((it["user_id"], text))
-    if bot_msgs:
-        t = asyncio.create_task(_send_bot_messages(bot_msgs))
-        _bg_tasks.add(t)
-        t.add_done_callback(_bg_tasks.discard)
-    return {"ok": True, "actual_sec": val, "notified": len(bot_msgs)}
+                    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+                    if markup:
+                        payload["reply_markup"] = markup
+                    await client.post(f"{api}/sendMessage", json=payload)
+                sent += 1
+            except Exception:
+                pass
+            await asyncio.sleep(0.05)
+    return sent
+
+
+@app.post("/api/giveaway/send_results")
+async def giveaway_send_results(init_data: str = Body(...), image_b64: str = Body(None)):
+    """Админ: разослать личные итоги КАЖДОМУ участнику. Можно приложить картинку сертификата.
+    image_b64 — data URL или чистый base64 (необязательно)."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        actual = _giveaway_actual(db)
+        if actual is None:
+            raise HTTPException(status_code=400, detail="Сначала укажи результат забега")
+        rows = db.execute(
+            "SELECT user_id, username, seconds, updated_at FROM giveaway_prediction"
+        ).fetchall()
+        ranked = _giveaway_ranked(rows, actual)
+        total = len(ranked)
+        prize_count = _giveaway_prize_count(total)
+        actual_txt = _fmt_mmss(actual)
+        messages = []
+        for i, it in enumerate(ranked):
+            rank = i + 1
+            text = _giveaway_personal_text(rank, total, prize_count, actual_txt,
+                                           _fmt_mmss(it["seconds"]), _fmt_mmss(it["diff"]))
+            _notify(db, it["user_id"], text)   # дублируем в приложение
+            messages.append((it["user_id"], text))
+
+    # декодируем картинку (если приложена)
+    img_bytes = None
+    if image_b64:
+        try:
+            raw = image_b64.split(",", 1)[1] if image_b64.startswith("data:") else image_b64
+            img_bytes = base64.b64decode(raw)
+        except Exception:
+            img_bytes = None
+
+    markup = {"inline_keyboard": [[{"text": "🎮 В Профик ARENA", "web_app": {"url": WEBAPP_URL}}]]} if WEBAPP_URL else None
+    sent = await _send_giveaway_personal(messages, img_bytes, markup)
+    return {"ok": True, "sent": sent, "participants": total, "with_image": bool(img_bytes)}
 
 
 @app.post("/api/giveaway/reset")
@@ -3395,7 +3461,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "giveaway-edition-autoclear-v130"
+BUILD_TAG = "giveaway-results-manual-send-v131"
 
 
 @app.get("/api/version")

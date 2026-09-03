@@ -3364,9 +3364,64 @@ async function gvAdminSetResult() {
   const res = await apiPost("/api/giveaway/set_result", { init_data: INIT_DATA, seconds });
   if (!res || !res.ok) { alert((res && res.detail) || "Не удалось сохранить результат."); return; }
   await loadGiveaway();
+  hapticSuccess();
+  alert("Результат сохранён, таблица лидеров отсортирована. Сообщения участникам НЕ отправлены — для этого нажми «📨 Отправить результаты участникам».");
 }
 document.getElementById("btn-gv-save").addEventListener("click", gvSave);
 document.getElementById("btn-gv-setresult").addEventListener("click", gvAdminSetResult);
+
+// ----- Рассылка личных итогов участникам (+ картинка сертификата) -----
+let gvCertB64 = null;
+function gvReadImageResized(file, maxSide, quality) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        const scale = Math.min(1, maxSide / Math.max(w, h));
+        w = Math.round(w * scale); h = Math.round(h * scale);
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = fr.result;
+    };
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+(function () {
+  const inp = document.getElementById("gv-cert-file");
+  if (!inp) return;
+  inp.addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    const nameEl = document.getElementById("gv-cert-name");
+    if (!f) { gvCertB64 = null; if (nameEl) nameEl.textContent = ""; return; }
+    try {
+      gvCertB64 = await gvReadImageResized(f, 1280, 0.85);
+      if (nameEl) nameEl.textContent = `✅ ${f.name} прикреплена`;
+    } catch (err) {
+      gvCertB64 = null;
+      if (nameEl) nameEl.textContent = "⚠️ не удалось прочитать картинку";
+    }
+  });
+})();
+async function gvSendResults() {
+  if (!gvState || gvState.actual_sec == null) { alert("Сначала укажи результат забега («⚙️ Указать результат»)."); return; }
+  const withImg = gvCertB64 ? " с картинкой сертификата" : " (без картинки)";
+  if (!confirm(`Отправить личные итоги каждому участнику${withImg}? Каждый получит своё сообщение в личку от бота.`)) return;
+  const btn = document.getElementById("btn-gv-send-results");
+  btn.disabled = true; btn.textContent = "Отправляю…";
+  const res = await apiPost("/api/giveaway/send_results", { init_data: INIT_DATA, image_b64: gvCertB64 });
+  btn.disabled = false; btn.textContent = "📨 Отправить результаты участникам";
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось отправить."); return; }
+  hapticSuccess();
+  alert(`Готово! Отправлено участникам: ${res.sent} из ${res.participants}.${res.with_image ? " С картинкой сертификата." : ""}`);
+}
+document.getElementById("btn-gv-send-results").addEventListener("click", gvSendResults);
 async function gvAnnounceResults() {
   if (!gvState || gvState.actual_sec == null) { alert("Сначала укажи результат забега («⚙️ Указать результат»)."); return; }
   if (!confirm("Разослать ВСЕМ пользователям пост-итоги с видео забега? Отправится один раз каждому.")) return;

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=96">
+<link rel="stylesheet" href="/style.css?v=97">
 </head>
 <body>
 
@@ -2320,8 +2320,18 @@
     <div class="gv-table" id="gv-table"></div>
 
     <div class="gv-admin" id="gv-admin" style="display:none;">
-      <button id="btn-gv-setresult" class="btn btn-secondary">⚙️ Указать результат забега (админ)</button>
-      <button id="btn-gv-announce-results" class="btn btn-primary">📣 Разослать итоги с видео всем</button>
+      <div class="gv-admin-hint">1️⃣ Приём закрывается в 9:00. 2️⃣ Узнал результат — жми «Указать результат» (таблица отсортируется, сообщения не уйдут). 3️⃣ Готов — «Отправить результаты участникам» (по желанию приложи картинку сертификата).</div>
+      <button id="btn-gv-setresult" class="btn btn-secondary">⚙️ Указать результат забега</button>
+
+      <div class="gv-cert-box">
+        <label class="gv-cert-label">🖼 Картинка сертификата (необязательно):
+          <input type="file" id="gv-cert-file" accept="image/*">
+        </label>
+        <div id="gv-cert-name" class="gv-cert-name"></div>
+      </div>
+      <button id="btn-gv-send-results" class="btn btn-primary">📨 Отправить результаты участникам</button>
+
+      <button id="btn-gv-announce-results" class="btn btn-secondary">📣 Разослать итоги с видео всем</button>
       <button id="btn-gv-reset" class="btn btn-secondary">🧹 Сбросить прогнозы (новый забег)</button>
     </div>
 
@@ -2994,6 +3004,6 @@
 </div>
 
 <script src="/hangman-words.js?v=2"></script>
-<script src="/script.js?v=112"></script>
+<script src="/script.js?v=113"></script>
 </body>
 </html>
