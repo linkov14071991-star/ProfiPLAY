@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=93">
+<link rel="stylesheet" href="/style.css?v=94">
 </head>
 <body>
 
@@ -138,8 +138,8 @@
     <div class="game-card" data-game="sec-marathon">
       <div class="icon" style="background:#B6A9D9;">📚</div>
       <div class="info">
-        <div class="title">Прокачка (Марафоны)</div>
-        <div class="desc">Подготовка к ЕГЭ и ОГЭ без таймера: курс Python, Теория игр, Виселица, Найди ошибку.</div>
+        <div class="title">Прокачка</div>
+        <div class="desc">Подготовка к ЕГЭ и ОГЭ без таймера: курс Python, Теория игр, Виселица, тест по ТБ.</div>
       </div>
     </div>
     <div class="game-card" data-game="sec-team">
@@ -242,7 +242,7 @@
     <img src="/profik-cat.png" alt="Профик" class="profik">
     <span class="brand-badge">профиматика</span>
   </div>
-  <h1 style="text-align:center; margin-bottom:6px;">📚 Прокачка <span style="opacity:0.55; font-weight:600;">(Марафоны)</span></h1>
+  <h1 style="text-align:center; margin-bottom:6px;">📚 Прокачка</h1>
   <p class="subtitle" style="text-align:center;">Обучение без времени · 100 очков в день с каждой</p>
   <div class="games-grid">
     <div class="game-card" data-game="python">
@@ -269,6 +269,13 @@
         <div class="title">Виселица</div>
         <div class="desc">Угадай термин, формулу или команду по буквам. Матеша, физика, инфа, Python и таблицы.</div>
         <div class="card-stat" id="card-hangman-stat"></div>
+      </div>
+    </div>
+    <div class="game-card" data-game="tbquiz">
+      <div class="icon" style="background:#E5484D;">🛡️</div>
+      <div class="info">
+        <div class="title">Тест по ТБ</div>
+        <div class="desc">Техника безопасности в кабинете информатики. Пройди — и получишь допуск к работе за ПК.</div>
       </div>
     </div>
     <div class="game-card" data-game="finderr">
@@ -2179,6 +2186,53 @@
   </div>
 </div>
 
+<!-- ==== Экраны: Тест по ТБ ==== -->
+<section id="screen-tbquiz-intro" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🛡️ Тест по технике безопасности</h1>
+    <p class="subtitle">Кабинет информатики. Первый урок всегда начинается с ТБ и правил поведения — без этого к работе за компьютером не допускают.</p>
+    <div class="tb-intro-box">
+      <div>📝 <b>20 вопросов</b>, по 4 варианта.</div>
+      <div>⭐ За каждый верный ответ — <b>+10 баллов</b> к рейтингу.</div>
+      <div>🔒 Пройти можно <b>только один раз</b>.</div>
+      <div>✅ Набрал <b>100+ баллов</b> — допуск к работе за ПК. Меньше — материал нужно повторить.</div>
+    </div>
+    <div id="tb-intro-status" class="tb-intro-status"></div>
+    <button id="btn-tb-start" class="btn btn-primary btn-big">Начать тест</button>
+    <button class="btn btn-link btn-back" data-back="marathonHub">← Назад</button>
+  </div>
+</section>
+
+<section id="screen-tbquiz-play" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <div class="tb-progress" id="tb-progress">Вопрос 1 из 20</div>
+    <div class="tb-question" id="tb-question"></div>
+    <div class="tb-options" id="tb-options"></div>
+  </div>
+</section>
+
+<section id="screen-tbquiz-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1 style="text-align:center;">Результат теста по ТБ</h1>
+    <div class="tb-verdict" id="tb-verdict"></div>
+    <div class="tb-summary" id="tb-summary"></div>
+    <div class="tb-review" id="tb-review"></div>
+    <button class="btn btn-secondary btn-back" data-back="marathonHub" style="margin-top:12px;">← В раздел «Прокачка»</button>
+  </div>
+</section>
+
 <!-- ==== Экран: Хаб розыгрышей ==== -->
 <section id="screen-giveaway-hub" class="screen">
   <div class="brand-header">
@@ -2937,6 +2991,6 @@
 </div>
 
 <script src="/hangman-words.js?v=2"></script>
-<script src="/script.js?v=109"></script>
+<script src="/script.js?v=110"></script>
 </body>
 </html>

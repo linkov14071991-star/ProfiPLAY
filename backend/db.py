@@ -252,6 +252,19 @@ def init_db():
         """
     )
 
+    # Результат теста по ТБ (одноразовое прохождение на пользователя)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tb_quiz_result (
+            user_id    INTEGER PRIMARY KEY,
+            correct    INTEGER NOT NULL,
+            score      INTEGER NOT NULL,
+            passed     INTEGER NOT NULL,
+            created_at TEXT
+        )
+        """
+    )
+
     # Результаты жеребьёвок розыгрышей (фиксируем топ-20 и призёров на момент розыгрыша)
     conn.execute(
         """

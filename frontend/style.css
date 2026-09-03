@@ -2572,6 +2572,29 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .gv29-place { width: 26px; text-align: center; font-weight: 700; opacity: 0.75; }
 .gv29-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gv29-gain { font-weight: 800; color: var(--brand-lime); }
+
+/* ===== Тест по ТБ ===== */
+.tb-intro-box { background: rgba(102, 54, 233, 0.06); border-radius: 14px; padding: 12px 14px; margin: 10px 0; font-size: 14px; line-height: 1.7; color: var(--text-on-light); }
+.tb-intro-status { text-align: center; font-size: 13.5px; margin: 8px 0; color: var(--text-on-light); }
+.tb-progress { text-align: center; font-size: 13px; opacity: 0.7; margin-bottom: 8px; color: var(--text-on-light); }
+.tb-question { font-size: 17px; font-weight: 700; line-height: 1.4; margin-bottom: 14px; color: var(--text-on-light); }
+.tb-options { display: flex; flex-direction: column; gap: 8px; }
+.tb-opt { text-align: left; padding: 12px 14px; border-radius: 12px; border: 1.5px solid rgba(102, 54, 233, 0.25); background: #fff; color: var(--text-on-light); font-size: 14.5px; line-height: 1.35; cursor: pointer; }
+.tb-opt:active { transform: scale(0.99); background: rgba(102, 54, 233, 0.06); }
+.tb-let { display: inline-block; font-weight: 800; color: var(--brand-purple); margin-right: 4px; }
+.tb-verdict { text-align: center; font-weight: 800; font-size: 22px; border-radius: 16px; padding: 16px; margin: 12px 0; line-height: 1.2; }
+.tb-verdict span { font-size: 13px; font-weight: 600; opacity: 0.9; }
+.tb-verdict.ok { background: rgba(180, 242, 77, 0.25); color: #2c6e00; }
+.tb-verdict.bad { background: rgba(229, 72, 77, 0.18); color: #c0392b; }
+.tb-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.tb-table td { padding: 8px 10px; border-bottom: 1px solid rgba(102, 54, 233, 0.12); font-size: 14px; color: var(--text-on-light); }
+.tb-table td:last-child { text-align: right; }
+.tb-rev { border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 13px; line-height: 1.4; color: var(--text-on-light); }
+.tb-rev.ok { background: rgba(180, 242, 77, 0.12); }
+.tb-rev.bad { background: rgba(229, 72, 77, 0.1); }
+.tb-rev-q { font-weight: 600; margin-bottom: 3px; }
+.tb-rev-right { color: #2c6e00; font-weight: 600; margin-top: 2px; }
+.tb-note { text-align: center; opacity: 0.7; font-size: 13px; padding: 10px; color: var(--text-on-light); }
 .gv-prize-note { font-size: 12px; line-height: 1.5; color: var(--text-on-light); opacity: 0.85; margin-top: 8px; border-top: 1px solid rgba(255, 159, 28, 0.3); padding-top: 8px; }
 .gv-prize-cta { margin-top: 6px; font-weight: 600; opacity: 1; }
 .drl-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px dashed rgba(102,54,233,0.15); }
