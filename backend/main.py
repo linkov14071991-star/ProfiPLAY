@@ -2096,6 +2096,38 @@ async def _broadcast_weekly(fmt: str, admin_score: int, exclude_id: int = 0):
             await asyncio.sleep(0.05)  # ~20 сообщений/сек — в пределах лимитов Telegram
 
 
+# ---- Счёт «Игорь vs Ученики» по Вызовам (старт 3:1 в пользу Игоря) ----
+VS_IGOR_SEED = 3
+VS_STUDENTS_SEED = 1
+
+
+def _vs_score_get(db):
+    """Текущий счёт противостояния. Сеет стартовые значения при первом обращении."""
+    ig = _flag_get(db, "vs_igor")
+    st = _flag_get(db, "vs_students")
+    if ig is None:
+        _flag_set(db, "vs_igor", str(VS_IGOR_SEED)); ig = str(VS_IGOR_SEED)
+    if st is None:
+        _flag_set(db, "vs_students", str(VS_STUDENTS_SEED)); st = str(VS_STUDENTS_SEED)
+    return {"igor": int(ig), "students": int(st)}
+
+
+def _vs_score_apply(db, accepted, won):
+    """Обновляет счёт по итогам вызова: ≥50% обыграли Игоря → +1 ученикам, иначе +1 Игорю.
+    При нуле участников счёт не меняется. Возвращает (score, winner_side|None)."""
+    score = _vs_score_get(db)
+    if accepted <= 0:
+        return score, None
+    if won * 2 >= accepted:   # won/accepted >= 0.5
+        score["students"] += 1
+        _flag_set(db, "vs_students", str(score["students"]))
+        return score, "students"
+    else:
+        score["igor"] += 1
+        _flag_set(db, "vs_igor", str(score["igor"]))
+        return score, "igor"
+
+
 def _weekly_close(db, ch):
     """Атомарно закрывает истёкший вызов: статистика, штраф −5 не принявшим, пометка closed.
     Возвращает (stats, bot_msgs). Если вызов уже закрыт кем-то — (None, [])."""
@@ -2134,16 +2166,28 @@ def _weekly_close(db, ch):
         deducted[uid] = d
     penalized = sum(1 for d in deducted.values() if d > 0)
 
+    # обновляем счёт противостояния «Игорь vs Ученики»
+    vs_score, vs_winner = _vs_score_apply(db, accepted, won)
+
     stats = {"accepted": accepted, "won": won, "lost": lost, "ignored": ignored,
-             "penalized": penalized, "total_users": len(all_users), "penalty": WEEKLY_IGNORE_PENALTY}
+             "penalized": penalized, "total_users": len(all_users), "penalty": WEEKLY_IGNORE_PENALTY,
+             "vs_igor": vs_score["igor"], "vs_students": vs_score["students"], "vs_winner": vs_winner}
     db.execute("UPDATE weekly_challenge SET stats_json = ? WHERE id = ?", (json.dumps(stats), cid))
+
+    if vs_winner == "students":
+        vs_line = f"📣 Ученики забирают раунд! Счёт «Игорь vs Ученики»: <b>{vs_score['igor']} : {vs_score['students']}</b>"
+    elif vs_winner == "igor":
+        vs_line = f"📣 Раунд за Игорем! Счёт «Игорь vs Ученики»: <b>{vs_score['igor']} : {vs_score['students']}</b>"
+    else:
+        vs_line = f"📣 Счёт «Игорь vs Ученики»: <b>{vs_score['igor']} : {vs_score['students']}</b> (без изменений — не было участников)"
 
     title = WEEKLY_FMT_TITLES.get(fmt, fmt)
     summary = (f"🏁 <b>Вызов от Игоря завершён!</b>\nФормат: <b>{title}</b>, счёт Игоря: <b>{admin_score}</b>\n\n"
                f"⚔ Приняли вызов: <b>{accepted}</b>\n"
                f"🏆 Обыграли Игоря: <b>{won}</b>\n"
                f"😅 Не побили счёт: <b>{lost}</b>\n"
-               f"🙈 Проигнорировали: <b>{ignored}</b>")
+               f"🙈 Проигнорировали: <b>{ignored}</b>\n\n"
+               f"{vs_line}")
     # Отдельный подробный отчёт создателю (админу) — вместо общего сообщения
     admin_report = (
         f"📊 <b>Отчёт по твоему Вызову</b> ({title})\nСчёт Игоря: <b>{admin_score}</b>\n\n"
@@ -2151,7 +2195,8 @@ def _weekly_close(db, ch):
         f"🏆 Обыграли тебя: <b>{won}</b>\n"
         f"😅 Не побили счёт: <b>{lost}</b>\n"
         f"🙈 Проигнорировали: <b>{ignored}</b> (оштрафовано {penalized})\n"
-        f"👥 Всего игроков в базе: <b>{len(all_users)}</b>"
+        f"👥 Всего игроков в базе: <b>{len(all_users)}</b>\n\n"
+        f"{vs_line}"
     )
     bot_msgs = []
     for uid in all_users:
@@ -2246,8 +2291,11 @@ async def weekly_active(init_data: str = Body(..., embed=True)):
         won_live = sum(1 for a in att if a["beat"])
         live_stats = {"accepted": accepted_live, "won": won_live, "lost": accepted_live - won_live}
 
+        vs_score = _vs_score_get(db)
+
         res = {
             "active": state == "open",
+            "vs_score": vs_score,
             "state": state,
             "id": ch["id"],
             "format": fmt,
@@ -2353,23 +2401,38 @@ MSK_TZ = timezone(timedelta(hours=3))
 GIVEAWAY = {
     "active": True,
     "title": "Розыгрыш от Игоря",
-    "event": "Большой фестиваль бега · Соревнование 10 км",
-    "date": "23 августа 2026, Москва",
-    "desc": "23 августа Игорь бежит 10 км на Большом фестивале бега (старт в 9:00). "
-            "Угадай его время на финише! Ближе всех и раньше всех проголосовал — победитель.",
+    "event": "Забег 10 км",
+    "date": "26 сентября 2026, Москва",
+    "desc": "26 сентября Игорь снова бежит 10 км. Угадай его время на финише! "
+            "Ближе всех и раньше всех проголосовал — победитель.",
     "url": "https://runfest.runc.run/#section-1077",
-    "deadline_msk": "2026-08-23 09:00",   # приём прогнозов до старта
+    "deadline_msk": "2026-09-26 09:00",   # приём прогнозов до старта
     "min_sec": 30 * 60,                    # 30:00
     "max_sec": 90 * 60,                    # 1:30:00
-    "prizes": 3,                           # сколько призовых мест подсвечиваем
-    "prize_top3": "Сертификат OZON на 1000 ₽",
-    "prize_winner": "Памятная медаль с забега (та самая, которую получит Игорь) 🏅",
-    "prize2_min": 128,   # сертификат за 2 место разыгрывается при стольких участниках
-    "prize3_min": 256,   # сертификат за 3 место разыгрывается при стольких участниках
+    # Призы: 1 место — сертификат 1000 ₽, остальные — по 500 ₽ (OZON/Золотое Яблоко, номинал в правилах не светим).
+    # Кол-во призов зависит от числа участников: базово 1, +1 при достижении каждого порога.
+    "prize_cert": "сертификат OZON / Золотое Яблоко",
+    "prize_winner_amount": 1000,
+    "prize_other_amount": 500,
+    "prize_thresholds": [32, 64, 128, 256],   # +1 приз при 32 / 64 / 128 / 256 участниках
     "hist_from": 40 * 60,   # гистограмма статистики: от 40 мин
     "hist_to": 60 * 60,     # до 60 мин
     "hist_step": 2 * 60,    # шаг 2 минуты
 }
+
+
+def _giveaway_prize_count(participants):
+    """Сколько призов разыгрывается при данном числе участников (базово 1, +1 за каждый порог)."""
+    n = 1
+    for t in GIVEAWAY["prize_thresholds"]:
+        if participants >= t:
+            n += 1
+    return n
+
+
+def _giveaway_prize_amount(rank):
+    """Номинал приза для места (1-е — 1000 ₽, остальные — 500 ₽)."""
+    return GIVEAWAY["prize_winner_amount"] if rank == 1 else GIVEAWAY["prize_other_amount"]
 
 
 def _giveaway_deadline():
@@ -2435,7 +2498,7 @@ async def giveaway_state(init_data: str = Body(..., embed=True)):
     for i, it in enumerate(ranked):
         entry = {"nick": it["nick"], "seconds": it["seconds"], "updated_at": it["updated_at"],
                  "rank": i + 1, "diff": it["diff"],
-                 "winner": (actual is not None and i < GIVEAWAY["prizes"])}
+                 "winner": (actual is not None and i < _giveaway_prize_count(count))}
         table.append(entry)
         if mine and it["seconds"] == mine["seconds"] and it["updated_at"] == mine["updated_at"]:
             my_rank = i + 1
@@ -2448,9 +2511,11 @@ async def giveaway_state(init_data: str = Body(..., embed=True)):
         "deadline_iso": _giveaway_deadline().isoformat(),
         "server_now_iso": datetime.now(MSK_TZ).isoformat(),
         "min_sec": GIVEAWAY["min_sec"], "max_sec": GIVEAWAY["max_sec"],
-        "prizes": GIVEAWAY["prizes"],
-        "prize_top3": GIVEAWAY["prize_top3"], "prize_winner": GIVEAWAY["prize_winner"],
-        "prize2_min": GIVEAWAY["prize2_min"], "prize3_min": GIVEAWAY["prize3_min"],
+        "prize_cert": GIVEAWAY["prize_cert"],
+        "prize_winner_amount": GIVEAWAY["prize_winner_amount"],
+        "prize_other_amount": GIVEAWAY["prize_other_amount"],
+        "prize_thresholds": GIVEAWAY["prize_thresholds"],
+        "prize_count": _giveaway_prize_count(count),
         "locked": _giveaway_locked(),
         "is_admin": my_id in ADMIN_IDS,
         "my": ({"seconds": mine["seconds"], "updated_at": mine["updated_at"]} if mine else None),
@@ -2530,28 +2595,23 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
             ).fetchall()
             ranked = _giveaway_ranked(rows, val)
             total = len(ranked)
+            prize_count = _giveaway_prize_count(total)
             actual_txt = _fmt_mmss(val)
             for i, it in enumerate(ranked):
                 rank = i + 1
                 pred = _fmt_mmss(it["seconds"])
                 diff = _fmt_mmss(it["diff"])
-                if rank <= GIVEAWAY["prizes"]:
-                    medal = ["🥇", "🥈", "🥉"][rank - 1]
-                    # приз зависит от числа участников: 2 место — при 128+, 3 место — при 256+
+                if rank <= prize_count:
                     if rank == 1:
-                        prize_line = f"🎁 Твой приз: {GIVEAWAY['prize_top3']} + {GIVEAWAY['prize_winner']}"
-                    elif rank == 2:
-                        prize_line = (f"🎁 Твой приз: {GIVEAWAY['prize_top3']}"
-                                      if total >= GIVEAWAY["prize2_min"]
-                                      else f"Второе место 🥈! Но сертификат за него разыгрывается только при {GIVEAWAY['prize2_min']}+ участниках, а в этот раз нас было {total}. В следующий раз — обязательно!")
-                    else:  # rank == 3
-                        prize_line = (f"🎁 Твой приз: {GIVEAWAY['prize_top3']}"
-                                      if total >= GIVEAWAY["prize3_min"]
-                                      else f"Третье место 🥉! Но сертификат за него разыгрывается только при {GIVEAWAY['prize3_min']}+ участниках, а в этот раз нас было {total}. В следующий раз — обязательно!")
+                        head = "🥇"
+                        prize_line = f"🎁 Твой приз: главный {GIVEAWAY['prize_cert']}!"
+                    else:
+                        head = "🎉"
+                        prize_line = f"🎁 Твой приз: {GIVEAWAY['prize_cert']}!"
                     text = (f"🏁 Розыгрыш от Игоря завершён!\n"
                             f"Игорь пробежал 10 км за {actual_txt}.\n"
                             f"Твой прогноз: {pred} (промах ±{diff}).\n"
-                            f"{medal} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉\n"
+                            f"{head} Ты в призёрах — {rank}-е место из {total}! Поздравляем 🎉\n"
                             f"{prize_line}\n\n"
                             f"Уже через месяц Игорь бежит новый забег — и мы повторим розыгрыш! 🏃‍♂️")
                 else:
@@ -2569,33 +2629,45 @@ async def giveaway_set_result(init_data: str = Body(...), seconds: int = Body(..
     return {"ok": True, "actual_sec": val, "notified": len(bot_msgs)}
 
 
+@app.post("/api/giveaway/reset")
+async def giveaway_reset(init_data: str = Body(...)):
+    """Админ: очистить прогнозы и результат прошлого розыгрыша перед новым забегом."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        pred = db.execute("SELECT COUNT(*) AS c FROM giveaway_prediction").fetchone()["c"]
+        db.execute("DELETE FROM giveaway_prediction")
+        db.execute("DELETE FROM giveaway_result")
+    return {"ok": True, "cleared": pred}
+
+
 # ---- Авто-рассылка анонса розыгрыша ботом (по расписанию МСК) ----
 GIVEAWAY_ANNOUNCE_MAIN = (
     "🏃‍♂️ <b>РОЗЫГРЫШ ОТ ИГОРЯ: угадай моё время!</b>\n\n"
-    "23 августа я бегу <b>10 км</b> на Большом фестивале бега в Москве (старт 9:00). "
+    "26 сентября я бегу <b>10 км</b> на Большом фестивале бега в Москве (старт 9:00). "
     "А ты угадай, за сколько я финиширую!\n\n"
     "🎁 <b>Призы:</b>\n"
-    "🥇 1 место — сертификат OZON <b>1000 ₽</b> + памятная медаль с забега (та самая!)\n"
-    "🥈 2 место — сертификат OZON 1000 ₽*\n"
-    "🥉 3 место — сертификат OZON 1000 ₽**\n"
-    "<i>* за 2 место — при 128+ участниках, ** за 3 место — при 256+. Зови друзей!</i>\n\n"
+    "🥇 1 место — главный сертификат (OZON / Золотое Яблоко)\n"
+    "🎁 Остальные призёры — сертификат (OZON / Золотое Яблоко)\n"
+    "<i>Чем больше участников — тем больше призов: база 1, далее +1 при 32, 64, 128 и 256 участниках. Зови друзей!</i>\n\n"
     "🏆 Побеждает тот, чей прогноз ближе к моему времени. При равенстве — кто проголосовал раньше.\n"
-    "⏰ Прогноз можно менять до <b>9:00 23 августа (МСК)</b> — засчитается последний.\n\n"
+    "⏰ Прогноз можно менять до <b>9:00 26 сентября (МСК)</b> — засчитается последний.\n\n"
     "Жми «Сделать прогноз» 👇"
 )
 GIVEAWAY_ANNOUNCE_REMIND = (
     "⏳ <b>Ты ещё не сделал прогноз!</b>\n\n"
-    "23 августа Игорь бежит <b>10 км</b> — угадай его время на финише и забери приз:\n"
-    "🥇 сертификат OZON 1000 ₽ + памятная медаль с забега\n"
-    "🥈🥉 сертификат OZON 1000 ₽ (при 128+ и 256+ участниках)\n\n"
-    "Приём закроется в <b>9:00 23 августа (МСК)</b>. Менять прогноз можно сколько угодно — "
+    "26 сентября Игорь бежит <b>10 км</b> — угадай его время на финише и забери приз:\n"
+    "🥇 главный сертификат (OZON / Золотое Яблоко) победителю\n"
+    "🎁 сертификаты остальным призёрам (чем больше участников — тем больше призов)\n\n"
+    "Приём закроется в <b>9:00 26 сентября (МСК)</b>. Менять прогноз можно сколько угодно — "
     "успей поставить свой!\n\n"
     "Жми «Сделать прогноз» 👇"
 )
 GIVEAWAY_JOBS = [
-    {"key": "gv_announce_main", "at": "2026-08-20 15:00", "audience": "all",    "caption": GIVEAWAY_ANNOUNCE_MAIN},
-    {"key": "gv_remind_21",     "at": "2026-08-21 15:00", "audience": "novote", "caption": GIVEAWAY_ANNOUNCE_REMIND},
-    {"key": "gv_remind_22",     "at": "2026-08-22 15:00", "audience": "novote", "caption": GIVEAWAY_ANNOUNCE_REMIND},
+    {"key": "gv_announce_main_0926", "at": "2026-09-23 15:00", "audience": "all",    "caption": GIVEAWAY_ANNOUNCE_MAIN},
+    {"key": "gv_remind_0924",        "at": "2026-09-24 15:00", "audience": "novote", "caption": GIVEAWAY_ANNOUNCE_REMIND},
+    {"key": "gv_remind_0925",        "at": "2026-09-25 15:00", "audience": "novote", "caption": GIVEAWAY_ANNOUNCE_REMIND},
 ]
 
 
@@ -2868,8 +2940,8 @@ def _giveaway_results_caption(db, actual):
     rows = db.execute("SELECT user_id, username, seconds, updated_at FROM giveaway_prediction").fetchall()
     ranked = _giveaway_ranked(rows, actual)
     total = len(ranked)
-    # сколько сертификатов реально разыграно (2-е при 128+, 3-е при 256+)
-    awarded = 1 + (1 if total >= GIVEAWAY["prize2_min"] else 0) + (1 if total >= GIVEAWAY["prize3_min"] else 0)
+    # сколько сертификатов реально разыграно (база 1, +1 на каждом пороге 32/64/128/256)
+    awarded = _giveaway_prize_count(total)
     medals = ["🥇", "🥈", "🥉"]
 
     L = ["🏁 <b>РОЗЫГРЫШ ОТ ИГОРЯ — ИТОГИ!</b>", "",
@@ -2878,26 +2950,25 @@ def _giveaway_results_caption(db, actual):
     if not ranked:
         L.append("В этот раз прогнозов не было 🙈")
     else:
+        show_n = min(max(awarded, 3), len(ranked))
         L.append("🏆 <b>Ближе всех угадали:</b>")
-        for i, it in enumerate(ranked[:3]):
-            L.append(f"{medals[i]} {it['nick']} — {_fmt_mmss(it['seconds'])} (промах ±{_fmt_mmss(it['diff'])})")
+        for i, it in enumerate(ranked[:show_n]):
+            mark = medals[i] if i < 3 else "🎯"
+            L.append(f"{mark} {it['nick']} — {_fmt_mmss(it['seconds'])} (промах ±{_fmt_mmss(it['diff'])})")
         L.append("")
         # кто реально получает сертификат
         winner = ranked[0]["nick"]
         cert_names = [ranked[i]["nick"] for i in range(min(awarded, len(ranked)))]
         if len(cert_names) == 1:
-            L.append(f"🎁 Сертификат OZON <b>1000 ₽</b> и памятную медаль с забега забирает победитель — <b>{winner}</b>! 🏅🎉")
+            L.append(f"🎁 Главный {GIVEAWAY['prize_cert']} забирает победитель — <b>{winner}</b>! 🎉")
         else:
-            L.append(f"🎁 Сертификаты OZON <b>1000 ₽</b> забирают: {', '.join(cert_names)}. "
-                     f"А победитель {winner} — ещё и памятную медаль с забега 🏅🎉")
-        # тёплое слово тем из тройки, кто без сертификата (порог участников не набрали)
-        if awarded < 3:
-            near = [ranked[i]["nick"] for i in range(1, min(3, len(ranked)))]
-            note = (f"Участников в этот раз было <b>{total}</b>, поэтому по правилам разыгран "
-                    f"<b>один сертификат</b> (второй открывался при 128 участниках, третий — при 256).")
-            if near:
-                note += f" {' и '.join(near)} — вы были буквально в секундах, обнимаем! 🤗"
-            L += ["", note]
+            others = ", ".join(cert_names[1:])
+            L.append(f"🎁 Главный {GIVEAWAY['prize_cert']} забирает победитель — <b>{winner}</b>! 🎉")
+            L.append(f"Ещё {GIVEAWAY['prize_cert']} получают: {others}.")
+        # сколько призов открылось по числу участников
+        note = (f"Участников в этот раз было <b>{total}</b> → разыграно призов: <b>{awarded}</b> "
+                f"(база 1, далее +1 при 32, 64, 128 и 256 участниках).")
+        L += ["", note]
 
     L += ["",
           "Но расстраиваться не о чем! 🙌 Уже <b>через месяц Игорь бежит новый забег</b> — "
@@ -3244,7 +3315,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "tbquiz-v127"
+BUILD_TAG = "giveaway0926-vs-v128"
 
 
 @app.get("/api/version")

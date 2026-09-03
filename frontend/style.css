@@ -1162,6 +1162,8 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .weekly-live span { background: rgba(0, 0, 0, 0.16); border-radius: 8px; padding: 4px 9px; }
 .weekly-live span.ok { background: rgba(180, 242, 77, 0.22); }
 .weekly-live b { font-size: 15px; }
+.weekly-vs { margin-top: 8px; font-size: 14px; text-align: center; background: rgba(255, 209, 102, 0.18); border: 1px solid rgba(255, 209, 102, 0.45); border-radius: 10px; padding: 6px 10px; }
+.weekly-vs b { font-size: 16px; }
 .weekly-stats { margin-top: 10px; }
 .weekly-stats .ws-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; margin-bottom: 5px; background: rgba(255, 255, 255, 0.06); font-size: 14px; }
 .weekly-stats .ws-row b { font-size: 17px; }

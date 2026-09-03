@@ -2978,15 +2978,14 @@ const GIVEAWAY_ARCHIVE = [
     prize: "Сертификат OZON 1000 ₽ + памятная медаль с забега 🏅",
   },
 ];
-// Будущие розыгрыши (пока анонсы «скоро»)
+// Активные / будущие розыгрыши в хабе
 const GIVEAWAY_UPCOMING = [
-  { title: "Розыгрыш 29 августа", date: "Топ-20 недели · сертификат OZON / ЗЯ", icon: "🎯", screen: "giveaway29" },
-  { title: "Забег 10 км", date: "26 сентября 2026", icon: "🏃", note: "Снова угадываем время Игоря на 10 км! Приём прогнозов откроем ближе к дате." },
+  { title: "Забег 10 км", date: "26 сентября 2026 · угадай время Игоря", icon: "🏃", action: "open" },
 ];
 function gvUpcomingInfo(i) {
   const g = GIVEAWAY_UPCOMING[i]; if (!g) return;
   hapticLight();
-  alert(`${g.title}\n📅 ${g.date}\n\n${g.note}`);
+  alert(`${g.title}\n📅 ${g.date}\n\n${g.note || ""}`);
 }
 window.gvUpcomingInfo = gvUpcomingInfo;
 
@@ -3000,8 +2999,11 @@ function openGiveawayHub() {
       <div class="info"><div class="title">Зал славы</div><div class="desc">История розыгрышей и победители — заходи и смотри!</div></div>
     </div>`;
   html += GIVEAWAY_UPCOMING.map((g, i) => {
-    const onclick = g.screen ? `openGiveaway29()` : `gvUpcomingInfo(${i})`;
-    const badge = g.screen ? "" : `<div class="badge-soon">🔜 Скоро</div>`;
+    const active = g.action === "open" || g.screen;
+    const onclick = g.action === "open" ? `openGiveaway()` : (g.screen ? `openGiveaway29()` : `gvUpcomingInfo(${i})`);
+    const badge = active
+      ? `<div class="badge-soon" style="background:#06d6a0; color:#04210f;">● Идёт</div>`
+      : `<div class="badge-soon">🔜 Скоро</div>`;
     return `<div class="game-card" onclick="${onclick}">
       <div class="icon">${g.icon}</div>
       <div class="info"><div class="title">${escapeHtml(g.title)}</div><div class="desc">${escapeHtml(g.date)}</div></div>
@@ -3012,16 +3014,14 @@ function openGiveawayHub() {
 }
 window.openGiveawayHub = openGiveawayHub;
 
-function openGiveawayArchive() {
+async function openGiveawayArchive() {
   hapticMedium();
   showScreen("giveawayArchive");
   const el = document.getElementById("gv-archive-list");
   if (!el) return;
-  if (!GIVEAWAY_ARCHIVE.length) {
-    el.innerHTML = '<p style="text-align:center; opacity:0.7; padding:16px;">Пока пусто. Первый розыгрыш совсем скоро!</p>';
-    return;
-  }
-  el.innerHTML = GIVEAWAY_ARCHIVE.map((g) => `
+  el.innerHTML = '<div style="text-align:center; opacity:.6; padding:12px;">Загрузка…</div>';
+  // забег-розыгрыши (угадай время)
+  const runCards = GIVEAWAY_ARCHIVE.map((g) => `
     <div class="gv-arch-item">
       <div class="gv-arch-title">🏃 ${escapeHtml(g.title)}</div>
       <div class="gv-arch-date">${g.date} · участников: <b>${g.participants}</b></div>
@@ -3030,6 +3030,26 @@ function openGiveawayArchive() {
       <div class="gv-arch-row" style="opacity:0.85;">${escapeHtml(g.runners_up)}</div>
       <div class="gv-arch-prize">🎁 ${escapeHtml(g.prize)}</div>
     </div>`).join("");
+  // розыгрыш 29 августа (топ-20 недели, 3 призёра из БД)
+  let aug29Card = "";
+  try {
+    const g29 = await apiPost("/api/giveaway29/state", { init_data: INIT_DATA });
+    if (g29 && g29.drawn && g29.winners && g29.winners.length) {
+      const winners = g29.winners.map((w, i) =>
+        `<div class="gv-arch-win">${["🥇", "🥈", "🥉"][i] || "🏅"} <b>${gv29Name(w)}</b> — был #${w.place} · +${w.gain} за неделю</div>`
+      ).join("");
+      aug29Card = `
+        <div class="gv-arch-item">
+          <div class="gv-arch-title">🎯 Розыгрыш 29 августа</div>
+          <div class="gv-arch-date">Топ-20 недельного рейтинга · случайный розыгрыш (выше рейтинг — выше шанс)</div>
+          ${winners}
+          <div class="gv-arch-prize">🎁 Сертификат OZON / Золотое Яблоко</div>
+        </div>`;
+    }
+  } catch (e) { /* если розыгрыш не разыгран — просто не показываем */ }
+
+  const html = aug29Card + runCards;
+  el.innerHTML = html || '<p style="text-align:center; opacity:0.7; padding:16px;">Пока пусто. Первый розыгрыш совсем скоро!</p>';
 }
 window.openGiveawayArchive = openGiveawayArchive;
 
@@ -3175,17 +3195,25 @@ async function loadGiveaway() {
   const pz = document.getElementById("gv-prizes");
   if (pz) {
     const cnt = (res.stats && res.stats.count) || 0;
-    const p2 = res.prize2_min, p3 = res.prize3_min;
-    const mark = (n) => cnt >= n ? "✅ уже открыт" : `осталось ${n - cnt} участников`;
+    const cert = res.prize_cert || "сертификат OZON / Золотое Яблоко";
+    const thr = res.prize_thresholds || [32, 64, 128, 256];
+    const open = res.prize_count || 1;
+    // строки призовых мест: 1-е — главный сертификат, дальше — обычные
+    let rows = `<div class="gv-prize-row"><span class="gv-prize-place">🥇 1 место</span><span>Главный ${cert}</span></div>`;
+    for (let p = 2; p <= open; p++) {
+      rows += `<div class="gv-prize-row"><span class="gv-prize-place">🎁 ${p} место</span><span>${cert}</span></div>`;
+    }
+    // следующий порог
+    const next = thr.find((n) => cnt < n);
+    const nextLine = next
+      ? `📣 Участников сейчас: <b>${cnt}</b>. Ещё <b>${next - cnt}</b> — и откроется дополнительный приз! Зови друзей 🚀`
+      : `📣 Участников: <b>${cnt}</b> — открыты все призы! 🔥`;
     pz.innerHTML =
-      `<div class="gv-prizes-title">🎁 Призы</div>` +
-      `<div class="gv-prize-row"><span class="gv-prize-place">🥇 1 место</span><span>${res.prize_top3} <b>+ ${res.prize_winner}</b></span></div>` +
-      `<div class="gv-prize-row"><span class="gv-prize-place">🥈 2 место</span><span>${res.prize_top3}<sup>*</sup></span></div>` +
-      `<div class="gv-prize-row"><span class="gv-prize-place">🥉 3 место</span><span>${res.prize_top3}<sup>**</sup></span></div>` +
+      `<div class="gv-prizes-title">🎁 Призы (сейчас разыгрывается: ${open})</div>` +
+      rows +
       `<div class="gv-prize-note">` +
-        `<div><sup>*</sup> сертификат за 2 место разыгрывается при <b>${p2}+</b> участниках (${mark(p2)}).</div>` +
-        `<div><sup>**</sup> сертификат за 3 место — при <b>${p3}+</b> участниках (${mark(p3)}).</div>` +
-        `<div class="gv-prize-cta">📣 Сейчас участников: <b>${cnt}</b>. Зови друзей — чем нас больше, тем больше призов разыграем!</div>` +
+        `<div>Число призов растёт с числом участников: база 1, далее +1 при <b>${thr.join(", ")}</b> участниках.</div>` +
+        `<div class="gv-prize-cta">${nextLine}</div>` +
       `</div>`;
   }
   if (res.my) {
@@ -3314,6 +3342,18 @@ async function gvAnnounceResults() {
   alert(`Готово! Пост-итоги с видео отправлены: ${res.sent}.`);
 }
 document.getElementById("btn-gv-announce-results").addEventListener("click", gvAnnounceResults);
+async function gvAdminReset() {
+  if (!confirm("Удалить ВСЕ прогнозы и результат прошлого розыгрыша? Действие необратимо. Делать только перед новым забегом.")) return;
+  const btn = document.getElementById("btn-gv-reset");
+  btn.disabled = true; btn.textContent = "Сбрасываю…";
+  const res = await apiPost("/api/giveaway/reset", { init_data: INIT_DATA });
+  btn.disabled = false; btn.textContent = "🧹 Сбросить прогнозы (новый забег)";
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось сбросить."); return; }
+  hapticSuccess();
+  alert(`Готово! Удалено прогнозов: ${res.cleared}. Розыгрыш готов к новому забегу.`);
+  await loadGiveaway();
+}
+document.getElementById("btn-gv-reset").addEventListener("click", gvAdminReset);
 
 // ==============================
 // ===== ЗАДОМ НАПЕРЁД (тест) ====
@@ -6235,6 +6275,10 @@ function weeklyStatsHtml(s) {
     <div class="ws-row bad"><span>🙈 Проигнорировали</span><b>${s.ignored}</b></div>
   </div>`;
 }
+function weeklyVsHtml(vs) {
+  if (!vs) return "";
+  return `<div class="weekly-vs">🏆 Игорь vs Ученики: <b>${vs.igor} : ${vs.students}</b></div>`;
+}
 
 async function loadWeekly() {
   const block = document.getElementById("weekly-block");
@@ -6257,6 +6301,7 @@ async function loadWeekly() {
         <div class="weekly-title">🏁 Вызов от Игоря завершён</div>
         <div class="weekly-sub">Формат: <b>${title}</b> · счёт Игоря: <b>${weeklyScoreText(a.format, a.admin_score)}</b></div>
         ${weeklyStatsHtml(a.stats)}
+        ${weeklyVsHtml(a.vs_score)}
         <div class="weekly-hint">Следующий вызов — по вт / чт / сб. Не пропусти: за игнор списывается 5 рейтинга.</div>
       </div>`;
     weeklyStartTicker(null);
@@ -6280,6 +6325,7 @@ async function loadWeekly() {
       <div class="weekly-sub">Формат: <b>${title}</b> · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
       <div class="weekly-timer"></div>
       ${weeklyLiveStatsHtml(a.live_stats)}
+      ${weeklyVsHtml(a.vs_score)}
       ${status}${btn}
       <div class="weekly-hint">⏱ На вызов даётся 24 часа. Если не принять — <b>−5</b> рейтинга за игнор.</div>
     </div>`;
@@ -6314,6 +6360,7 @@ async function loadWeeklyBanner() {
         <div class="weekly-title">🏁 Вызов от Игоря завершён</div>
         <div class="weekly-sub">Формат: <b>${title}</b> · счёт Игоря <b>${weeklyScoreText(a.format, a.admin_score)}</b></div>
         ${weeklyStatsHtml(a.stats)}
+        ${weeklyVsHtml(a.vs_score)}
       </div>`;
     weeklyStartTicker(null);
     return;
@@ -6332,6 +6379,7 @@ async function loadWeeklyBanner() {
       <div class="weekly-timer"></div>
       <div class="weekly-sub">«${title}» · ${weeklyGoalHtml(a.format, a.admin_score)} → <b style="color:var(--brand-lime);">+50</b></div>
       ${weeklyLiveStatsHtml(a.live_stats)}
+      ${weeklyVsHtml(a.vs_score)}
       ${action}
     </div>`;
   weeklyStartTicker(a.seconds_left);
