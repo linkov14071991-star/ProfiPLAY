@@ -2976,6 +2976,7 @@ const GIVEAWAY_ARCHIVE = [
     runners_up: "🥈 @steephuman (50:00) · 🥉 @paac20 (49:30)",
     participants: 74,
     prize: "Сертификат OZON 1000 ₽ + памятная медаль с забега 🏅",
+    cert: "/certificate-aug23.png",
   },
 ];
 // Активные / будущие розыгрыши в хабе
@@ -3029,6 +3030,7 @@ async function openGiveawayArchive() {
       <div class="gv-arch-win">🥇 Победитель: <b>${escapeHtml(g.winner)}</b> — ${escapeHtml(g.winner_pred)}</div>
       <div class="gv-arch-row" style="opacity:0.85;">${escapeHtml(g.runners_up)}</div>
       <div class="gv-arch-prize">🎁 ${escapeHtml(g.prize)}</div>
+      ${g.cert ? `<img class="gv-arch-cert" src="${g.cert}" alt="Сертификат забега" loading="lazy" onclick="window.open('${g.cert}','_blank')">` : ""}
     </div>`).join("");
   // розыгрыш 29 августа (топ-20 недели, 3 призёра из БД)
   let aug29Card = "";
