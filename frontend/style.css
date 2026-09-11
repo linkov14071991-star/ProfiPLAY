@@ -2394,6 +2394,23 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .schulte-cell.wrong { background: #e5484d; border-color: #e5484d; color: #fff; animation: schulteShake 0.3s; }
 @keyframes schulteShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
+/* Числовая память: карточки скрыты, открываются по тапу */
+.numbermem-grid { display: grid; gap: 8px; width: 100%; max-width: 440px; margin: 16px auto; padding: 0 4px; }
+.numbermem-cell {
+  aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(20px, 7vw, 34px); font-weight: 800;
+  color: #fff; background: rgba(255, 255, 255, 0.10);
+  border: 2px solid rgba(255, 255, 255, 0.14); border-radius: 14px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+.numbermem-cell:active { transform: scale(0.94); }
+.numbermem-cell.down::after { content: "?"; font-size: clamp(18px, 6vw, 28px); font-weight: 800; color: rgba(255, 255, 255, 0.22); }
+.numbermem-cell.found { background: var(--brand-lime); color: #14210a; border-color: var(--brand-lime); }
+.numbermem-cell.wrong { background: #e5484d; border-color: #e5484d; color: #fff; animation: schulteShake 0.3s; }
+.numbermem-msg { text-align: center; min-height: 22px; font-size: 14px; color: #ffd5d5; margin: 8px 0; padding: 0 12px; line-height: 1.4; }
+
 /* Чёрно-красная таблица (Горбов–Шульте) — светлые ячейки, красный/чёрный текст */
 .gs-grid { display: grid; gap: 8px; width: 100%; max-width: 440px; margin: 14px auto; padding: 0 4px; }
 .gs-cell {

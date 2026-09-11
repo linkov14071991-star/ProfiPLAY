@@ -58,6 +58,7 @@ XP_PER_RATING = {
     "schulte": 2.0,   # таблица Шульте: как спринт
     "gorbov": 2.0,    # чёрно-красная таблица (Горбов–Шульте): как спринт
     "stroop": 2.0,    # тест Струпа: как спринт
+    "numbermem": 2.0, # числовая память: как спринт
     "gametheory": 1.5,  # теория игр (обыграть Профика)
     "hangman": 1.5,     # виселица (термины, формулы, команды)
 }
@@ -69,13 +70,13 @@ LIVES_MULT = {1: 3.0, 3: 2.0, 5: 1.0}
 # Базовая ставка рейтинга за один правильный ответ.
 # Тусовка (party) = 0 очков, потому что играется на своей честности —
 # слишком просто накрутить рейтинг. Прогресс квестов и ачивок при этом сохраняется.
-BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12, "stroop": 1, "gametheory": 4, "hangman": 6}
+BASE_RATING_PER_CORRECT = {"sprint": 1, "marathon": 2, "party": 0, "numguess": 4, "fastmath": 1, "infomath": 1, "schulte": 10, "gorbov": 12, "stroop": 1, "numbermem": 10, "gametheory": 4, "hangman": 6}
 # Игры Спринта, где партия за 60 сек = один результат (для «Рекорда дня» по уровням)
 DAILY_RECORD_GAMES = ("sprint", "fastmath", "infomath", "stroop")
 # Игры «на время»: партия = прохождение таблицы, рекорд = мс (лог времени в daily_score)
-TIME_RECORD_GAMES = ("schulte", "gorbov")
+TIME_RECORD_GAMES = ("schulte", "gorbov", "numbermem")
 # Игры, где рекорд = МЕНЬШЕ лучше (сортировка по возрастанию): numguess — попытки, время-игры — мс
-ASC_RECORD_GAMES = ("numguess", "schulte", "gorbov")
+ASC_RECORD_GAMES = ("numguess", "schulte", "gorbov", "numbermem")
 DIFF_LABELS = {"easy": "Простая", "medium": "Средняя", "hard": "Сложная"}
 # Duel XP
 XP_DUEL_WIN = 50
@@ -1073,6 +1074,7 @@ GAME_LB_SOURCES = {
     "schulte":  ["schulte", "duel_schulte"],
     "gorbov":   ["gorbov", "duel_gorbov"],
     "stroop":   ["stroop", "duel_stroop"],
+    "numbermem": ["numbermem", "duel_numbermem"],
     "gametheory": ["gametheory"],
     "hangman":  ["hangman"],
     "marathon": ["marathon"],
@@ -1157,7 +1159,7 @@ async def sprint_daily_records(game: str = Query(...), period: str = Query("day"
         "records": out,
         "labels": DIFF_LABELS,
         "order": "asc" if asc else "desc",
-        "unit": {"numguess": "поп.", "schulte": "мс", "gorbov": "мс"}.get(game, ""),
+        "unit": {"numguess": "поп.", "schulte": "мс", "gorbov": "мс", "numbermem": "мс"}.get(game, ""),
         "period": "all" if period == "all" else "day",
     }
 
@@ -1189,7 +1191,7 @@ DUEL_QUESTIONS_COUNT = 10
 DUEL_TIME_LIMIT_MS = 15000  # 15 сек на вопрос
 
 # Форматы дуэли = игры Спринта
-DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte", "gorbov", "stroop", "hangman")
+DUEL_FORMATS = ("sprint", "fastmath", "infomath", "numguess", "schulte", "gorbov", "stroop", "numbermem", "hangman")
 # Тест Струпа: набор цветов по сложности и длительность дуэли
 STROOP_KEYS = ("red", "blue", "green", "yellow", "orange", "purple", "cyan", "pink")
 STROOP_N = {"easy": 4, "medium": 6, "hard": 8}
@@ -1205,6 +1207,8 @@ DUEL_NG = {
 DUEL_SCHULTE = {"easy": 4, "medium": 5, "hard": 6}
 # Дуэль «Чёрно-красная таблица» (Горбов–Шульте): сторона поля по сложности
 DUEL_GORBOV = {"easy": 4, "medium": 5, "hard": 6}
+# Дуэль «Числовая память»: сторона поля по сложности (оба играют один расклад скрытых чисел)
+DUEL_NUMBERMEM = {"easy": 3, "medium": 4, "hard": 5}
 # Рейтинг за бой в общий зачёт: победа / ничья / поражение
 DUEL_RATING = {"win": 20, "draw": 0, "loss": -20}
 
@@ -1405,7 +1409,7 @@ def _display_name(row) -> str:
 def _fmt_duel_score(fmt: str, score: int) -> str:
     """Человекочитаемый счёт дуэли. Для schulte очки инвертированы из времени
     (10_000_000 − мс) → показываем секунды; 0 = не прошёл."""
-    if fmt in ("schulte", "gorbov"):
+    if fmt in ("schulte", "gorbov", "numbermem"):
         if not score or score <= 0:
             return "—"
         return f"{(10_000_000 - score) / 1000:.1f} с"
@@ -1650,6 +1654,19 @@ async def duel_create(
             )
             return {"duel_id": duel_id, "format": "schulte", "size": size, "order": order}
 
+        if format == "numbermem":
+            size = DUEL_NUMBERMEM.get(difficulty)
+            if not size:
+                raise HTTPException(status_code=400, detail="Bad difficulty")
+            order = list(range(1, size * size + 1))
+            random.shuffle(order)
+            payload = {"format": "numbermem", "size": size, "order": order}
+            db.execute(
+                "INSERT INTO duels (id, creator_id, difficulty, questions_json, format) VALUES (?, ?, ?, ?, ?)",
+                (duel_id, creator["telegram_id"], difficulty, json.dumps(payload), format),
+            )
+            return {"duel_id": duel_id, "format": "numbermem", "size": size, "order": order}
+
         if format == "gorbov":
             size = DUEL_GORBOV.get(difficulty)
             if not size:
@@ -1755,6 +1772,8 @@ async def duel_join(
                 "time_limit_ms": payload["time_ms"]}
     if fmt == "schulte":
         return {**common, "size": payload["size"], "order": payload["order"]}
+    if fmt == "numbermem":
+        return {**common, "size": payload["size"], "order": payload["order"]}
     if fmt == "gorbov":
         return {**common, "size": payload["size"], "cells": payload["cells"]}
     if fmt == "stroop":
@@ -1791,7 +1810,7 @@ async def duel_submit(
         _fmt = duel["format"] or "sprint"
         if _fmt == "numguess":
             my_score = _score_numguess(ng or {})
-        elif _fmt in ("schulte", "gorbov"):
+        elif _fmt in ("schulte", "gorbov", "numbermem"):
             my_score = _score_schulte(sch or {})
         elif _fmt == "stroop":
             my_score = _score_stroop(strp or {})
@@ -2059,6 +2078,7 @@ WEEKLY_FMT_TITLES = {
     "schulte": "Таблица Шульте",
     "gorbov": "Чёрно-красная таблица",
     "stroop": "Струп-тест",
+    "numbermem": "Числовая память",
     "hangman": "Виселица",
 }
 WEEKLY_BONUS = 50
@@ -2315,6 +2335,8 @@ async def weekly_active(init_data: str = Body(..., embed=True)):
                 res.update({"maxN": payload["maxN"], "secret": payload["secret"], "time_limit_ms": payload["time_ms"]})
             elif fmt == "schulte":
                 res.update({"size": payload["size"], "order": payload["order"]})
+            elif fmt == "numbermem":
+                res.update({"size": payload["size"], "order": payload["order"]})
             elif fmt == "gorbov":
                 res.update({"size": payload["size"], "cells": payload["cells"]})
             elif fmt == "stroop":
@@ -2369,7 +2391,7 @@ async def weekly_attempt(
         _wf = ch["format"] or "sprint"
         if _wf == "numguess":
             score = _score_numguess(ng or {})
-        elif _wf in ("schulte", "gorbov"):
+        elif _wf in ("schulte", "gorbov", "numbermem"):
             score = _score_schulte(sch or {})
         elif _wf == "stroop":
             score = _score_stroop(strp or {})
@@ -3461,7 +3483,7 @@ async def python_session_end(payload: dict = Body(...)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "tbquiz-top-fix-v132"
+BUILD_TAG = "numbermem-game-v133"
 
 
 @app.get("/api/version")

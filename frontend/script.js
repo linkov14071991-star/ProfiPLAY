@@ -67,6 +67,7 @@ const SCREENS = {
   duelHistory: "screen-duel-history",
   duelNg: "screen-duel-ng",
   duelSchulte: "screen-duel-schulte",
+  duelNumbermem: "screen-duel-numbermem",
   duelGorbov: "screen-duel-gorbov",
   duelStroop: "screen-duel-stroop",
   gameMode: "screen-game-mode",
@@ -101,6 +102,9 @@ const SCREENS = {
   schulteSetup: "screen-schulte-setup",
   schultePlay: "screen-schulte-play",
   schulteResult: "screen-schulte-result",
+  numbermemSetup: "screen-numbermem-setup",
+  numbermemPlay: "screen-numbermem-play",
+  numbermemResult: "screen-numbermem-result",
   gorbovSetup: "screen-gorbov-setup",
   gorbovPlay: "screen-gorbov-play",
   gorbovResult: "screen-gorbov-result",
@@ -161,6 +165,7 @@ function showScreen(name) {
     if (name === "infomathSetup") loadDailyRecords("infomath");
     if (name === "numguessSetup") loadDailyRecords("numguess");
     if (name === "schulteSetup") { loadDailyRecords("schulte"); loadGameLeaderboard("schulte", "schulte-lb-list", "all"); }
+    if (name === "numbermemSetup") { loadDailyRecords("numbermem"); loadGameLeaderboard("numbermem", "numbermem-lb-list", "all"); }
     if (name === "gorbovSetup") { loadDailyRecords("gorbov"); loadGameLeaderboard("gorbov", "gorbov-lb-list", "all"); }
     if (name === "stroopSetup") { loadDailyRecords("stroop"); loadGameLeaderboard("stroop", "stroop-lb-list", "all"); }
     if (name === "gtSetup") { loadGameLeaderboard("gametheory", "gt-lb-list", "all"); }
@@ -342,6 +347,7 @@ const BACK_PARENT = {
   fastmathResult: "fastmathSetup",
   infomathResult: "infomathSetup",
   schulteResult: "schulteSetup",
+  numbermemResult: "numbermemSetup",
   gorbovResult: "gorbovSetup",
   stroopResult: "stroopSetup",
   gtResult: "gtSetup",
@@ -363,6 +369,7 @@ const BACK_PARENT = {
   fastmathSetup: "gameMode",
   infomathSetup: "gameMode",
   schulteSetup: "gameMode",
+  numbermemSetup: "menu",
   gorbovSetup: "gameMode",
   stroopSetup: "gameMode",
   duelSetup: "gameMode",
@@ -403,6 +410,7 @@ const GAME_MODE_META = {
   schulte:  { icon: "🧠", title: "Таблица Шульте" },
   gorbov:   { icon: "🔴", title: "Чёрно-красная таблица" },
   stroop:   { icon: "🎨", title: "Струп-тест" },
+  numbermem: { icon: "🧠", title: "Числовая память" },
 };
 function openGameMode(game) {
   currentGame = game;
@@ -422,6 +430,7 @@ function enterSolo(game) {
   else if (game === "schulte") { resetLbTabs("schulte-lb"); showScreen("schulteSetup"); }
   else if (game === "gorbov") { resetLbTabs("gorbov-lb"); showScreen("gorbovSetup"); }
   else if (game === "stroop") { resetLbTabs("stroop-lb"); showScreen("stroopSetup"); }
+  else if (game === "numbermem") { resetLbTabs("numbermem-lb"); showScreen("numbermemSetup"); }
 }
 
 const DAILY_REC_MEDALS = ["🥇", "🥈", "🥉"];
@@ -446,7 +455,7 @@ async function loadDailyRecords(game, period) {
   } catch (e) { el.innerHTML = ""; return; }
   const recs = (data && data.records) || {};
   const labels = (data && data.labels) || { easy: "Простая", medium: "Средняя", hard: "Сложная" };
-  const isTimeGame = (game === "schulte" || game === "gorbov");
+  const isTimeGame = (game === "schulte" || game === "gorbov" || game === "numbermem");
   // форматирование результата по игре: время-игры — секунды, numguess — попытки
   const fmtScore = (score) => {
     if (isTimeGame) return fmtSec(score) + " с";
@@ -456,7 +465,9 @@ async function loadDailyRecords(game, period) {
   const hintText = isTimeGame ? "меньше времени — выше в топе" : "меньше попыток — выше в топе";
   const hint = (data && data.order === "asc") ? `<div class="daily-rec-hint">${hintText}</div>` : "";
   // подписи уровней: у таблиц — размер поля
-  const lvlLabels = isTimeGame ? { easy: "4×4", medium: "5×5", hard: "6×6" } : labels;
+  const lvlLabels = isTimeGame
+    ? (game === "numbermem" ? { easy: "3×3", medium: "4×4", hard: "5×5" } : { easy: "4×4", medium: "5×5", hard: "6×6" })
+    : labels;
   const lvlMult = isTimeGame ? { easy: "", medium: "", hard: "" } : DAILY_REC_MULT;
   const hasAny = ["easy", "medium", "hard"].some((d) => (recs[d] || []).length);
   if (!hasAny) {
@@ -626,7 +637,8 @@ function routeToGame(game) {
   if (game === "party") { showScreen("party"); return; }
   if (game === "crocodile") { renderCrocoRecord(); showScreen("crocoSetup"); return; }
   // Игры Спринта → экран выбора режима (одиночная / дуэль / правила)
-  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath" || game === "schulte" || game === "gorbov" || game === "stroop") { openGameMode(game); return; }
+  if (game === "sprint" || game === "numguess" || game === "fastmath" || game === "infomath" || game === "schulte" || game === "gorbov" || game === "stroop" || game === "numbermem") { openGameMode(game); return; }
+  if (game === "numbermemsolo") { resetLbTabs("numbermem-lb"); showScreen("numbermemSetup"); return; }
   if (game === "alias") { showScreen("aliasSetup"); return; }
   if (game === "marathon") { renderMarathonRecord(); resetLbTabs("marathon-lb"); loadGameLeaderboard("marathon", "marathon-lb-list", "all"); showScreen("marathonSetup"); return; }
   if (game === "timebank") { tbRenderRecords(); showScreen("tbSetup"); return; }
@@ -695,6 +707,12 @@ const GAME_INFO = {
     body: `<p>Классический тренажёр памяти, скорости и внимания. Перед тобой поле с числами вразнобой — находи и тапай их <b>по порядку</b>: 1, 2, 3… до конца.</p>
       <p>Играешь <b>на время</b>: чем быстрее пройдёшь таблицу — тем лучше рекорд. Размер поля выбираешь сам: 4×4 (×1), 5×5 (×1.5), 6×6 (×2).</p>
       <p>За каждую пройденную таблицу — рейтинг × множитель, <b>кап 100 очков в день</b>. «Рекорд дня» и таблица лучших — по лучшему времени (меньше — выше).</p>`,
+  },
+  numbermem: {
+    title: "🧠 Числовая память",
+    body: `<p>Тренажёр памяти. Все числа на поле <b>скрыты</b>. Тапаешь ячейку — она открывается и показывает число.</p>
+      <p>Нужно открыть все числа <b>по порядку</b>: сначала 1, потом 2, 3… Открыл верное — оно остаётся. <b>Ошибся — все карточки закрываются, начинаешь с 1</b>, поэтому запоминай, где что лежит!</p>
+      <p>Играешь <b>на время</b>. Размер поля: 3×3 (×1), 4×4 (×1.5), 5×5 (×2). За пройденное поле — рейтинг × множитель, <b>кап 100 очков в день</b>. Рекорды — по лучшему времени.</p>`,
   },
   gorbov: {
     title: "🔴 Чёрно-красная таблица",
@@ -2124,6 +2142,124 @@ document.getElementById("btn-schulte-start").addEventListener("click", schulteSt
 document.getElementById("btn-schulte-again").addEventListener("click", schulteStart);
 document.getElementById("btn-schulte-stop").addEventListener("click", schulteStop);
 setupGameLeaderboard("schulte", "schulte-lb", "schulte-lb-list");
+
+// ==============================
+// === ЧИСЛОВАЯ ПАМЯТЬ (numbermem) ===
+// ==============================
+// Карточки скрыты. Открывай числа по порядку 1→N. Ошибся — всё закрывается, начинаешь с 1.
+// На время: рекорд = лучшее время (меньше — лучше). Размер поля 3×3 / 4×4 / 5×5.
+const NUMBERMEM_SIZE = { easy: 3, medium: 4, hard: 5 };
+const NUMBERMEM_RESET_MS = 1500;   // сколько показываем неверное число перед сбросом
+const numbermem = { difficulty: "easy", size: 3, n: 9, order: [], found: {}, target: 1, mistakes: 0, startTime: 0, timer: null, locked: false, busy: false };
+const numbermemBestMs = {};
+
+setupPills("numbermem-difficulty", (v) => { numbermem.difficulty = v; updateNumbermemMult(); });
+function updateNumbermemMult() {
+  const dm = { easy: 1, medium: 1.5, hard: 2 }[numbermem.difficulty] || 1;
+  const el = document.getElementById("numbermem-mult");
+  if (el) el.textContent = "×" + (Number.isInteger(dm) ? dm : dm.toFixed(1));
+}
+updateNumbermemMult();
+
+function numbermemRenderGrid() {
+  const grid = document.getElementById("numbermem-grid");
+  grid.style.gridTemplateColumns = `repeat(${numbermem.size}, 1fr)`;
+  let html = "";
+  for (let i = 0; i < numbermem.n; i++) {
+    const isFound = numbermem.found[i];
+    html += `<button class="numbermem-cell ${isFound ? "found" : "down"}" data-i="${i}">${isFound ? numbermem.order[i] : ""}</button>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll(".numbermem-cell").forEach((c) => { c.onclick = () => numbermemTap(c); });
+}
+
+function numbermemStart() {
+  hapticMedium();
+  numbermem.size = NUMBERMEM_SIZE[numbermem.difficulty] || 3;
+  numbermem.n = numbermem.size * numbermem.size;
+  numbermem.target = 1;
+  numbermem.mistakes = 0;
+  numbermem.found = {};
+  numbermem.locked = false;
+  numbermem.busy = false;
+  const nums = Array.from({ length: numbermem.n }, (_, i) => i + 1);
+  for (let k = nums.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [nums[k], nums[j]] = [nums[j], nums[k]]; }
+  numbermem.order = nums;
+  numbermemRenderGrid();
+  document.getElementById("numbermem-target").textContent = 1;
+  document.getElementById("numbermem-timer").textContent = "0.0";
+  document.getElementById("numbermem-msg").textContent = "";
+  showScreen("numbermemPlay");
+  numbermem.startTime = performance.now();
+  numbermem.timer = setInterval(() => {
+    document.getElementById("numbermem-timer").textContent = fmtSec(performance.now() - numbermem.startTime);
+  }, 100);
+}
+
+function numbermemTap(cell) {
+  if (numbermem.locked || numbermem.busy) return;
+  const i = parseInt(cell.dataset.i, 10);
+  if (numbermem.found[i]) return;
+  const num = numbermem.order[i];
+  if (num === numbermem.target) {
+    numbermem.found[i] = true;
+    cell.classList.remove("down");
+    cell.classList.add("found");
+    cell.textContent = num;
+    hapticLight();
+    numbermem.target++;
+    if (numbermem.target > numbermem.n) { numbermemFinish(); return; }
+    document.getElementById("numbermem-target").textContent = numbermem.target;
+  } else {
+    // ошибка → показываем число, затем закрываем ВСЁ и сбрасываем до 1
+    numbermem.mistakes++;
+    numbermem.busy = true;
+    hapticError();
+    cell.classList.remove("down");
+    cell.classList.add("wrong");
+    cell.textContent = num;
+    document.getElementById("numbermem-msg").textContent = `Это ${num}, а нужно ${numbermem.target}. Всё закрывается — начинаем с 1!`;
+    setTimeout(() => {
+      numbermem.found = {};
+      numbermem.target = 1;
+      numbermem.busy = false;
+      document.getElementById("numbermem-target").textContent = 1;
+      document.getElementById("numbermem-msg").textContent = "";
+      numbermemRenderGrid();
+    }, NUMBERMEM_RESET_MS);
+  }
+}
+
+async function numbermemFinish() {
+  numbermem.locked = true;
+  if (numbermem.timer) { clearInterval(numbermem.timer); numbermem.timer = null; }
+  const ms = Math.round(performance.now() - numbermem.startTime);
+  hapticSuccess();
+  const prevBest = numbermemBestMs[numbermem.difficulty];
+  const isRecord = prevBest == null || ms < prevBest;
+  if (isRecord) numbermemBestMs[numbermem.difficulty] = ms;
+  document.getElementById("numbermem-r-time").textContent = fmtSec(ms);
+  document.getElementById("numbermem-r-mistakes").textContent = numbermem.mistakes;
+  document.getElementById("numbermem-r-best").textContent = fmtSec(numbermemBestMs[numbermem.difficulty]) + " с";
+  document.getElementById("numbermem-new-record").style.display = isRecord ? "block" : "none";
+  const res = await awardTraining("numbermem", 1, { correct: 1, difficulty: numbermem.difficulty, ms });
+  document.getElementById("numbermem-r-rating").textContent = (res && res.delta_awarded) || 0;
+  document.getElementById("numbermem-r-xp").textContent = (res && res.xp_awarded) || 0;
+  showScreen("numbermemResult");
+}
+
+function numbermemStop() {
+  if (numbermem.timer) { clearInterval(numbermem.timer); numbermem.timer = null; }
+  numbermem.locked = true;
+  currentGame = "numbermem";
+  resetLbTabs("numbermem-lb");
+  showScreen("numbermemSetup");
+}
+
+document.getElementById("btn-numbermem-start").addEventListener("click", numbermemStart);
+document.getElementById("btn-numbermem-again").addEventListener("click", numbermemStart);
+document.getElementById("btn-numbermem-stop").addEventListener("click", numbermemStop);
+setupGameLeaderboard("numbermem", "numbermem-lb", "numbermem-lb-list");
 
 // ==============================
 // === ЧЁРНО-КРАСНАЯ ТАБЛИЦА (Горбов–Шульте) ===
@@ -5463,6 +5599,7 @@ const DUEL_FMT_TITLES = {
   schulte: "🧠 Таблица Шульте · один расклад, кто быстрее",
   gorbov: "🔴 Чёрно-красная таблица · один расклад, кто быстрее",
   stroop: "🎨 Струп-тест · кто больше верных за 30 сек",
+  numbermem: "🧠 Числовая память · один расклад, кто быстрее откроет по порядку",
 };
 
 setupPills("duel-difficulty", (v) => (duel.difficulty = v));
@@ -5509,6 +5646,7 @@ async function duelStartCreate() {
   duel.role = "creator";
   if (duel.format === "numguess") { duelNgStart(res); return; }
   if (duel.format === "schulte") { duelSchulteStart(res); return; }
+  if (duel.format === "numbermem") { duelNumbermemStart(res); return; }
   if (duel.format === "gorbov") { duelGorbovStart(res); return; }
   if (duel.format === "stroop") { duelStroopStart(res); return; }
   if (duel.format === "hangman") { hmWeeklyStart(res.words, "weekly-admin"); return; }
@@ -5639,6 +5777,78 @@ async function duelSchulteEnd(solved) {
   else duelShowWaiting(res);
 }
 document.getElementById("btn-duel-schulte-stop").addEventListener("click", () => duelSchulteEnd(false));
+
+// ===== Дуэль «Числовая память» =====
+function duelNumbermemRenderGrid() {
+  const grid = document.getElementById("duel-numbermem-grid");
+  grid.style.gridTemplateColumns = `repeat(${duel.nmSize}, 1fr)`;
+  let html = "";
+  for (let i = 0; i < duel.nmN; i++) {
+    const f = duel.nmFound[i];
+    html += `<button class="numbermem-cell ${f ? "found" : "down"}" data-i="${i}">${f ? duel.nmOrder[i] : ""}</button>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll(".numbermem-cell").forEach((c) => { c.onclick = () => duelNumbermemTap(c); });
+}
+function duelNumbermemStart(info) {
+  duel.nmSize = info.size || 3;
+  duel.nmOrder = info.order || [];
+  duel.nmN = duel.nmOrder.length;
+  duel.nmTarget = 1;
+  duel.nmFound = {};
+  duel.nmLocked = false;
+  duel.nmBusy = false;
+  duelNumbermemRenderGrid();
+  document.getElementById("duel-numbermem-target").textContent = 1;
+  document.getElementById("duel-numbermem-timer").textContent = "0.0";
+  document.getElementById("duel-numbermem-msg").textContent = "";
+  showScreen("duelNumbermem");
+  duel.nmStart = performance.now();
+  clearInterval(duel.nmTimer);
+  duel.nmTimer = setInterval(() => {
+    document.getElementById("duel-numbermem-timer").textContent = fmtSec(performance.now() - duel.nmStart);
+  }, 100);
+}
+function duelNumbermemTap(cell) {
+  if (duel.nmLocked || duel.nmBusy) return;
+  const i = parseInt(cell.dataset.i, 10);
+  if (duel.nmFound[i]) return;
+  const num = duel.nmOrder[i];
+  if (num === duel.nmTarget) {
+    duel.nmFound[i] = true;
+    cell.classList.remove("down"); cell.classList.add("found"); cell.textContent = num; hapticLight();
+    duel.nmTarget++;
+    if (duel.nmTarget > duel.nmN) { duelNumbermemEnd(true); return; }
+    document.getElementById("duel-numbermem-target").textContent = duel.nmTarget;
+  } else {
+    duel.nmBusy = true; hapticError();
+    cell.classList.remove("down"); cell.classList.add("wrong"); cell.textContent = num;
+    document.getElementById("duel-numbermem-msg").textContent = `Это ${num}, а нужно ${duel.nmTarget}. Всё закрывается — с 1!`;
+    setTimeout(() => {
+      duel.nmFound = {}; duel.nmTarget = 1; duel.nmBusy = false;
+      document.getElementById("duel-numbermem-target").textContent = 1;
+      document.getElementById("duel-numbermem-msg").textContent = "";
+      duelNumbermemRenderGrid();
+    }, NUMBERMEM_RESET_MS);
+  }
+}
+async function duelNumbermemEnd(solved) {
+  if (duel.nmLocked) return;
+  duel.nmLocked = true;
+  clearInterval(duel.nmTimer);
+  const elapsed = Math.round(performance.now() - duel.nmStart);
+  duel.nmLastMs = solved ? elapsed : 0;
+  if (solved) hapticSuccess(); else hapticError();
+  const sch = { solved: solved, elapsed_ms: elapsed };
+  if (duel.mode === "weekly") return weeklyUserFinish({ sch });
+  if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
+  const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
+  if (!res) { alert("Не смог отправить результат. Попробуй ещё раз."); return; }
+  refreshProfile();
+  if (res.status === "complete") duelShowResult(res);
+  else duelShowWaiting(res);
+}
+document.getElementById("btn-duel-numbermem-stop").addEventListener("click", () => duelNumbermemEnd(false));
 
 // ===== Дуэль «Чёрно-красная таблица» (один расклад, кто быстрее) =====
 function duelGorbovRenderTarget() {
@@ -5797,6 +6007,9 @@ function duelShowWaiting(info) {
   const labelEl = scoreEl.nextElementSibling;
   if (duel.format === "schulte" || duel.format === "gorbov") {
     scoreEl.textContent = duel.schLastMs ? (fmtSec(duel.schLastMs) + " с") : "—";
+    if (labelEl) labelEl.textContent = "твоё время";
+  } else if (duel.format === "numbermem") {
+    scoreEl.textContent = duel.nmLastMs ? (fmtSec(duel.nmLastMs) + " с") : "—";
     if (labelEl) labelEl.textContent = "твоё время";
   } else {
     scoreEl.textContent = duel.role === "creator" ? info.creator_score : info.opponent_score;
@@ -6173,7 +6386,7 @@ async function duelOpenIncoming(duelId) {
   if (fmtEl) fmtEl.textContent = (DUEL_FMT_TITLES[info.format] || "Блиц-дуэль") + ". Готов?";
   if (info.creator_score) {
     const wrap = document.getElementById("duel-accept-opp-score-wrap");
-    if (info.format === "schulte" || info.format === "gorbov") {
+    if (info.format === "schulte" || info.format === "gorbov" || info.format === "numbermem") {
       wrap.querySelector(".record-badge").innerHTML = `Соперник прошёл за: <b>${fmtSec(10000000 - info.creator_score)} с</b>`;
     } else {
       document.getElementById("duel-accept-opp-score").textContent = info.creator_score;
@@ -6187,7 +6400,7 @@ async function duelAcceptChallenge() {
   hapticMedium();
   duel.mode = "duel";
   const res = await apiPost(`/api/duel/${duel.duelId}/join`, {init_data: INIT_DATA});
-  if (!res || res.error || (res.format !== "numguess" && res.format !== "schulte" && res.format !== "gorbov" && res.format !== "stroop" && !res.questions)) {
+  if (!res || res.error || (res.format !== "numguess" && res.format !== "schulte" && res.format !== "gorbov" && res.format !== "stroop" && res.format !== "numbermem" && !res.questions)) {
     alert("Не смог присоединиться. Возможно, дуэль уже занята.");
     showScreen("menu");
     return;
@@ -6195,6 +6408,7 @@ async function duelAcceptChallenge() {
   duel.format = res.format || "sprint";
   if (duel.format === "numguess") { duelNgStart(res); return; }
   if (duel.format === "schulte") { duelSchulteStart(res); return; }
+  if (duel.format === "numbermem") { duelNumbermemStart(res); return; }
   if (duel.format === "gorbov") { duelGorbovStart(res); return; }
   if (duel.format === "stroop") { duelStroopStart(res); return; }
   duel.questions = res.questions;
@@ -6307,8 +6521,8 @@ document.getElementById("btn-duel-history").addEventListener("click", openDuelHi
 // ==============================
 // ======= ВЫЗОВ НЕДЕЛИ =========
 // ==============================
-const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте", gorbov: "Чёрно-красная таблица", stroop: "Струп-тест", hangman: "Виселица" };
-const WEEKLY_TIME_FMTS = ["schulte", "gorbov"];
+const WEEKLY_FMT_TITLES_JS = { sprint: "Профи-блиц", fastmath: "Быстрый счёт", infomath: "IT-разминка", numguess: "Угадай число", schulte: "Таблица Шульте", gorbov: "Чёрно-красная таблица", stroop: "Струп-тест", numbermem: "Числовая память", hangman: "Виселица" };
+const WEEKLY_TIME_FMTS = ["schulte", "gorbov", "numbermem"];
 // Человекочитаемый счёт вызова: таблицы на время → секунды, остальное → как есть
 function weeklyScoreText(fmt, score) {
   if (WEEKLY_TIME_FMTS.includes(fmt)) return (!score || score <= 0) ? "не пройдено" : ((10000000 - score) / 1000).toFixed(1) + " с";
@@ -6491,6 +6705,8 @@ function openWeeklyPlay() {
     duelNgStart({ secret: a.secret, maxN: a.maxN, time_limit_ms: a.time_limit_ms });
   } else if (a.format === "schulte") {
     duelSchulteStart({ size: a.size, order: a.order });
+  } else if (a.format === "numbermem") {
+    duelNumbermemStart({ size: a.size, order: a.order });
   } else if (a.format === "gorbov") {
     duelGorbovStart({ size: a.size, cells: a.cells });
   } else if (a.format === "stroop") {
