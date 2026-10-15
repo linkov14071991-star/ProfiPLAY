@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Профик Arena</title>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="/style.css?v=99">
+<link rel="stylesheet" href="/style.css?v=100">
 </head>
 <body>
 
@@ -118,6 +118,9 @@
 
   <!-- Баннер «Вызов от Игоря» — виден всем, кто ещё не проходил активный вызов -->
   <div id="weekly-banner" style="display:none; margin:8px 0 4px;"></div>
+
+  <!-- Баннер вебинара — виден всем во время эфира -->
+  <div id="webinar-banner" style="display:none; margin:8px 0 4px;"></div>
 
   <h3 style="padding-left:4px;" id="modes-anchor">🎮 Разделы</h3>
   <div class="games-grid">
@@ -329,6 +332,13 @@
   <button id="btn-weekly-create" class="btn btn-primary" style="display:none;">➕ Создать Вызов от Игоря</button>
   <p style="font-size:13px; opacity:0.7; text-align:center; margin:6px 0 10px;">💡 Дуэли теперь внутри каждой игры Спринта — жми на игру и выбирай «Дуэль».</p>
   <div class="games-grid">
+    <div class="game-card" data-game="webinar">
+      <div class="icon" style="background:#B4F24D;">🎓</div>
+      <div class="info">
+        <div class="title">Вебинар</div>
+        <div class="desc">Часовые вызовы по кодовому слову. Обгони Игоря — забери баллы и призы!</div>
+      </div>
+    </div>
     <div class="game-card" data-game="cup">
       <div class="icon" style="background:#B6A9D9;">🥇</div>
       <div class="info">
@@ -379,6 +389,37 @@
     <p style="font-size:13px; opacity:0.7; margin-top:14px;">После игры вызов автоматически разошлётся всем. Кто тебя обгонит — получит +50 к рейтингу.</p>
     <button id="btn-wa-start" class="btn btn-primary btn-big">Сыграть и разослать</button>
     <button class="btn btn-link btn-back" data-back="compHub">← Назад</button>
+  </div>
+</section>
+
+<!-- ==== Вебинар: главный экран (ввод кода, статус, живой топ, админ) ==== -->
+<section id="screen-webinar" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card">
+    <h1>🎓 Вебинар</h1>
+    <p class="subtitle" id="webinar-sub">ЕГЭ по информатике 0→70 · 17 октября</p>
+    <div id="webinar-body"></div>
+    <div id="webinar-admin-panel" style="display:none;"></div>
+    <div id="webinar-top"></div>
+    <button class="btn btn-link btn-back" data-back="menu">← На главную</button>
+  </div>
+</section>
+
+<!-- ==== Вебинар: результат вызова ==== -->
+<section id="screen-webinar-result" class="screen">
+  <div class="brand-header">
+    <img src="/profik-cat.png" alt="Профик" class="profik">
+    <span class="brand-badge">профиматика</span>
+  </div>
+  <div class="card" style="text-align:center;">
+    <img src="/profik-cat.png" alt="Профик" class="profik profik-lg">
+    <h1 id="webinar-res-title">Результат вызова</h1>
+    <div id="webinar-res-body" style="font-size:16px; margin:10px 0;"></div>
+    <p class="subtitle" id="webinar-res-sub"></p>
+    <button class="btn btn-primary" onclick="openWebinar()">← К вебинару</button>
   </div>
 </section>
 
@@ -3109,6 +3150,6 @@
 </div>
 
 <script src="/hangman-words.js?v=2"></script>
-<script src="/script.js?v=115"></script>
+<script src="/script.js?v=116"></script>
 </body>
 </html>

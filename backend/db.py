@@ -306,6 +306,42 @@ def init_db():
     if "best_at" not in _tb_cols:
         conn.execute("ALTER TABLE tb_quiz_result ADD COLUMN best_at TEXT")
 
+    # Вызовы вебинара (серия часовых вызовов, вход по кодовому слову, накопительный топ)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS webinar_challenge (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            idx         INTEGER NOT NULL,            -- порядковый номер вызова в вебинаре
+            format      TEXT NOT NULL,               -- игра (schulte / numbermem / ...)
+            difficulty  TEXT NOT NULL,
+            payload_json TEXT NOT NULL,              -- расклад игры (как у дуэли/вызова)
+            admin_id    INTEGER NOT NULL,            -- кто создал (Игорь)
+            admin_score INTEGER NOT NULL,            -- планка Игоря (инвертированное время)
+            admin_ms    INTEGER,                     -- время Игоря в мс
+            code_word   TEXT NOT NULL,               -- кодовое слово для входа
+            state       TEXT NOT NULL DEFAULT 'open',-- open | closed
+            created_at  TEXT,
+            closed_at   TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS webinar_attempt (
+            challenge_id INTEGER NOT NULL,
+            user_id      INTEGER NOT NULL,
+            username     TEXT,
+            score        INTEGER NOT NULL,           -- инвертированное время (как admin_score)
+            elapsed_ms   INTEGER NOT NULL,
+            beat         INTEGER NOT NULL DEFAULT 0, -- обошёл ли Игоря (score > admin_score)
+            points       INTEGER NOT NULL DEFAULT 0, -- баллы за вызов (считаются при закрытии)
+            created_at   TEXT,
+            PRIMARY KEY (challenge_id, user_id)
+        )
+        """
+    )
+    # Флаг «вебинар завершён» (итоги подведены) храним в app_flags: webinar_finished
+
     conn.commit()
     conn.close()
 

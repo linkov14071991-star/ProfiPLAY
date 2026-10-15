@@ -3482,8 +3482,281 @@ async def python_session_end(payload: dict = Body(...)):
     return {"ok": True, "xp_added": xp_earned, "rating_added": rating_added}
 
 
+# ==============================
+# ======= ВЕБИНАР (серия часовых вызовов, вход по кодовому слову) =======
+# ==============================
+# Игорь создаёт вызов (игра+сложность+кодовое слово), играет сам — его результат = планка.
+# Ученик вводит кодовое слово с экрана вебинара → играет → если обошёл Игоря и быстрее.
+# Баллы за вызов начисляются при закрытии: по скорости среди обошедших.
+WEBINAR_TITLE = "Вебинар: ЕГЭ по информатике 0→70"
+WEBINAR_DATE = "17 октября 2026"
+WEBINAR_FORMATS = ("numbermem", "schulte", "gorbov")   # игры на время (кто быстрее)
+WEBINAR_POINTS = [100, 80, 60, 40, 20]                 # 1..5 места среди обошедших
+WEBINAR_POINTS_REST = 10                               # 6-е и далее среди обошедших
+
+
+def _webinar_gen_payload(fmt, difficulty):
+    if fmt in ("schulte", "numbermem"):
+        sizes = DUEL_SCHULTE if fmt == "schulte" else DUEL_NUMBERMEM
+        size = sizes.get(difficulty)
+        if not size:
+            raise HTTPException(status_code=400, detail="Bad difficulty")
+        order = list(range(1, size * size + 1))
+        random.shuffle(order)
+        return {"format": fmt, "size": size, "order": order}
+    if fmt == "gorbov":
+        size = DUEL_GORBOV.get(difficulty)
+        if not size:
+            raise HTTPException(status_code=400, detail="Bad difficulty")
+        n = size * size
+        red_n = (n + 1) // 2
+        black_n = n // 2
+        cells = [{"color": "red", "num": i} for i in range(1, red_n + 1)]
+        cells += [{"color": "black", "num": i} for i in range(1, black_n + 1)]
+        random.shuffle(cells)
+        return {"format": "gorbov", "size": size, "cells": cells}
+    raise HTTPException(status_code=400, detail="Bad format")
+
+
+def _webinar_payload_public(ch):
+    """Расклад игры для прохождения (отдаётся только после кодового слова)."""
+    payload = json.loads(ch["payload_json"])
+    fmt = ch["format"]
+    base = {"challenge_id": ch["id"], "format": fmt, "idx": ch["idx"]}
+    if fmt in ("schulte", "numbermem"):
+        base.update({"size": payload["size"], "order": payload["order"]})
+    elif fmt == "gorbov":
+        base.update({"size": payload["size"], "cells": payload["cells"]})
+    return base
+
+
+def _webinar_finalize(db, cid):
+    """Начислить баллы за вызов: среди обошедших Игоря — по скорости (быстрее = больше)."""
+    ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
+    if not ch or ch["state"] == "closed":
+        return
+    beaters = db.execute(
+        "SELECT user_id FROM webinar_attempt WHERE challenge_id = ? AND beat = 1 ORDER BY elapsed_ms ASC, created_at ASC",
+        (cid,),
+    ).fetchall()
+    for i, b in enumerate(beaters):
+        pts = WEBINAR_POINTS[i] if i < len(WEBINAR_POINTS) else WEBINAR_POINTS_REST
+        db.execute("UPDATE webinar_attempt SET points = ? WHERE challenge_id = ? AND user_id = ?",
+                   (pts, cid, b["user_id"]))
+    db.execute("UPDATE webinar_attempt SET points = 0 WHERE challenge_id = ? AND beat = 0", (cid,))
+    db.execute("UPDATE webinar_challenge SET state = 'closed', closed_at = datetime('now') WHERE id = ?", (cid,))
+
+
+def _webinar_leaderboard(db, limit=100):
+    rows = db.execute(
+        """
+        SELECT a.user_id, COALESCE(u.username, a.username) AS username, u.first_name,
+               COALESCE(SUM(a.points), 0) AS pts, COALESCE(SUM(a.beat), 0) AS wins, COUNT(*) AS played
+        FROM webinar_attempt a
+        LEFT JOIN users u ON u.telegram_id = a.user_id
+        GROUP BY a.user_id
+        ORDER BY pts DESC, wins DESC, played DESC, a.user_id ASC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    out = []
+    for i, r in enumerate(rows):
+        name = r["first_name"] or (("@" + r["username"]) if r["username"] else "Игрок")
+        out.append({"place": i + 1, "user_id": r["user_id"], "username": r["username"],
+                    "name": name, "points": r["pts"] or 0, "wins": r["wins"] or 0, "played": r["played"] or 0})
+    return out
+
+
+def _webinar_current(db):
+    return db.execute("SELECT * FROM webinar_challenge WHERE state = 'open' ORDER BY id DESC LIMIT 1").fetchone()
+
+
+@app.post("/api/webinar/create")
+async def webinar_create(init_data: str = Body(...), format: str = Body("numbermem"),
+                         difficulty: str = Body("medium"), code_word: str = Body(...)):
+    """Админ: создать черновик вызова (игра+сложность+кодовое слово). Возвращает расклад — админ играет сам."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    if format not in WEBINAR_FORMATS:
+        raise HTTPException(status_code=400, detail="Bad format")
+    code = (code_word or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="Нужно кодовое слово")
+    payload = _webinar_gen_payload(format, difficulty)
+    with get_db() as db:
+        upsert_user(db, tg_user)
+        row = db.execute("SELECT COALESCE(MAX(idx), 0) AS m FROM webinar_challenge").fetchone()
+        idx = (row["m"] or 0) + 1
+        cur = db.execute(
+            "INSERT INTO webinar_challenge (idx, format, difficulty, payload_json, admin_id, admin_score, admin_ms, code_word, state, created_at) "
+            "VALUES (?, ?, ?, ?, ?, 0, NULL, ?, 'draft', datetime('now'))",
+            (idx, format, difficulty, json.dumps(payload), tg_user["id"], code),
+        )
+        cid = cur.lastrowid
+        ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
+    return {"ok": True, **_webinar_payload_public(ch)}
+
+
+@app.post("/api/webinar/{cid}/set_bar")
+async def webinar_set_bar(cid: int, init_data: str = Body(...), sch: dict = Body(None)):
+    """Админ: сохранить свой результат и запустить вызов (state=open). Прошлый открытый — финализируем."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    score = _score_schulte(sch or {})
+    ms = int((sch or {}).get("elapsed_ms") or 0) or None
+    broadcast_idx = None
+    with get_db() as db:
+        ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
+        if not ch:
+            raise HTTPException(status_code=404, detail="Not found")
+        # финализируем любые ранее открытые вызовы
+        for o in db.execute("SELECT id FROM webinar_challenge WHERE state = 'open'").fetchall():
+            _webinar_finalize(db, o["id"])
+        db.execute("UPDATE webinar_challenge SET admin_score = ?, admin_ms = ?, state = 'open' WHERE id = ?",
+                   (score, ms, cid))
+        broadcast_idx = ch["idx"]
+        ids = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
+    # рассылка: новый вызов пошёл (кодовое слово — только на экране вебинара)
+    if BOT_TOKEN and WEBAPP_URL and broadcast_idx:
+        text = (f"🎓 <b>Вебинар — вызов №{broadcast_idx}!</b>\n"
+                f"Игорь уже сыграл. Смотри кодовое слово на экране, успей обогнать — и быстрее всех! ⚡")
+        markup = {"inline_keyboard": [[{"text": "🎮 Играть", "web_app": {"url": WEBAPP_URL}}]]}
+        t = asyncio.create_task(_bot_send_all(ids, text, markup))
+        _bg_tasks.add(t); t.add_done_callback(_bg_tasks.discard)
+    return {"ok": True, "admin_score": score, "admin_ms": ms}
+
+
+@app.post("/api/webinar/{cid}/unlock")
+async def webinar_unlock(cid: int, init_data: str = Body(...), code: str = Body("")):
+    """Ученик: проверить кодовое слово. Верно → отдаём расклад для игры."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
+        if not ch or ch["state"] != "open":
+            raise HTTPException(status_code=400, detail="Вызов сейчас не активен")
+        if (code or "").strip().lower() != (ch["code_word"] or "").strip().lower():
+            raise HTTPException(status_code=403, detail="Неверное кодовое слово. Смотри на экран вебинара!")
+        att = db.execute("SELECT 1 FROM webinar_attempt WHERE challenge_id = ? AND user_id = ?",
+                         (cid, me["telegram_id"])).fetchone()
+        if att:
+            raise HTTPException(status_code=400, detail="Ты уже сыграл этот вызов")
+    return {"ok": True, **_webinar_payload_public(ch)}
+
+
+@app.post("/api/webinar/{cid}/submit")
+async def webinar_submit(cid: int, init_data: str = Body(...), sch: dict = Body(None)):
+    """Ученик: сдать результат вызова. Баллы начислятся при закрытии вызова."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        uid = me["telegram_id"]
+        ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
+        if not ch or ch["state"] != "open":
+            raise HTTPException(status_code=400, detail="Вызов закрыт")
+        existing = db.execute("SELECT beat, elapsed_ms FROM webinar_attempt WHERE challenge_id = ? AND user_id = ?",
+                              (cid, uid)).fetchone()
+        if existing:
+            return {"ok": True, "already": True, "beat": bool(existing["beat"]),
+                    "elapsed_ms": existing["elapsed_ms"], "admin_ms": ch["admin_ms"]}
+        score = _score_schulte(sch or {})
+        ms = int((sch or {}).get("elapsed_ms") or 0)
+        beat = 1 if (score > ch["admin_score"]) else 0
+        nick = me["username"] if ("username" in me.keys() and me["username"]) else (me["first_name"] or "Игрок")
+        db.execute(
+            "INSERT INTO webinar_attempt (challenge_id, user_id, username, score, elapsed_ms, beat, points, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))",
+            (cid, uid, nick, score, ms, beat),
+        )
+    return {"ok": True, "already": False, "beat": bool(beat), "elapsed_ms": ms, "admin_ms": ch["admin_ms"]}
+
+
+@app.post("/api/webinar/{cid}/close")
+async def webinar_close(cid: int, init_data: str = Body(...)):
+    """Админ: закрыть вызов и начислить баллы."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        _webinar_finalize(db, cid)
+        top = _webinar_leaderboard(db)
+    return {"ok": True, "top": top}
+
+
+@app.post("/api/webinar/finish")
+async def webinar_finish(init_data: str = Body(...)):
+    """Админ: подвести итоги вебинара (закрыть открытые, зафиксировать топ)."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        for o in db.execute("SELECT id FROM webinar_challenge WHERE state = 'open'").fetchall():
+            _webinar_finalize(db, o["id"])
+        top = _webinar_leaderboard(db)
+        _flag_set(db, "webinar_finished", "1")
+        db.execute(
+            "INSERT INTO giveaway_draws (key, data_json, created_at) VALUES ('webinar_1017', ?, datetime('now')) "
+            "ON CONFLICT(key) DO UPDATE SET data_json = excluded.data_json, created_at = excluded.created_at",
+            (json.dumps({"top": top[:20]}),),
+        )
+    return {"ok": True, "top": top}
+
+
+@app.post("/api/webinar/reset")
+async def webinar_reset(init_data: str = Body(...)):
+    """Админ: полностью очистить вебинар (новый эфир)."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        db.execute("DELETE FROM webinar_attempt")
+        db.execute("DELETE FROM webinar_challenge")
+        _flag_set(db, "webinar_finished", "0")
+    return {"ok": True}
+
+
+@app.post("/api/webinar/state")
+async def webinar_state(init_data: str = Body(..., embed=True)):
+    """Состояние вебинара: текущий вызов (без расклада — вход по коду), живой топ, итоги."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        uid = me["telegram_id"]
+        is_admin = uid in ADMIN_IDS
+        cur = _webinar_current(db)
+        total = db.execute("SELECT COUNT(*) AS c FROM webinar_challenge WHERE state = 'closed' OR state = 'open'").fetchone()["c"]
+        finished = _flag_get(db, "webinar_finished") == "1"
+        current = None
+        if cur:
+            played = db.execute("SELECT beat, elapsed_ms FROM webinar_attempt WHERE challenge_id = ? AND user_id = ?",
+                                (cur["id"], uid)).fetchone()
+            current = {
+                "challenge_id": cur["id"], "idx": cur["idx"], "format": cur["format"],
+                "difficulty": cur["difficulty"], "admin_ms": cur["admin_ms"],
+                "my_played": bool(played),
+                "my_beat": bool(played["beat"]) if played else None,
+            }
+        my_total = db.execute(
+            "SELECT COALESCE(SUM(points),0) AS p, COALESCE(SUM(beat),0) AS w, COUNT(*) AS n FROM webinar_attempt WHERE user_id = ?",
+            (uid,),
+        ).fetchone()
+        top = _webinar_leaderboard(db)
+        my_rank = next((r["place"] for r in top if r["user_id"] == uid), None)
+    return {
+        "title": WEBINAR_TITLE, "date": WEBINAR_DATE,
+        "is_admin": is_admin, "finished": finished,
+        "has_event": total > 0, "current": current,
+        "formats": list(WEBINAR_FORMATS),
+        "my": {"points": my_total["p"], "wins": my_total["w"], "played": my_total["n"], "rank": my_rank},
+        "top": top,
+    }
+
+
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "numbermem-game-v133"
+BUILD_TAG = "webinar-1017-v134"
 
 
 @app.get("/api/version")

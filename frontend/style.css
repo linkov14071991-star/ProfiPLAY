@@ -1164,6 +1164,24 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .weekly-live b { font-size: 15px; }
 .weekly-vs { margin-top: 8px; font-size: 14px; text-align: center; background: rgba(255, 209, 102, 0.18); border: 1px solid rgba(255, 209, 102, 0.45); border-radius: 10px; padding: 6px 10px; }
 .weekly-vs b { font-size: 16px; }
+
+/* Вебинар */
+.wb-code-input { width: 100%; box-sizing: border-box; margin: 10px 0 6px; padding: 12px 14px; font-size: 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08); color: #fff; text-align: center; }
+.wb-code-input::placeholder { color: rgba(255,255,255,0.4); }
+.wb-code-err { color: #ff9f9f; font-size: 13px; min-height: 16px; text-align: center; margin-bottom: 4px; }
+.wb-admin { margin-top: 16px; padding: 12px; border-radius: 14px; background: rgba(0,0,0,0.12); }
+.wb-admin-title { font-weight: 800; font-size: 15px; margin-bottom: 8px; }
+.wb-admin-cur { font-size: 13px; opacity: 0.85; margin-bottom: 8px; line-height: 1.4; }
+.wb-admin .btn { margin-bottom: 8px; }
+.wb-admin-fin { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; }
+.wb-top-title { font-weight: 800; font-size: 16px; text-align: center; margin: 16px 0 8px; }
+.wb-my { text-align: center; font-size: 14px; margin-bottom: 8px; background: rgba(180,242,77,0.18); border-radius: 10px; padding: 6px 10px; }
+.wb-top-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,0.06); margin-bottom: 5px; font-size: 14px; }
+.wb-top-row.me { background: rgba(180,242,77,0.26); font-weight: 700; }
+.wb-top-place { width: 28px; text-align: center; font-weight: 700; }
+.wb-top-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-top-pts { font-weight: 800; white-space: nowrap; }
+.wb-top-hint { font-size: 12px; opacity: 0.7; text-align: center; margin-top: 8px; line-height: 1.4; }
 .weekly-stats { margin-top: 10px; }
 .weekly-stats .ws-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; margin-bottom: 5px; background: rgba(255, 255, 255, 0.06); font-size: 14px; }
 .weekly-stats .ws-row b { font-size: 17px; }

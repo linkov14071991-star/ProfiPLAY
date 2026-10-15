@@ -105,6 +105,8 @@ const SCREENS = {
   numbermemSetup: "screen-numbermem-setup",
   numbermemPlay: "screen-numbermem-play",
   numbermemResult: "screen-numbermem-result",
+  webinar: "screen-webinar",
+  webinarResult: "screen-webinar-result",
   gorbovSetup: "screen-gorbov-setup",
   gorbovPlay: "screen-gorbov-play",
   gorbovResult: "screen-gorbov-result",
@@ -156,7 +158,7 @@ function showScreen(name) {
   window.scrollTo(0, 0);
   try {
     // при возврате на меню — обновим плашку рейтинга
-    if (name === "menu") { refreshProfile(); loadWeeklyBanner(); refreshNotifBadge(); }
+    if (name === "menu") { refreshProfile(); loadWeeklyBanner(); loadWebinarBanner(); refreshNotifBadge(); }
     if (name === "profile") loadProfileScreen();
     if (name === "compHub") loadWeekly();
     if (name === "duelSetup") loadDuelIncoming();
@@ -651,6 +653,7 @@ function routeToGame(game) {
   if (game === "gametheory") { currentGame = "gametheory"; resetLbTabs("gt-lb"); showScreen("gtSetup"); return; }
   if (game === "hangman") { currentGame = "hangman"; resetLbTabs("hm-lb"); showScreen("hmSetup"); return; }
   if (game === "giveaway") { hapticMedium(); openGiveawayHub(); return; }
+  if (game === "webinar") { openWebinar(); return; }
 }
 
 document.body.addEventListener("click", (e) => {
@@ -5768,6 +5771,8 @@ async function duelSchulteEnd(solved) {
   duel.schLastMs = solved ? elapsed : 0;
   if (solved) hapticSuccess(); else hapticError();
   const sch = { solved: solved, elapsed_ms: elapsed };
+  if (duel.mode === "webinar") return webinarUserFinish(sch);
+  if (duel.mode === "webinar-admin") return webinarAdminFinish(sch);
   if (duel.mode === "weekly") return weeklyUserFinish({ sch });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
   const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
@@ -5840,6 +5845,8 @@ async function duelNumbermemEnd(solved) {
   duel.nmLastMs = solved ? elapsed : 0;
   if (solved) hapticSuccess(); else hapticError();
   const sch = { solved: solved, elapsed_ms: elapsed };
+  if (duel.mode === "webinar") return webinarUserFinish(sch);
+  if (duel.mode === "webinar-admin") return webinarAdminFinish(sch);
   if (duel.mode === "weekly") return weeklyUserFinish({ sch });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
   const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
@@ -5907,6 +5914,8 @@ async function duelGorbovEnd(solved) {
   duel.schLastMs = solved ? elapsed : 0;
   if (solved) hapticSuccess(); else hapticError();
   const sch = { solved: solved, elapsed_ms: elapsed };
+  if (duel.mode === "webinar") return webinarUserFinish(sch);
+  if (duel.mode === "webinar-admin") return webinarAdminFinish(sch);
   if (duel.mode === "weekly") return weeklyUserFinish({ sch });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
   const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
@@ -6755,6 +6764,251 @@ setupPills("wa-format", (v) => (weeklyAdmin.format = v));
 setupPills("wa-difficulty", (v) => (weeklyAdmin.difficulty = v));
 document.getElementById("btn-weekly-create").addEventListener("click", () => { hapticMedium(); showScreen("weeklyAdmin"); });
 document.getElementById("btn-wa-start").addEventListener("click", weeklyAdminStart);
+
+// ==============================
+// ======= ВЕБИНАР ==============
+// ==============================
+const WEBINAR_FMT_META = {
+  numbermem: { icon: "🧠", title: "Числовая память" },
+  schulte: { icon: "🧠", title: "Таблица Шульте" },
+  gorbov: { icon: "🔴", title: "Чёрно-красная таблица" },
+};
+const webinarAdmin = { format: "numbermem", difficulty: "medium" };
+let webinarState = null;
+let webinarPollTimer = null;
+let webinarLastSig = "";
+
+async function openWebinar() {
+  hapticMedium();
+  showScreen("webinar");
+  webinarLastSig = "";
+  await loadWebinar();
+}
+window.openWebinar = openWebinar;
+
+async function loadWebinar() {
+  const res = await apiPost("/api/webinar/state", { init_data: INIT_DATA });
+  if (!res) return;
+  webinarState = res;
+  renderWebinar(res);
+  if (webinarPollTimer) clearInterval(webinarPollTimer);
+  webinarPollTimer = setInterval(async () => {
+    const scr = document.getElementById("screen-webinar");
+    if (!scr || !scr.classList.contains("active")) { clearInterval(webinarPollTimer); webinarPollTimer = null; return; }
+    const r = await apiPost("/api/webinar/state", { init_data: INIT_DATA });
+    if (r) { webinarState = r; renderWebinar(r); }
+  }, 12000);
+}
+
+function webinarSig(res) {
+  const c = res.current;
+  return [res.finished ? 1 : 0, res.is_admin ? 1 : 0, c ? c.challenge_id : 0, c ? (c.my_played ? 1 : 0) : 0].join("|");
+}
+
+function renderWebinar(res) {
+  document.getElementById("webinar-sub").textContent = `ЕГЭ по информатике 0→70 · ${res.date}`;
+  const sig = webinarSig(res);
+  if (sig !== webinarLastSig) {
+    webinarLastSig = sig;
+    renderWebinarBody(res);
+    renderWebinarAdmin(res);
+  }
+  renderWebinarTop(res);
+}
+
+function renderWebinarBody(res) {
+  const el = document.getElementById("webinar-body");
+  if (res.finished) {
+    el.innerHTML = `<div class="weekly-card"><div class="weekly-title">🏁 Вебинар завершён!</div><div class="weekly-sub">Итоги подведены — смотри топ ниже. Призёрам Игорь напишет лично.</div></div>`;
+    return;
+  }
+  const c = res.current;
+  if (!c) {
+    el.innerHTML = `<div class="weekly-card weekly-empty">Сейчас активного вызова нет. Жди следующий — Игорь запустит его прямо на вебинаре! 🎬</div>`;
+    return;
+  }
+  const meta = WEBINAR_FMT_META[c.format] || { icon: "🎮", title: c.format };
+  if (c.my_played) {
+    el.innerHTML = `<div class="weekly-card">
+      <div class="weekly-title">⏳ Вызов №${c.idx}: ${meta.icon} ${escapeHtml(meta.title)}</div>
+      <div class="weekly-status ${c.my_beat ? "ok" : ""}">${c.my_beat ? "✅ Ты обошёл Игоря! Баллы начислятся при закрытии вызова." : "Ты сыграл, но в этот раз не обогнал. Следующий вызов — твой шанс!"}</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `<div class="weekly-card">
+    <div class="weekly-title">🔴 Идёт вызов №${c.idx}: ${meta.icon} ${escapeHtml(meta.title)}</div>
+    <div class="weekly-sub">Кодовое слово — на экране вебинара. Впиши его и обгони Игоря быстрее всех!</div>
+    <input id="webinar-code-input" class="wb-code-input" type="text" placeholder="Кодовое слово" autocomplete="off">
+    <div id="webinar-code-err" class="wb-code-err"></div>
+    <button id="btn-webinar-unlock" class="btn btn-primary btn-big">🔓 Ввести и играть</button>
+  </div>`;
+  document.getElementById("btn-webinar-unlock").onclick = () => webinarUnlock(c.challenge_id);
+  document.getElementById("webinar-code-input").addEventListener("keydown", (e) => { if (e.key === "Enter") webinarUnlock(c.challenge_id); });
+}
+
+async function webinarUnlock(cid) {
+  const inp = document.getElementById("webinar-code-input");
+  const err = document.getElementById("webinar-code-err");
+  const code = (inp.value || "").trim();
+  if (!code) { err.textContent = "Впиши кодовое слово"; return; }
+  err.textContent = "";
+  const btn = document.getElementById("btn-webinar-unlock");
+  btn.disabled = true; btn.textContent = "Проверяю…";
+  const res = await apiPost(`/api/webinar/${cid}/unlock`, { init_data: INIT_DATA, code });
+  if (!res || !res.ok) {
+    btn.disabled = false; btn.textContent = "🔓 Ввести и играть";
+    err.textContent = (res && res.detail) || "Неверное кодовое слово"; hapticError(); return;
+  }
+  hapticSuccess();
+  webinarLaunchGame(res, "webinar");
+}
+
+function webinarLaunchGame(info, mode) {
+  duel.mode = mode;
+  duel.format = info.format;
+  duel.webinarCid = info.challenge_id;
+  if (info.format === "numbermem") duelNumbermemStart(info);
+  else if (info.format === "schulte") duelSchulteStart(info);
+  else if (info.format === "gorbov") duelGorbovStart(info);
+}
+
+async function webinarUserFinish(sch) {
+  const cid = duel.webinarCid;
+  duel.mode = "duel";
+  const res = await apiPost(`/api/webinar/${cid}/submit`, { init_data: INIT_DATA, sch });
+  refreshProfile();
+  const t = document.getElementById("webinar-res-title");
+  const b = document.getElementById("webinar-res-body");
+  const s = document.getElementById("webinar-res-sub");
+  if (!res || !res.ok) { t.textContent = "Не удалось отправить"; b.textContent = ""; s.textContent = (res && res.detail) || ""; showScreen("webinarResult"); return; }
+  const mine = fmtSec(sch.elapsed_ms) + " с";
+  const his = res.admin_ms ? (fmtSec(res.admin_ms) + " с") : "—";
+  if (res.beat) { t.textContent = "🎉 Ты обошёл Игоря!"; hapticSuccess(); }
+  else { t.textContent = "В этот раз не обогнал"; hapticError(); }
+  b.innerHTML = `Твоё время: <b>${mine}</b> · Игорь: <b>${his}</b>`;
+  s.textContent = res.beat ? "Баллы начислятся при закрытии вызова — чем быстрее ты был, тем больше!" : "Не беда — впереди ещё вызовы. Следи за экраном!";
+  webinarLastSig = "";
+  showScreen("webinarResult");
+}
+
+async function webinarAdminFinish(sch) {
+  const cid = duel.webinarCid;
+  duel.mode = "duel";
+  const res = await apiPost(`/api/webinar/${cid}/set_bar`, { init_data: INIT_DATA, sch });
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось запустить вызов"); openWebinar(); return; }
+  hapticSuccess();
+  alert(`Вызов запущен! Твоё время: ${fmtSec(sch.elapsed_ms)} с. Ученики вводят кодовое слово и играют.`);
+  openWebinar();
+}
+
+function renderWebinarAdmin(res) {
+  const el = document.getElementById("webinar-admin-panel");
+  if (!res.is_admin) { el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "";
+  const c = res.current;
+  let html = `<div class="wb-admin"><div class="wb-admin-title">⚙️ Управление (админ)</div>`;
+  if (c) {
+    const meta = WEBINAR_FMT_META[c.format] || { title: c.format };
+    html += `<div class="wb-admin-cur">Идёт вызов №${c.idx}: ${escapeHtml(meta.title)}. Когда все сыграли — закрой, чтобы начислить баллы.</div>
+      <button id="btn-wb-close" class="btn btn-secondary">🔒 Закрыть вызов №${c.idx} (начислить баллы)</button>`;
+  }
+  html += `<div class="wb-admin-new">
+    <div class="field" style="margin-top:10px;">Новый вызов — игра</div>
+    <div class="pills" id="wb-format">
+      <button class="pill ${webinarAdmin.format === "numbermem" ? "active" : ""}" data-value="numbermem">🧠 Числовая память</button>
+      <button class="pill ${webinarAdmin.format === "schulte" ? "active" : ""}" data-value="schulte">🧠 Шульте</button>
+      <button class="pill ${webinarAdmin.format === "gorbov" ? "active" : ""}" data-value="gorbov">🔴 Чёрно-красная</button>
+    </div>
+    <div class="field">Сложность</div>
+    <div class="pills" id="wb-difficulty">
+      <button class="pill pill-diff ${webinarAdmin.difficulty === "easy" ? "active" : ""}" data-value="easy">Лёгкая</button>
+      <button class="pill pill-diff ${webinarAdmin.difficulty === "medium" ? "active" : ""}" data-value="medium">Средняя</button>
+      <button class="pill pill-diff ${webinarAdmin.difficulty === "hard" ? "active" : ""}" data-value="hard">Сложная</button>
+    </div>
+    <input id="wb-code" class="wb-code-input" type="text" placeholder="Кодовое слово (покажи на экране)" autocomplete="off">
+    <button id="btn-wb-create" class="btn btn-primary">▶️ Создать и сыграть вызов</button>
+  </div>
+  <div class="wb-admin-fin">
+    <button id="btn-wb-finish" class="btn btn-secondary">🏁 Подвести итоги вебинара</button>
+    <button id="btn-wb-reset" class="btn btn-link">Сбросить вебинар</button>
+  </div></div>`;
+  el.innerHTML = html;
+  setupPills("wb-format", (v) => (webinarAdmin.format = v));
+  setupPills("wb-difficulty", (v) => (webinarAdmin.difficulty = v));
+  const cb = document.getElementById("btn-wb-close"); if (cb) cb.onclick = webinarAdminClose;
+  document.getElementById("btn-wb-create").onclick = webinarAdminCreate;
+  document.getElementById("btn-wb-finish").onclick = webinarAdminFinishEvent;
+  document.getElementById("btn-wb-reset").onclick = webinarAdminReset;
+}
+
+async function webinarAdminCreate() {
+  const code = (document.getElementById("wb-code").value || "").trim();
+  if (!code) { alert("Впиши кодовое слово для этого вызова"); return; }
+  const res = await apiPost("/api/webinar/create", { init_data: INIT_DATA, format: webinarAdmin.format, difficulty: webinarAdmin.difficulty, code_word: code });
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось создать вызов"); return; }
+  hapticMedium();
+  webinarLaunchGame(res, "webinar-admin");
+}
+async function webinarAdminClose() {
+  const c = webinarState && webinarState.current;
+  if (!c) return;
+  if (!confirm(`Закрыть вызов №${c.idx} и начислить баллы обошедшим?`)) return;
+  const res = await apiPost(`/api/webinar/${c.challenge_id}/close`, { init_data: INIT_DATA });
+  if (!res || !res.ok) { alert("Не удалось закрыть"); return; }
+  hapticSuccess(); webinarLastSig = ""; await loadWebinar();
+}
+async function webinarAdminFinishEvent() {
+  if (!confirm("Подвести итоги вебинара? Все открытые вызовы закроются, зафиксируется финальный топ.")) return;
+  const res = await apiPost("/api/webinar/finish", { init_data: INIT_DATA });
+  if (!res || !res.ok) { alert("Не удалось"); return; }
+  hapticSuccess(); webinarLastSig = ""; await loadWebinar();
+}
+async function webinarAdminReset() {
+  if (!confirm("Полностью очистить вебинар (все вызовы и баллы)? Только для нового эфира.")) return;
+  const res = await apiPost("/api/webinar/reset", { init_data: INIT_DATA });
+  if (!res || !res.ok) { alert("Не удалось"); return; }
+  hapticSuccess(); webinarLastSig = ""; await loadWebinar();
+}
+
+function renderWebinarTop(res) {
+  const el = document.getElementById("webinar-top");
+  const top = res.top || [];
+  const my = res.my || {};
+  const head = `<div class="wb-top-title">🏆 Топ вебинара</div>`;
+  const mine = (my.played ? `<div class="wb-my">Ты: <b>${my.points}</b> баллов · побед: ${my.wins}${my.rank ? " · место " + my.rank : ""}</div>` : "");
+  if (!top.length) { el.innerHTML = head + mine + `<div class="daily-rec-empty">Пока никто не играл.</div>`; return; }
+  const medal = (p) => ["🥇", "🥈", "🥉"][p - 1] || p;
+  const myId = tg?.initDataUnsafe?.user?.id;
+  const rows = top.slice(0, 15).map((r) => {
+    const isMe = myId && r.user_id === myId;
+    const prize = r.place <= 3 ? " 🎓" : "";
+    const nm = r.username ? "@" + escapeHtml(r.username) : escapeHtml(r.name);
+    return `<div class="wb-top-row${isMe ? " me" : ""}"><span class="wb-top-place">${medal(r.place)}</span><span class="wb-top-name">${nm}${prize}</span><span class="wb-top-pts">${r.points}</span></div>`;
+  }).join("");
+  el.innerHTML = head + mine + rows + `<div class="wb-top-hint">Топ-3 (🎓) — месяц курса. Дальше — сертификаты (кол-во по числу участников).</div>`;
+}
+
+async function loadWebinarBanner() {
+  const el = document.getElementById("webinar-banner");
+  if (!el) return;
+  let res = null;
+  try { res = await apiPost("/api/webinar/state", { init_data: INIT_DATA }); } catch (e) {}
+  if (!res || res.finished || !res.has_event) { el.style.display = "none"; el.innerHTML = ""; return; }
+  const c = res.current;
+  el.style.display = "";
+  if (!c) {
+    el.innerHTML = `<div class="weekly-card" onclick="openWebinar()" style="cursor:pointer; border:2px solid var(--brand-lime);">
+      <div class="weekly-title">🎓 Идёт вебинар!</div>
+      <div class="weekly-sub">Ждём следующий вызов. Загляни в топ и будь готов ⚡</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `<div class="weekly-card" onclick="openWebinar()" style="cursor:pointer; border:2px solid var(--brand-lime);">
+    <div class="weekly-title">🎓 Вебинар: идёт вызов №${c.idx}!</div>
+    <div class="weekly-sub">${c.my_played ? "Ты уже сыграл — жди следующий" : "Введи кодовое слово с экрана и обгони Игоря ⚡"}</div>
+    ${c.my_played ? "" : `<button class="btn btn-primary" style="margin-top:8px;">Играть →</button>`}
+  </div>`;
+}
 
 async function weeklyAdminStart() {
   duel.mode = "weekly-admin";
