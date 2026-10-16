@@ -3107,6 +3107,16 @@ async function loadGiveawayBanner() {
 // Прошедшие розыгрыши (Зал славы). Новые добавляем сюда после завершения.
 const GIVEAWAY_ARCHIVE = [
   {
+    title: "Забег 10 км · 26 сентября",
+    date: "26 сентября 2026",
+    result: "46:14",
+    winner: "@plk_499",
+    winner_pred: "46:12 (промах ±0:02)",
+    runners_up: "🥈 @ninok2909 (46:09, ±0:05) · 🥉 @twikef (46:20, ±0:06)",
+    participants: 80,
+    prize: "Главный сертификат OZON / Золотое Яблоко — победителю, ещё 2 сертификата призёрам (по числу участников)",
+  },
+  {
     title: "Забег 10 км · Большой фестиваль бега",
     date: "23 августа 2026",
     result: "49:45",
@@ -3118,10 +3128,8 @@ const GIVEAWAY_ARCHIVE = [
     cert: "/certificate-aug23.png",
   },
 ];
-// Активные / будущие розыгрыши в хабе
-const GIVEAWAY_UPCOMING = [
-  { title: "Забег 10 км", date: "26 сентября 2026 · угадай время Игоря", icon: "🏃", action: "open" },
-];
+// Активные / будущие розыгрыши в хабе (сейчас активных «угадай время» нет — все в Зале славы)
+const GIVEAWAY_UPCOMING = [];
 function gvUpcomingInfo(i) {
   const g = GIVEAWAY_UPCOMING[i]; if (!g) return;
   hapticLight();
@@ -3189,7 +3197,7 @@ async function openGiveawayArchive() {
     }
   } catch (e) { /* если розыгрыш не разыгран — просто не показываем */ }
 
-  const html = aug29Card + runCards;
+  const html = runCards + aug29Card;
   el.innerHTML = html || '<p style="text-align:center; opacity:0.7; padding:16px;">Пока пусто. Первый розыгрыш совсем скоро!</p>';
 }
 window.openGiveawayArchive = openGiveawayArchive;
