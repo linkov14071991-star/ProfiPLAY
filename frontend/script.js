@@ -6839,7 +6839,7 @@ function renderWebinarBody(res) {
   if (c.my_played) {
     el.innerHTML = `<div class="weekly-card">
       <div class="weekly-title">⏳ Вызов №${c.idx}: ${meta.icon} ${escapeHtml(meta.title)}</div>
-      <div class="weekly-status ${c.my_beat ? "ok" : ""}">${c.my_beat ? "✅ Ты обошёл Игоря! Баллы начислятся при закрытии вызова." : "Ты сыграл, но в этот раз не обогнал. Следующий вызов — твой шанс!"}</div>
+      <div class="weekly-status ${c.my_beat ? "ok" : ""}">${c.my_beat ? "✅ Ты обошёл Игоря! Баллы начислятся при закрытии вызова." : "Ты сыграл (+5 баллов за попытку), но в этот раз не обогнал. Следующий вызов — твой шанс!"}</div>
     </div>`;
     return;
   }
@@ -6894,7 +6894,7 @@ async function webinarUserFinish(sch) {
   if (res.beat) { t.textContent = "🎉 Ты обошёл Игоря!"; hapticSuccess(); }
   else { t.textContent = "В этот раз не обогнал"; hapticError(); }
   b.innerHTML = `Твоё время: <b>${mine}</b> · Игорь: <b>${his}</b>`;
-  s.textContent = res.beat ? "Баллы начислятся при закрытии вызова — чем быстрее ты был, тем больше!" : "Не беда — впереди ещё вызовы. Следи за экраном!";
+  s.textContent = res.beat ? "Баллы начислятся при закрытии вызова — чем быстрее ты был, тем больше!" : "За участие всё равно +5 баллов. Впереди ещё вызовы — следи за экраном!";
   webinarLastSig = "";
   showScreen("webinarResult");
 }

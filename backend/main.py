@@ -3493,6 +3493,7 @@ WEBINAR_DATE = "17 октября 2026"
 WEBINAR_FORMATS = ("numbermem", "schulte", "gorbov")   # игры на время (кто быстрее)
 WEBINAR_POINTS = [100, 80, 60, 40, 20]                 # 1..5 места среди обошедших
 WEBINAR_POINTS_REST = 10                               # 6-е и далее среди обошедших
+WEBINAR_POINTS_TRY = 5                                 # за сыгранную попытку (прошёл, но не обогнал)
 
 
 def _webinar_gen_payload(fmt, difficulty):
@@ -3543,7 +3544,10 @@ def _webinar_finalize(db, cid):
         pts = WEBINAR_POINTS[i] if i < len(WEBINAR_POINTS) else WEBINAR_POINTS_REST
         db.execute("UPDATE webinar_attempt SET points = ? WHERE challenge_id = ? AND user_id = ?",
                    (pts, cid, b["user_id"]))
-    db.execute("UPDATE webinar_attempt SET points = 0 WHERE challenge_id = ? AND beat = 0", (cid,))
+    # не обогнал, но прошёл игру (score>0) → баллы за попытку; совсем не доиграл → 0
+    db.execute("UPDATE webinar_attempt SET points = ? WHERE challenge_id = ? AND beat = 0 AND score > 0",
+               (WEBINAR_POINTS_TRY, cid))
+    db.execute("UPDATE webinar_attempt SET points = 0 WHERE challenge_id = ? AND beat = 0 AND score <= 0", (cid,))
     db.execute("UPDATE webinar_challenge SET state = 'closed', closed_at = datetime('now') WHERE id = ?", (cid,))
 
 
@@ -3756,7 +3760,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webinar-1017-v134"
+BUILD_TAG = "webinar-rules-try-v135"
 
 
 @app.get("/api/version")
