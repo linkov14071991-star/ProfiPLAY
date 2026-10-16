@@ -1187,6 +1187,8 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .wb-reg-rules > div { margin: 6px 0; }
 .wb-reg-tip { margin-top: 10px; background: rgba(180,242,77,0.18); border-radius: 10px; padding: 8px 10px; }
 .wb-reg-count { text-align: center; font-size: 13px; opacity: 0.85; margin-top: 8px; }
+.wb-countdown { text-align: center; margin: 8px 0; }
+.wb-countdown b { font-size: 26px; color: var(--brand-lime); font-variant-numeric: tabular-nums; }
 .wb-timer { text-align: center; font-size: 15px; margin: 8px 0; }
 .wb-timer b { font-size: 20px; color: var(--brand-lime); font-variant-numeric: tabular-nums; }
 .wb-rules { margin-top: 16px; background: rgba(0,0,0,0.12); border-radius: 14px; padding: 4px 14px; }

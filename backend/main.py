@@ -3490,6 +3490,12 @@ async def python_session_end(payload: dict = Body(...)):
 # Баллы за вызов начисляются при закрытии: по скорости среди обошедших.
 WEBINAR_TITLE = "Вебинар: ЕГЭ по информатике 0→70"
 WEBINAR_DATE = "17 октября 2026"
+WEBINAR_START_MSK = "2026-10-17 13:00"            # старт вебинара (МСК)
+WEBINAR_START_LABEL = "17 октября в 13:00 (МСК)"  # человекочитаемо
+
+
+def _webinar_start_dt():
+    return datetime.strptime(WEBINAR_START_MSK, "%Y-%m-%d %H:%M").replace(tzinfo=MSK_TZ)
 # Все игры Спринта доступны как форматы вызова на вебинаре
 WEBINAR_FORMATS = ("numbermem", "schulte", "gorbov", "numguess", "stroop", "fastmath", "infomath", "sprint")
 WEBINAR_TIME_FORMATS = ("schulte", "gorbov", "numbermem")   # игры «на время»
@@ -3857,8 +3863,13 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
         reg_count = db.execute("SELECT COUNT(*) AS c FROM webinar_registration").fetchone()["c"]
         top = _webinar_leaderboard(db)
         my_rank = next((r["place"] for r in top if r["user_id"] == uid), None)
+    now_msk = datetime.now(MSK_TZ)
+    start_dt = _webinar_start_dt()
+    started = now_msk >= start_dt
+    seconds_to_start = max(0, int((start_dt - now_msk).total_seconds()))
     return {
         "title": WEBINAR_TITLE, "date": WEBINAR_DATE,
+        "start_label": WEBINAR_START_LABEL, "started": started, "seconds_to_start": seconds_to_start,
         "is_admin": is_admin, "finished": finished,
         "my_registered": my_registered, "registered_count": reg_count,
         "has_event": total > 0, "current": current,
@@ -3869,7 +3880,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webinar-registration-v139"
+BUILD_TAG = "webinar-countdown-v140"
 
 
 @app.get("/api/version")

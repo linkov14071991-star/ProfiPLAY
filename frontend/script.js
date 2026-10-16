@@ -6831,7 +6831,7 @@ async function webinarRegister() {
 
 function webinarSig(res) {
   const c = res.current;
-  return [res.finished ? 1 : 0, res.is_admin ? 1 : 0, res.my_registered ? 1 : 0, c ? c.challenge_id : 0, c ? (c.my_played ? 1 : 0) : 0].join("|");
+  return [res.finished ? 1 : 0, res.started ? 1 : 0, res.is_admin ? 1 : 0, res.my_registered ? 1 : 0, c ? c.challenge_id : 0, c ? (c.my_played ? 1 : 0) : 0].join("|");
 }
 
 function renderWebinar(res) {
@@ -6849,6 +6849,24 @@ function renderWebinarBody(res) {
   const el = document.getElementById("webinar-body");
   if (res.finished) {
     el.innerHTML = `<div class="weekly-card"><div class="weekly-title">🏁 Вебинар завершён!</div><div class="weekly-sub">Итоги подведены — смотри топ ниже. Призёрам Игорь напишет лично.</div></div>`;
+    return;
+  }
+  // ещё не стартовал → таймер обратного отсчёта + регистрация
+  if (!res.started) {
+    const canReg = !res.my_registered && !res.is_admin;
+    el.innerHTML = `<div class="weekly-card" style="border:2px solid var(--brand-lime);">
+      <div class="weekly-title">🎓 Вебинар от 0 до 70</div>
+      <div class="weekly-sub">Старт — <b>${res.start_label || "скоро"}</b>. До начала:</div>
+      <div class="wb-countdown"><b id="webinar-start-timer">—</b></div>
+      ${res.my_registered ? `<div class="weekly-status ok">✅ Ты зарегистрирован — жди старт!</div>` : ""}
+      ${canReg ? `<div class="wb-reg-tip">🏃 Совет: загляни в «Спринт» и потренируйся — победит самый быстрый, умный и ловкий!</div>
+      <button id="btn-webinar-register" class="btn btn-primary btn-big" style="margin-top:10px;">✅ Зарегистрироваться</button>
+      <button id="btn-webinar-tosprint" class="btn btn-secondary" style="margin-top:8px;">🏃 В Спринт — потренироваться</button>` : ""}
+      <div class="wb-reg-count">Зарегистрировались: <b>${res.registered_count || 0}</b></div>
+    </div>`;
+    const rb = document.getElementById("btn-webinar-register"); if (rb) rb.onclick = webinarRegister;
+    const sb = document.getElementById("btn-webinar-tosprint"); if (sb) sb.onclick = () => { hapticMedium(); showScreen("sprintHub"); };
+    webinarCountdown("webinar-start-timer", res.seconds_to_start, () => { webinarLastSig = ""; loadWebinar(); });
     return;
   }
   // гейт регистрации: без регистрации играть и получать оповещения нельзя
@@ -6917,6 +6935,30 @@ function webinarStartTicker(secondsLeft) {
   };
   upd();
   webinarTicker = setInterval(upd, 1000);
+}
+// Обратный отсчёт до старта вебинара (может быть часы/дни)
+function webinarFmtCountdown(ms) {
+  let s = Math.max(0, Math.round(ms / 1000));
+  const d = Math.floor(s / 86400); s -= d * 86400;
+  const h = Math.floor(s / 3600); s -= h * 3600;
+  const m = Math.floor(s / 60); const sec = s - m * 60;
+  if (d > 0) return `${d} д ${h} ч ${m} мин`;
+  if (h > 0) return `${h} ч ${m} мин ${sec} с`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+const _wbCountdowns = {};
+function webinarCountdown(elId, seconds, onDone) {
+  if (_wbCountdowns[elId]) { clearInterval(_wbCountdowns[elId]); _wbCountdowns[elId] = null; }
+  const deadline = Date.now() + (seconds || 0) * 1000;
+  const upd = () => {
+    const el = document.getElementById(elId);
+    if (!el) { if (_wbCountdowns[elId]) clearInterval(_wbCountdowns[elId]); _wbCountdowns[elId] = null; return; }
+    const left = deadline - Date.now();
+    el.textContent = webinarFmtCountdown(left);
+    if (left <= 0) { clearInterval(_wbCountdowns[elId]); _wbCountdowns[elId] = null; if (onDone) onDone(); }
+  };
+  upd();
+  _wbCountdowns[elId] = setInterval(upd, 1000);
 }
 
 async function webinarUnlock(cid) {
@@ -7087,7 +7129,19 @@ async function loadWebinarBanner() {
   if (!el) return;
   let res = null;
   try { res = await apiPost("/api/webinar/state", { init_data: INIT_DATA }); } catch (e) {}
-  if (!res || res.finished || !res.has_event) { el.style.display = "none"; el.innerHTML = ""; return; }
+  if (!res || res.finished) { el.style.display = "none"; el.innerHTML = ""; return; }
+  // до старта — анонс с таймером (виден всем, зовём зарегистрироваться)
+  if (!res.started) {
+    el.style.display = "";
+    el.innerHTML = `<div class="weekly-card" onclick="openWebinar()" style="cursor:pointer; border:2px solid var(--brand-lime);">
+      <div class="weekly-title">🎓 Вебинар от 0 до 70 — старт ${res.start_label || "скоро"}</div>
+      <div class="weekly-sub">До начала: <b id="webinar-banner-timer">—</b>${res.my_registered ? " · ты зарегистрирован ✅" : " · успей зарегистрироваться!"}</div>
+      ${res.my_registered || res.is_admin ? "" : `<button class="btn btn-primary" style="margin-top:8px;">Участвовать →</button>`}
+    </div>`;
+    webinarCountdown("webinar-banner-timer", res.seconds_to_start, () => loadWebinarBanner());
+    return;
+  }
+  if (!res.has_event) { el.style.display = "none"; el.innerHTML = ""; return; }
   el.style.display = "";
   // не зарегистрирован → зовём регистрироваться
   if (!res.my_registered && !res.is_admin) {
