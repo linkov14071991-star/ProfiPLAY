@@ -6836,22 +6836,47 @@ function renderWebinarBody(res) {
     return;
   }
   const meta = WEBINAR_FMT_META[c.format] || { icon: "🎮", title: c.format };
+  const timerLine = `<div class="wb-timer">⏳ До конца вызова: <b id="webinar-timer">—</b></div>`;
   if (c.my_played) {
     el.innerHTML = `<div class="weekly-card">
       <div class="weekly-title">⏳ Вызов №${c.idx}: ${meta.icon} ${escapeHtml(meta.title)}</div>
+      ${timerLine}
       <div class="weekly-status ${c.my_beat ? "ok" : ""}">${c.my_beat ? "✅ Ты обошёл Игоря! Баллы начислятся при закрытии вызова." : "Ты сыграл (+5 баллов за попытку), но в этот раз не обогнал. Следующий вызов — твой шанс!"}</div>
     </div>`;
+    webinarStartTicker(c.seconds_left);
     return;
   }
   el.innerHTML = `<div class="weekly-card">
     <div class="weekly-title">🔴 Идёт вызов №${c.idx}: ${meta.icon} ${escapeHtml(meta.title)}</div>
     <div class="weekly-sub">Кодовое слово — на экране вебинара. Впиши его и обгони Игоря быстрее всех!</div>
+    ${timerLine}
     <input id="webinar-code-input" class="wb-code-input" type="text" placeholder="Кодовое слово" autocomplete="off">
     <div id="webinar-code-err" class="wb-code-err"></div>
     <button id="btn-webinar-unlock" class="btn btn-primary btn-big">🔓 Ввести и играть</button>
   </div>`;
   document.getElementById("btn-webinar-unlock").onclick = () => webinarUnlock(c.challenge_id);
   document.getElementById("webinar-code-input").addEventListener("keydown", (e) => { if (e.key === "Enter") webinarUnlock(c.challenge_id); });
+  webinarStartTicker(c.seconds_left);
+}
+let webinarTicker = null;
+let webinarDeadline = 0;
+function webinarFmtLeft(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+function webinarStartTicker(secondsLeft) {
+  if (webinarTicker) { clearInterval(webinarTicker); webinarTicker = null; }
+  if (secondsLeft == null) return;
+  webinarDeadline = Date.now() + secondsLeft * 1000;
+  const upd = () => {
+    const el = document.getElementById("webinar-timer");
+    if (!el) { if (webinarTicker) clearInterval(webinarTicker); webinarTicker = null; return; }
+    const left = webinarDeadline - Date.now();
+    el.textContent = webinarFmtLeft(left);
+    if (left <= 0) { clearInterval(webinarTicker); webinarTicker = null; webinarLastSig = ""; loadWebinar(); }
+  };
+  upd();
+  webinarTicker = setInterval(upd, 1000);
 }
 
 async function webinarUnlock(cid) {
@@ -6917,8 +6942,8 @@ function renderWebinarAdmin(res) {
   let html = `<div class="wb-admin"><div class="wb-admin-title">⚙️ Управление (админ)</div>`;
   if (c) {
     const meta = WEBINAR_FMT_META[c.format] || { title: c.format };
-    html += `<div class="wb-admin-cur">Идёт вызов №${c.idx}: ${escapeHtml(meta.title)}. Когда все сыграли — закрой, чтобы начислить баллы.</div>
-      <button id="btn-wb-close" class="btn btn-secondary">🔒 Закрыть вызов №${c.idx} (начислить баллы)</button>`;
+    html += `<div class="wb-admin-cur">Идёт вызов №${c.idx}: ${escapeHtml(meta.title)}. Окно для учеников — 10 минут, потом вызов закроется и баллы начислятся сами. Можно закрыть и раньше.</div>
+      <button id="btn-wb-close" class="btn btn-secondary">🔒 Закрыть вызов №${c.idx} сейчас (начислить баллы)</button>`;
   }
   html += `<div class="wb-admin-new">
     <div class="field" style="margin-top:10px;">Новый вызов — игра</div>

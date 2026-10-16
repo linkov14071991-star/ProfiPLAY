@@ -320,11 +320,15 @@ def init_db():
             admin_ms    INTEGER,                     -- время Игоря в мс
             code_word   TEXT NOT NULL,               -- кодовое слово для входа
             state       TEXT NOT NULL DEFAULT 'open',-- open | closed
+            expires_at  TEXT,                        -- до какого момента открыт (окно на игру)
             created_at  TEXT,
             closed_at   TEXT
         )
         """
     )
+    _wb_cols = {r[1] for r in conn.execute("PRAGMA table_info(webinar_challenge)").fetchall()}
+    if "expires_at" not in _wb_cols:
+        conn.execute("ALTER TABLE webinar_challenge ADD COLUMN expires_at TEXT")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS webinar_attempt (

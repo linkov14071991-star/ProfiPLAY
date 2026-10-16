@@ -1182,6 +1182,8 @@ p  { color: var(--text-on-dark); opacity: 0.9; line-height: 1.5; }
 .wb-top-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wb-top-pts { font-weight: 800; white-space: nowrap; }
 .wb-top-hint { font-size: 12px; opacity: 0.7; text-align: center; margin-top: 8px; line-height: 1.4; }
+.wb-timer { text-align: center; font-size: 15px; margin: 8px 0; }
+.wb-timer b { font-size: 20px; color: var(--brand-lime); font-variant-numeric: tabular-nums; }
 .wb-rules { margin-top: 16px; background: rgba(0,0,0,0.12); border-radius: 14px; padding: 4px 14px; }
 .wb-rules summary { cursor: pointer; font-weight: 800; font-size: 15px; padding: 10px 0; list-style: none; }
 .wb-rules summary::-webkit-details-marker { display: none; }

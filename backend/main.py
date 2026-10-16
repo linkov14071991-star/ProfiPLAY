@@ -3495,6 +3495,7 @@ WEBINAR_POINTS_TOP = 100                               # баллы за 1-е м
 WEBINAR_POINTS_STEP = 10                               # шаг вниз за каждое место: 100, 90, 80…
 WEBINAR_POINTS_REST = 10                               # минимум для обошедшего (с 10-го места и далее)
 WEBINAR_POINTS_TRY = 5                                 # за сыгранную попытку (прошёл, но не обогнал)
+WEBINAR_WINDOW_MIN = 10                                # сколько минут открыт вызов для учеников
 
 
 def _webinar_gen_payload(fmt, difficulty):
@@ -3573,6 +3574,15 @@ def _webinar_leaderboard(db, limit=100):
     return out
 
 
+def _webinar_lazy_close(db):
+    """Авто-закрытие истёкших по времени вызовов (окно на игру вышло)."""
+    rows = db.execute(
+        "SELECT id FROM webinar_challenge WHERE state = 'open' AND expires_at IS NOT NULL AND expires_at <= datetime('now')"
+    ).fetchall()
+    for r in rows:
+        _webinar_finalize(db, r["id"])
+
+
 def _webinar_current(db):
     return db.execute("SELECT * FROM webinar_challenge WHERE state = 'open' ORDER BY id DESC LIMIT 1").fetchone()
 
@@ -3620,8 +3630,11 @@ async def webinar_set_bar(cid: int, init_data: str = Body(...), sch: dict = Body
         # финализируем любые ранее открытые вызовы
         for o in db.execute("SELECT id FROM webinar_challenge WHERE state = 'open'").fetchall():
             _webinar_finalize(db, o["id"])
-        db.execute("UPDATE webinar_challenge SET admin_score = ?, admin_ms = ?, state = 'open' WHERE id = ?",
-                   (score, ms, cid))
+        db.execute(
+            f"UPDATE webinar_challenge SET admin_score = ?, admin_ms = ?, state = 'open', "
+            f"expires_at = datetime('now', '+{WEBINAR_WINDOW_MIN} minutes') WHERE id = ?",
+            (score, ms, cid),
+        )
         broadcast_idx = ch["idx"]
         ids = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
     # рассылка: новый вызов пошёл (кодовое слово — только на экране вебинара)
@@ -3640,9 +3653,10 @@ async def webinar_unlock(cid: int, init_data: str = Body(...), code: str = Body(
     tg_user = get_verified_user(init_data)
     with get_db() as db:
         me = upsert_user(db, tg_user)
+        _webinar_lazy_close(db)
         ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
         if not ch or ch["state"] != "open":
-            raise HTTPException(status_code=400, detail="Вызов сейчас не активен")
+            raise HTTPException(status_code=400, detail="Вызов завершён — время вышло")
         if (code or "").strip().lower() != (ch["code_word"] or "").strip().lower():
             raise HTTPException(status_code=403, detail="Неверное кодовое слово. Смотри на экран вебинара!")
         att = db.execute("SELECT 1 FROM webinar_attempt WHERE challenge_id = ? AND user_id = ?",
@@ -3659,9 +3673,10 @@ async def webinar_submit(cid: int, init_data: str = Body(...), sch: dict = Body(
     with get_db() as db:
         me = upsert_user(db, tg_user)
         uid = me["telegram_id"]
+        _webinar_lazy_close(db)
         ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
         if not ch or ch["state"] != "open":
-            raise HTTPException(status_code=400, detail="Вызов закрыт")
+            raise HTTPException(status_code=400, detail="Вызов закрыт — время вышло")
         existing = db.execute("SELECT beat, elapsed_ms FROM webinar_attempt WHERE challenge_id = ? AND user_id = ?",
                               (cid, uid)).fetchone()
         if existing:
@@ -3731,6 +3746,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
         me = upsert_user(db, tg_user)
         uid = me["telegram_id"]
         is_admin = uid in ADMIN_IDS
+        _webinar_lazy_close(db)
         cur = _webinar_current(db)
         total = db.execute("SELECT COUNT(*) AS c FROM webinar_challenge WHERE state = 'closed' OR state = 'open'").fetchone()["c"]
         finished = _flag_get(db, "webinar_finished") == "1"
@@ -3738,9 +3754,15 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
         if cur:
             played = db.execute("SELECT beat, elapsed_ms FROM webinar_attempt WHERE challenge_id = ? AND user_id = ?",
                                 (cur["id"], uid)).fetchone()
+            sl = db.execute(
+                "SELECT CAST((julianday(expires_at) - julianday('now')) * 86400 AS INTEGER) AS s "
+                "FROM webinar_challenge WHERE id = ?", (cur["id"],)
+            ).fetchone()
+            seconds_left = max(0, sl["s"]) if (sl and sl["s"] is not None) else None
             current = {
                 "challenge_id": cur["id"], "idx": cur["idx"], "format": cur["format"],
                 "difficulty": cur["difficulty"], "admin_ms": cur["admin_ms"],
+                "seconds_left": seconds_left, "window_min": WEBINAR_WINDOW_MIN,
                 "my_played": bool(played),
                 "my_beat": bool(played["beat"]) if played else None,
             }
@@ -3761,7 +3783,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webinar-points-step10-v136"
+BUILD_TAG = "webinar-10min-window-v137"
 
 
 @app.get("/api/version")
