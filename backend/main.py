@@ -3598,15 +3598,21 @@ def _webinar_finalize(db, cid):
     db.execute("UPDATE webinar_challenge SET state = 'closed', closed_at = datetime('now') WHERE id = ?", (cid,))
 
 
-def _webinar_leaderboard(db, limit=100):
+def _webinar_leaderboard(db, limit=1000):
+    """Полный список ВСЕХ зарегистрированных участников с их баллами (для прозрачности)."""
     rows = db.execute(
         """
-        SELECT a.user_id, COALESCE(u.username, a.username) AS username, u.first_name,
-               COALESCE(SUM(a.points), 0) AS pts, COALESCE(SUM(a.beat), 0) AS wins, COUNT(*) AS played
-        FROM webinar_attempt a
-        LEFT JOIN users u ON u.telegram_id = a.user_id
-        GROUP BY a.user_id
-        ORDER BY pts DESC, wins DESC, played DESC, a.user_id ASC
+        SELECT r.user_id,
+               COALESCE(u.username, r.username) AS username,
+               COALESCE(u.first_name, r.first_name) AS first_name,
+               COALESCE(SUM(a.points), 0) AS pts,
+               COALESCE(SUM(a.beat), 0) AS wins,
+               COUNT(a.challenge_id) AS played
+        FROM webinar_registration r
+        LEFT JOIN users u ON u.telegram_id = r.user_id
+        LEFT JOIN webinar_attempt a ON a.user_id = r.user_id
+        GROUP BY r.user_id
+        ORDER BY pts DESC, wins DESC, played DESC, r.user_id ASC
         LIMIT ?
         """,
         (limit,),
@@ -3617,6 +3623,14 @@ def _webinar_leaderboard(db, limit=100):
         out.append({"place": i + 1, "user_id": r["user_id"], "username": r["username"],
                     "name": name, "points": r["pts"] or 0, "wins": r["wins"] or 0, "played": r["played"] or 0})
     return out
+
+
+def _webinar_is_registered(db, uid):
+    return db.execute("SELECT 1 FROM webinar_registration WHERE user_id = ?", (uid,)).fetchone() is not None
+
+
+def _webinar_registered_ids(db):
+    return [r["user_id"] for r in db.execute("SELECT user_id FROM webinar_registration").fetchall()]
 
 
 def _webinar_lazy_close(db):
@@ -3630,6 +3644,22 @@ def _webinar_lazy_close(db):
 
 def _webinar_current(db):
     return db.execute("SELECT * FROM webinar_challenge WHERE state = 'open' ORDER BY id DESC LIMIT 1").fetchone()
+
+
+@app.post("/api/webinar/register")
+async def webinar_register(init_data: str = Body(..., embed=True)):
+    """Регистрация на вебинар. Только зарегистрированные играют и получают оповещения."""
+    tg_user = get_verified_user(init_data)
+    with get_db() as db:
+        me = upsert_user(db, tg_user)
+        nick = me["username"] if ("username" in me.keys() and me["username"]) else None
+        db.execute(
+            "INSERT INTO webinar_registration (user_id, username, first_name, created_at) VALUES (?, ?, ?, datetime('now')) "
+            "ON CONFLICT(user_id) DO UPDATE SET username = excluded.username, first_name = excluded.first_name",
+            (me["telegram_id"], nick, me["first_name"]),
+        )
+        cnt = db.execute("SELECT COUNT(*) AS c FROM webinar_registration").fetchone()["c"]
+    return {"ok": True, "registered": True, "registered_count": cnt}
 
 
 @app.post("/api/webinar/create")
@@ -3684,9 +3714,9 @@ async def webinar_set_bar(cid: int, init_data: str = Body(...), sch: dict = Body
             (score, ms, cid),
         )
         broadcast_idx = ch["idx"]
-        ids = [r["telegram_id"] for r in db.execute("SELECT telegram_id FROM users").fetchall()]
+        ids = _webinar_registered_ids(db)   # оповещаем ТОЛЬКО зарегистрированных на вебинар
     # рассылка: новый вызов пошёл (кодовое слово — только на экране вебинара)
-    if BOT_TOKEN and WEBAPP_URL and broadcast_idx:
+    if BOT_TOKEN and WEBAPP_URL and broadcast_idx and ids:
         text = (f"🎓 <b>Вебинар — вызов №{broadcast_idx}!</b>\n"
                 f"Игорь уже сыграл. Смотри кодовое слово на экране, успей обогнать — и быстрее всех! ⚡")
         markup = {"inline_keyboard": [[{"text": "🎮 Играть", "web_app": {"url": WEBAPP_URL}}]]}
@@ -3701,6 +3731,8 @@ async def webinar_unlock(cid: int, init_data: str = Body(...), code: str = Body(
     tg_user = get_verified_user(init_data)
     with get_db() as db:
         me = upsert_user(db, tg_user)
+        if not _webinar_is_registered(db, me["telegram_id"]):
+            raise HTTPException(status_code=403, detail="Сначала зарегистрируйся на вебинар")
         _webinar_lazy_close(db)
         ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
         if not ch or ch["state"] != "open":
@@ -3821,11 +3853,14 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
             "SELECT COALESCE(SUM(points),0) AS p, COALESCE(SUM(beat),0) AS w, COUNT(*) AS n FROM webinar_attempt WHERE user_id = ?",
             (uid,),
         ).fetchone()
+        my_registered = _webinar_is_registered(db, uid)
+        reg_count = db.execute("SELECT COUNT(*) AS c FROM webinar_registration").fetchone()["c"]
         top = _webinar_leaderboard(db)
         my_rank = next((r["place"] for r in top if r["user_id"] == uid), None)
     return {
         "title": WEBINAR_TITLE, "date": WEBINAR_DATE,
         "is_admin": is_admin, "finished": finished,
+        "my_registered": my_registered, "registered_count": reg_count,
         "has_event": total > 0, "current": current,
         "formats": list(WEBINAR_FORMATS),
         "my": {"points": my_total["p"], "wins": my_total["w"], "played": my_total["n"], "rank": my_rank},
@@ -3834,7 +3869,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webinar-all-games-v138"
+BUILD_TAG = "webinar-registration-v139"
 
 
 @app.get("/api/version")

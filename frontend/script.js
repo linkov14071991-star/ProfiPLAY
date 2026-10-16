@@ -6815,9 +6815,23 @@ async function loadWebinar() {
   }, 12000);
 }
 
+async function webinarRegister() {
+  const btn = document.getElementById("btn-webinar-register");
+  if (btn) { btn.disabled = true; btn.textContent = "Регистрирую…"; }
+  const res = await apiPost("/api/webinar/register", { init_data: INIT_DATA });
+  if (!res || !res.ok) {
+    if (btn) { btn.disabled = false; btn.textContent = "✅ Зарегистрироваться"; }
+    alert((res && res.detail) || "Не удалось зарегистрироваться"); return;
+  }
+  hapticSuccess();
+  alert("Ты в игре! 🎉\n\nСовет: загляни в «Спринт» и потренируйся в играх до старта — победит самый быстрый, умный и ловкий. Как начнётся вызов, тебе придёт оповещение.");
+  webinarLastSig = "";
+  await loadWebinar();
+}
+
 function webinarSig(res) {
   const c = res.current;
-  return [res.finished ? 1 : 0, res.is_admin ? 1 : 0, c ? c.challenge_id : 0, c ? (c.my_played ? 1 : 0) : 0].join("|");
+  return [res.finished ? 1 : 0, res.is_admin ? 1 : 0, res.my_registered ? 1 : 0, c ? c.challenge_id : 0, c ? (c.my_played ? 1 : 0) : 0].join("|");
 }
 
 function renderWebinar(res) {
@@ -6835,6 +6849,25 @@ function renderWebinarBody(res) {
   const el = document.getElementById("webinar-body");
   if (res.finished) {
     el.innerHTML = `<div class="weekly-card"><div class="weekly-title">🏁 Вебинар завершён!</div><div class="weekly-sub">Итоги подведены — смотри топ ниже. Призёрам Игорь напишет лично.</div></div>`;
+    return;
+  }
+  // гейт регистрации: без регистрации играть и получать оповещения нельзя
+  if (!res.my_registered && !res.is_admin) {
+    el.innerHTML = `<div class="weekly-card" style="border:2px solid var(--brand-lime);">
+      <div class="weekly-title">📝 Регистрация на вебинар</div>
+      <div class="weekly-sub">Участвуют только зарегистрированные — и только им приходят оповещения о вызовах.</div>
+      <div class="wb-reg-rules">
+        <div>🎮 Во время эфира Игорь запускает <b>игровые вызовы</b>. Вход — по <b>кодовому слову с экрана</b> (своё у каждого).</div>
+        <div>⚡ Задача — <b>обогнать Игоря</b>: где-то быстрее пройти, где-то дать больше правильных. 1 попытка, 10 минут на вызов.</div>
+        <div>🏅 Баллы копятся. Топ-3 — месяц курса, остальным — сертификаты.</div>
+        <div class="wb-reg-tip">🏃 <b>Совет:</b> зайди в раздел «Спринт» и потренируйся в играх заранее — победит самый быстрый, умный и ловкий!</div>
+      </div>
+      <button id="btn-webinar-register" class="btn btn-primary btn-big" style="margin-top:12px;">✅ Зарегистрироваться</button>
+      <button id="btn-webinar-tosprint" class="btn btn-secondary" style="margin-top:8px;">🏃 В Спринт — потренироваться</button>
+      <div class="wb-reg-count">Уже зарегистрировались: <b>${res.registered_count || 0}</b></div>
+    </div>`;
+    document.getElementById("btn-webinar-register").onclick = webinarRegister;
+    document.getElementById("btn-webinar-tosprint").onclick = () => { hapticMedium(); showScreen("sprintHub"); };
     return;
   }
   const c = res.current;
@@ -7034,18 +7067,19 @@ function renderWebinarTop(res) {
   const el = document.getElementById("webinar-top");
   const top = res.top || [];
   const my = res.my || {};
-  const head = `<div class="wb-top-title">🏆 Топ вебинара</div>`;
+  const head = `<div class="wb-top-title">🏆 Участники вебинара${res.registered_count ? " (" + res.registered_count + ")" : ""}</div>`;
   const mine = (my.played ? `<div class="wb-my">Ты: <b>${my.points}</b> баллов · побед: ${my.wins}${my.rank ? " · место " + my.rank : ""}</div>` : "");
-  if (!top.length) { el.innerHTML = head + mine + `<div class="daily-rec-empty">Пока никто не играл.</div>`; return; }
+  if (!top.length) { el.innerHTML = head + mine + `<div class="daily-rec-empty">Пока никто не зарегистрировался.</div>`; return; }
   const medal = (p) => ["🥇", "🥈", "🥉"][p - 1] || p;
   const myId = tg?.initDataUnsafe?.user?.id;
-  const rows = top.slice(0, 15).map((r) => {
+  // ПОЛНЫЙ список всех участников — для честности и прозрачности
+  const rows = top.map((r) => {
     const isMe = myId && r.user_id === myId;
     const prize = r.place <= 3 ? " 🎓" : "";
     const nm = r.username ? "@" + escapeHtml(r.username) : escapeHtml(r.name);
     return `<div class="wb-top-row${isMe ? " me" : ""}"><span class="wb-top-place">${medal(r.place)}</span><span class="wb-top-name">${nm}${prize}</span><span class="wb-top-pts">${r.points}</span></div>`;
   }).join("");
-  el.innerHTML = head + mine + rows + `<div class="wb-top-hint">Топ-3 (🎓) — месяц курса. Дальше — сертификаты (кол-во по числу участников).</div>`;
+  el.innerHTML = head + mine + `<div class="wb-top-list">${rows}</div>` + `<div class="wb-top-hint">Полный список участников — для честности. Топ-3 (🎓) — месяц курса, дальше — сертификаты (кол-во по числу участников).</div>`;
 }
 
 async function loadWebinarBanner() {
@@ -7054,8 +7088,17 @@ async function loadWebinarBanner() {
   let res = null;
   try { res = await apiPost("/api/webinar/state", { init_data: INIT_DATA }); } catch (e) {}
   if (!res || res.finished || !res.has_event) { el.style.display = "none"; el.innerHTML = ""; return; }
-  const c = res.current;
   el.style.display = "";
+  // не зарегистрирован → зовём регистрироваться
+  if (!res.my_registered && !res.is_admin) {
+    el.innerHTML = `<div class="weekly-card" onclick="openWebinar()" style="cursor:pointer; border:2px solid var(--brand-lime);">
+      <div class="weekly-title">🎓 Идёт вебинар от 0 до 70!</div>
+      <div class="weekly-sub">Зарегистрируйся, чтобы играть и получать оповещения о вызовах ⚡</div>
+      <button class="btn btn-primary" style="margin-top:8px;">Участвовать →</button>
+    </div>`;
+    return;
+  }
+  const c = res.current;
   if (!c) {
     el.innerHTML = `<div class="weekly-card" onclick="openWebinar()" style="cursor:pointer; border:2px solid var(--brand-lime);">
       <div class="weekly-title">🎓 Идёт вебинар!</div>

@@ -329,6 +329,18 @@ def init_db():
     _wb_cols = {r[1] for r in conn.execute("PRAGMA table_info(webinar_challenge)").fetchall()}
     if "expires_at" not in _wb_cols:
         conn.execute("ALTER TABLE webinar_challenge ADD COLUMN expires_at TEXT")
+
+    # Регистрация на вебинар: игра и оповещения — только для зарегистрированных
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS webinar_registration (
+            user_id    INTEGER PRIMARY KEY,
+            username   TEXT,
+            first_name TEXT,
+            created_at TEXT
+        )
+        """
+    )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS webinar_attempt (
