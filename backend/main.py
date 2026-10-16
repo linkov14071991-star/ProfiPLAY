@@ -3491,8 +3491,9 @@ async def python_session_end(payload: dict = Body(...)):
 WEBINAR_TITLE = "Вебинар: ЕГЭ по информатике 0→70"
 WEBINAR_DATE = "17 октября 2026"
 WEBINAR_FORMATS = ("numbermem", "schulte", "gorbov")   # игры на время (кто быстрее)
-WEBINAR_POINTS = [100, 80, 60, 40, 20]                 # 1..5 места среди обошедших
-WEBINAR_POINTS_REST = 10                               # 6-е и далее среди обошедших
+WEBINAR_POINTS_TOP = 100                               # баллы за 1-е место среди обошедших
+WEBINAR_POINTS_STEP = 10                               # шаг вниз за каждое место: 100, 90, 80…
+WEBINAR_POINTS_REST = 10                               # минимум для обошедшего (с 10-го места и далее)
 WEBINAR_POINTS_TRY = 5                                 # за сыгранную попытку (прошёл, но не обогнал)
 
 
@@ -3541,7 +3542,7 @@ def _webinar_finalize(db, cid):
         (cid,),
     ).fetchall()
     for i, b in enumerate(beaters):
-        pts = WEBINAR_POINTS[i] if i < len(WEBINAR_POINTS) else WEBINAR_POINTS_REST
+        pts = max(WEBINAR_POINTS_REST, WEBINAR_POINTS_TOP - i * WEBINAR_POINTS_STEP)
         db.execute("UPDATE webinar_attempt SET points = ? WHERE challenge_id = ? AND user_id = ?",
                    (pts, cid, b["user_id"]))
     # не обогнал, но прошёл игру (score>0) → баллы за попытку; совсем не доиграл → 0
@@ -3760,7 +3761,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webinar-rules-try-v135"
+BUILD_TAG = "webinar-points-step10-v136"
 
 
 @app.get("/api/version")
