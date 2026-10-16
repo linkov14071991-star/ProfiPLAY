@@ -6677,15 +6677,10 @@ async function loadWeeklyBanner() {
   const title = WEEKLY_FMT_TITLES_JS[a.format] || a.format;
 
   if (a.state === "closed") {
-    // Итоги видны ВСЕМ прямо в баннере (раздел «Соревнования» закрыт для игроков)
-    el.style.display = "";
-    el.innerHTML = `
-      <div class="weekly-card">
-        <div class="weekly-title">🏁 Вызов от Игоря завершён</div>
-        <div class="weekly-sub">Формат: <b>${title}</b> · счёт Игоря <b>${weeklyScoreText(a.format, a.admin_score)}</b></div>
-        ${weeklyStatsHtml(a.stats)}
-        ${weeklyVsHtml(a.vs_score)}
-      </div>`;
+    // ВРЕМЕННО (на период вебинара): не показываем плашку «Вызов завершён» на главной,
+    // чтобы не путать участников вебинара. Итоги по-прежнему видны в «Соревнованиях».
+    el.style.display = "none";
+    el.innerHTML = "";
     weeklyStartTicker(null);
     return;
   }
