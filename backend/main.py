@@ -3490,7 +3490,9 @@ async def python_session_end(payload: dict = Body(...)):
 # Баллы за вызов начисляются при закрытии: по скорости среди обошедших.
 WEBINAR_TITLE = "Вебинар: ЕГЭ по информатике 0→70"
 WEBINAR_DATE = "17 октября 2026"
-WEBINAR_FORMATS = ("numbermem", "schulte", "gorbov")   # игры на время (кто быстрее)
+# Все игры Спринта доступны как форматы вызова на вебинаре
+WEBINAR_FORMATS = ("numbermem", "schulte", "gorbov", "numguess", "stroop", "fastmath", "infomath", "sprint")
+WEBINAR_TIME_FORMATS = ("schulte", "gorbov", "numbermem")   # игры «на время»
 WEBINAR_POINTS_TOP = 100                               # баллы за 1-е место среди обошедших
 WEBINAR_POINTS_STEP = 10                               # шаг вниз за каждое место: 100, 90, 80…
 WEBINAR_POINTS_REST = 10                               # минимум для обошедшего (с 10-го места и далее)
@@ -3498,7 +3500,7 @@ WEBINAR_POINTS_TRY = 5                                 # за сыгранную
 WEBINAR_WINDOW_MIN = 10                                # сколько минут открыт вызов для учеников
 
 
-def _webinar_gen_payload(fmt, difficulty):
+def _webinar_gen_payload(fmt, difficulty, questions=None, topic=""):
     if fmt in ("schulte", "numbermem"):
         sizes = DUEL_SCHULTE if fmt == "schulte" else DUEL_NUMBERMEM
         size = sizes.get(difficulty)
@@ -3518,7 +3520,41 @@ def _webinar_gen_payload(fmt, difficulty):
         cells += [{"color": "black", "num": i} for i in range(1, black_n + 1)]
         random.shuffle(cells)
         return {"format": "gorbov", "size": size, "cells": cells}
+    if fmt == "numguess":
+        cfg = DUEL_NG.get(difficulty)
+        if not cfg:
+            raise HTTPException(status_code=400, detail="Bad difficulty")
+        secret = random.randint(1, cfg["maxN"])
+        return {"format": "numguess", "secret": secret, "maxN": cfg["maxN"], "time_ms": cfg["time_ms"]}
+    if fmt == "stroop":
+        nc = STROOP_N.get(difficulty)
+        if not nc:
+            raise HTTPException(status_code=400, detail="Bad difficulty")
+        keys = list(STROOP_KEYS[:nc])
+        trials = _gen_stroop_trials(nc, STROOP_DUEL_TRIALS)
+        return {"format": "stroop", "keys": keys, "trials": trials}
+    if fmt == "sprint":
+        pool = _pool_for(difficulty, topic)
+        if len(pool) < DUEL_QUESTIONS_COUNT:
+            raise HTTPException(status_code=500, detail="Not enough questions")
+        selected = [shuffle_question(q) for q in random.sample(pool, DUEL_QUESTIONS_COUNT)]
+        return {"format": "sprint", "questions": selected}
+    if fmt in ("fastmath", "infomath"):
+        selected = [shuffle_question(q) for q in _validate_client_questions(questions)]
+        return {"format": fmt, "questions": selected}
     raise HTTPException(status_code=400, detail="Bad format")
+
+
+def _webinar_score(fmt, stored, ng, sch, strp, answers):
+    """Единый подсчёт очков игрока по формату (чем больше — тем лучше)."""
+    if fmt == "numguess":
+        return _score_numguess(ng or {})
+    if fmt in ("schulte", "gorbov", "numbermem"):
+        return _score_schulte(sch or {})
+    if fmt == "stroop":
+        return _score_stroop(strp or {})
+    questions = stored.get("questions") if isinstance(stored, dict) else (stored or [])
+    return _score_answers(questions, answers or [])
 
 
 def _webinar_payload_public(ch):
@@ -3530,6 +3566,13 @@ def _webinar_payload_public(ch):
         base.update({"size": payload["size"], "order": payload["order"]})
     elif fmt == "gorbov":
         base.update({"size": payload["size"], "cells": payload["cells"]})
+    elif fmt == "numguess":
+        base.update({"maxN": payload["maxN"], "secret": payload["secret"], "time_limit_ms": payload["time_ms"]})
+    elif fmt == "stroop":
+        base.update({"keys": payload["keys"], "trials": payload["trials"], "time_ms": STROOP_DUEL_MS})
+    else:  # sprint / fastmath / infomath
+        base.update({"questions": [{"q": q["q"], "options": q["options"]} for q in payload["questions"]],
+                     "time_limit_ms": DUEL_TIME_LIMIT_MS})
     return base
 
 
@@ -3538,8 +3581,10 @@ def _webinar_finalize(db, cid):
     ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
     if not ch or ch["state"] == "closed":
         return
+    # ранжируем обошедших по счёту (у игр на время больше счёт = быстрее; у MCQ = больше верных),
+    # при равенстве — кто раньше сдал
     beaters = db.execute(
-        "SELECT user_id FROM webinar_attempt WHERE challenge_id = ? AND beat = 1 ORDER BY elapsed_ms ASC, created_at ASC",
+        "SELECT user_id FROM webinar_attempt WHERE challenge_id = ? AND beat = 1 ORDER BY score DESC, created_at ASC",
         (cid,),
     ).fetchall()
     for i, b in enumerate(beaters):
@@ -3589,7 +3634,8 @@ def _webinar_current(db):
 
 @app.post("/api/webinar/create")
 async def webinar_create(init_data: str = Body(...), format: str = Body("numbermem"),
-                         difficulty: str = Body("medium"), code_word: str = Body(...)):
+                         difficulty: str = Body("medium"), code_word: str = Body(...),
+                         topic: str = Body(""), questions: list = Body(None)):
     """Админ: создать черновик вызова (игра+сложность+кодовое слово). Возвращает расклад — админ играет сам."""
     tg_user = get_verified_user(init_data)
     if tg_user["id"] not in ADMIN_IDS:
@@ -3599,7 +3645,7 @@ async def webinar_create(init_data: str = Body(...), format: str = Body("numberm
     code = (code_word or "").strip()
     if not code:
         raise HTTPException(status_code=400, detail="Нужно кодовое слово")
-    payload = _webinar_gen_payload(format, difficulty)
+    payload = _webinar_gen_payload(format, difficulty, questions, topic)
     with get_db() as db:
         upsert_user(db, tg_user)
         row = db.execute("SELECT COALESCE(MAX(idx), 0) AS m FROM webinar_challenge").fetchone()
@@ -3615,18 +3661,20 @@ async def webinar_create(init_data: str = Body(...), format: str = Body("numberm
 
 
 @app.post("/api/webinar/{cid}/set_bar")
-async def webinar_set_bar(cid: int, init_data: str = Body(...), sch: dict = Body(None)):
+async def webinar_set_bar(cid: int, init_data: str = Body(...), sch: dict = Body(None),
+                          ng: dict = Body(None), strp: dict = Body(None), answers: list = Body(None)):
     """Админ: сохранить свой результат и запустить вызов (state=open). Прошлый открытый — финализируем."""
     tg_user = get_verified_user(init_data)
     if tg_user["id"] not in ADMIN_IDS:
         raise HTTPException(status_code=403, detail="Not admin")
-    score = _score_schulte(sch or {})
-    ms = int((sch or {}).get("elapsed_ms") or 0) or None
     broadcast_idx = None
     with get_db() as db:
         ch = db.execute("SELECT * FROM webinar_challenge WHERE id = ?", (cid,)).fetchone()
         if not ch:
             raise HTTPException(status_code=404, detail="Not found")
+        stored = json.loads(ch["payload_json"])
+        score = _webinar_score(ch["format"], stored, ng, sch, strp, answers)
+        ms = int((sch or {}).get("elapsed_ms") or 0) or None
         # финализируем любые ранее открытые вызовы
         for o in db.execute("SELECT id FROM webinar_challenge WHERE state = 'open'").fetchall():
             _webinar_finalize(db, o["id"])
@@ -3667,7 +3715,8 @@ async def webinar_unlock(cid: int, init_data: str = Body(...), code: str = Body(
 
 
 @app.post("/api/webinar/{cid}/submit")
-async def webinar_submit(cid: int, init_data: str = Body(...), sch: dict = Body(None)):
+async def webinar_submit(cid: int, init_data: str = Body(...), sch: dict = Body(None),
+                         ng: dict = Body(None), strp: dict = Body(None), answers: list = Body(None)):
     """Ученик: сдать результат вызова. Баллы начислятся при закрытии вызова."""
     tg_user = get_verified_user(init_data)
     with get_db() as db:
@@ -3681,8 +3730,9 @@ async def webinar_submit(cid: int, init_data: str = Body(...), sch: dict = Body(
                               (cid, uid)).fetchone()
         if existing:
             return {"ok": True, "already": True, "beat": bool(existing["beat"]),
-                    "elapsed_ms": existing["elapsed_ms"], "admin_ms": ch["admin_ms"]}
-        score = _score_schulte(sch or {})
+                    "elapsed_ms": existing["elapsed_ms"], "admin_ms": ch["admin_ms"], "format": ch["format"]}
+        stored = json.loads(ch["payload_json"])
+        score = _webinar_score(ch["format"], stored, ng, sch, strp, answers)
         ms = int((sch or {}).get("elapsed_ms") or 0)
         beat = 1 if (score > ch["admin_score"]) else 0
         nick = me["username"] if ("username" in me.keys() and me["username"]) else (me["first_name"] or "Игрок")
@@ -3691,7 +3741,8 @@ async def webinar_submit(cid: int, init_data: str = Body(...), sch: dict = Body(
             "VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))",
             (cid, uid, nick, score, ms, beat),
         )
-    return {"ok": True, "already": False, "beat": bool(beat), "elapsed_ms": ms, "admin_ms": ch["admin_ms"]}
+    return {"ok": True, "already": False, "beat": bool(beat), "elapsed_ms": ms,
+            "admin_ms": ch["admin_ms"], "format": ch["format"]}
 
 
 @app.post("/api/webinar/{cid}/close")
@@ -3783,7 +3834,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webinar-10min-window-v137"
+BUILD_TAG = "webinar-all-games-v138"
 
 
 @app.get("/api/version")

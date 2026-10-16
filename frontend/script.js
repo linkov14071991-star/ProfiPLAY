@@ -3862,6 +3862,8 @@ async function duelStroopEnd() {
   clearInterval(duel.stTimer);
   playTimeUpSound();
   const strp = { correct: duel.stCorrect };
+  if (duel.mode === "webinar") return webinarUserFinish({ strp });
+  if (duel.mode === "webinar-admin") return webinarAdminFinish({ strp });
   if (duel.mode === "weekly") return weeklyUserFinish({ strp });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ strp });
   const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, strp });
@@ -5724,6 +5726,8 @@ async function duelNgEnd(solved) {
   const elapsed = Math.min(duel.ngTimeLimitMs, Date.now() - duel.ngStart);
   if (solved) hapticSuccess(); else hapticError();
   const ngPayload = { solved: solved, guesses: duel.ngGuesses, elapsed_ms: elapsed };
+  if (duel.mode === "webinar") return webinarUserFinish({ ng: ngPayload });
+  if (duel.mode === "webinar-admin") return webinarAdminFinish({ ng: ngPayload });
   if (duel.mode === "weekly") return weeklyUserFinish({ ng: ngPayload });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ ng: ngPayload });
   const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, ng: ngPayload });
@@ -5779,8 +5783,8 @@ async function duelSchulteEnd(solved) {
   duel.schLastMs = solved ? elapsed : 0;
   if (solved) hapticSuccess(); else hapticError();
   const sch = { solved: solved, elapsed_ms: elapsed };
-  if (duel.mode === "webinar") return webinarUserFinish(sch);
-  if (duel.mode === "webinar-admin") return webinarAdminFinish(sch);
+  if (duel.mode === "webinar") return webinarUserFinish({ sch });
+  if (duel.mode === "webinar-admin") return webinarAdminFinish({ sch });
   if (duel.mode === "weekly") return weeklyUserFinish({ sch });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
   const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
@@ -5853,8 +5857,8 @@ async function duelNumbermemEnd(solved) {
   duel.nmLastMs = solved ? elapsed : 0;
   if (solved) hapticSuccess(); else hapticError();
   const sch = { solved: solved, elapsed_ms: elapsed };
-  if (duel.mode === "webinar") return webinarUserFinish(sch);
-  if (duel.mode === "webinar-admin") return webinarAdminFinish(sch);
+  if (duel.mode === "webinar") return webinarUserFinish({ sch });
+  if (duel.mode === "webinar-admin") return webinarAdminFinish({ sch });
   if (duel.mode === "weekly") return weeklyUserFinish({ sch });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
   const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
@@ -5922,8 +5926,8 @@ async function duelGorbovEnd(solved) {
   duel.schLastMs = solved ? elapsed : 0;
   if (solved) hapticSuccess(); else hapticError();
   const sch = { solved: solved, elapsed_ms: elapsed };
-  if (duel.mode === "webinar") return webinarUserFinish(sch);
-  if (duel.mode === "webinar-admin") return webinarAdminFinish(sch);
+  if (duel.mode === "webinar") return webinarUserFinish({ sch });
+  if (duel.mode === "webinar-admin") return webinarAdminFinish({ sch });
   if (duel.mode === "weekly") return weeklyUserFinish({ sch });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ sch });
   const res = await apiPost(`/api/duel/${duel.duelId}/submit`, { init_data: INIT_DATA, sch });
@@ -5995,6 +5999,8 @@ function duelAnswer(chosen) {
 
 // Куда уходит результат после последнего вопроса — зависит от режима
 function duelFinishMCQ() {
+  if (duel.mode === "webinar") return webinarUserFinish({ answers: duel.answers });
+  if (duel.mode === "webinar-admin") return webinarAdminFinish({ answers: duel.answers });
   if (duel.mode === "weekly") return weeklyUserFinish({ answers: duel.answers });
   if (duel.mode === "weekly-admin") return weeklyAdminFinish({ answers: duel.answers });
   return duelSubmit();
@@ -6775,7 +6781,13 @@ const WEBINAR_FMT_META = {
   numbermem: { icon: "🧠", title: "Числовая память" },
   schulte: { icon: "🧠", title: "Таблица Шульте" },
   gorbov: { icon: "🔴", title: "Чёрно-красная таблица" },
+  numguess: { icon: "🔢", title: "Угадай число" },
+  stroop: { icon: "🎨", title: "Струп-тест" },
+  fastmath: { icon: "🧮", title: "Быстрый счёт" },
+  infomath: { icon: "🖥️", title: "IT-разминка" },
+  sprint: { icon: "🎯", title: "Профи-блиц" },
 };
+const WEBINAR_GAMES_ORDER = ["numbermem", "schulte", "gorbov", "numguess", "stroop", "fastmath", "infomath", "sprint"];
 const webinarAdmin = { format: "numbermem", difficulty: "medium" };
 let webinarState = null;
 let webinarPollTimer = null;
@@ -6898,34 +6910,51 @@ function webinarLaunchGame(info, mode) {
   if (info.format === "numbermem") duelNumbermemStart(info);
   else if (info.format === "schulte") duelSchulteStart(info);
   else if (info.format === "gorbov") duelGorbovStart(info);
+  else if (info.format === "numguess") duelNgStart(info);
+  else if (info.format === "stroop") duelStroopStart(info);
+  else {  // sprint / fastmath / infomath — вопросы с вариантами
+    duel.questions = info.questions || [];
+    duel.timeLimitMs = info.time_limit_ms || 15000;
+    duel.qIndex = 0;
+    duel.answers = [];
+    duel.score = 0;
+    const sc = document.getElementById("duel-score");
+    if (sc) sc.textContent = 0;
+    showScreen("duelPlay");
+    duelRenderQ();
+  }
 }
 
-async function webinarUserFinish(sch) {
+// payload — объект тела запроса: { sch } | { ng } | { strp } | { answers }
+async function webinarUserFinish(payload) {
   const cid = duel.webinarCid;
   duel.mode = "duel";
-  const res = await apiPost(`/api/webinar/${cid}/submit`, { init_data: INIT_DATA, sch });
+  const res = await apiPost(`/api/webinar/${cid}/submit`, { init_data: INIT_DATA, ...payload });
   refreshProfile();
   const t = document.getElementById("webinar-res-title");
   const b = document.getElementById("webinar-res-body");
   const s = document.getElementById("webinar-res-sub");
   if (!res || !res.ok) { t.textContent = "Не удалось отправить"; b.textContent = ""; s.textContent = (res && res.detail) || ""; showScreen("webinarResult"); return; }
-  const mine = fmtSec(sch.elapsed_ms) + " с";
-  const his = res.admin_ms ? (fmtSec(res.admin_ms) + " с") : "—";
   if (res.beat) { t.textContent = "🎉 Ты обошёл Игоря!"; hapticSuccess(); }
   else { t.textContent = "В этот раз не обогнал"; hapticError(); }
-  b.innerHTML = `Твоё время: <b>${mine}</b> · Игорь: <b>${his}</b>`;
-  s.textContent = res.beat ? "Баллы начислятся при закрытии вызова — чем быстрее ты был, тем больше!" : "За участие всё равно +5 баллов. Впереди ещё вызовы — следи за экраном!";
+  // для игр на время покажем сравнение, для остальных — без времени
+  if (payload.sch && res.admin_ms) {
+    b.innerHTML = `Твоё время: <b>${fmtSec(payload.sch.elapsed_ms)} с</b> · Игорь: <b>${fmtSec(res.admin_ms)} с</b>`;
+  } else {
+    b.textContent = "";
+  }
+  s.textContent = res.beat ? "Баллы начислятся при закрытии вызова — чем быстрее/лучше ты был, тем больше!" : "За участие всё равно +5 баллов. Впереди ещё вызовы — следи за экраном!";
   webinarLastSig = "";
   showScreen("webinarResult");
 }
 
-async function webinarAdminFinish(sch) {
+async function webinarAdminFinish(payload) {
   const cid = duel.webinarCid;
   duel.mode = "duel";
-  const res = await apiPost(`/api/webinar/${cid}/set_bar`, { init_data: INIT_DATA, sch });
+  const res = await apiPost(`/api/webinar/${cid}/set_bar`, { init_data: INIT_DATA, ...payload });
   if (!res || !res.ok) { alert((res && res.detail) || "Не удалось запустить вызов"); openWebinar(); return; }
   hapticSuccess();
-  alert(`Вызов запущен! Твоё время: ${fmtSec(sch.elapsed_ms)} с. Ученики вводят кодовое слово и играют.`);
+  alert("Вызов запущен! Твой результат — планка. Ученики вводят кодовое слово и играют.");
   openWebinar();
 }
 
@@ -6943,9 +6972,7 @@ function renderWebinarAdmin(res) {
   html += `<div class="wb-admin-new">
     <div class="field" style="margin-top:10px;">Новый вызов — игра</div>
     <div class="pills" id="wb-format">
-      <button class="pill ${webinarAdmin.format === "numbermem" ? "active" : ""}" data-value="numbermem">🧠 Числовая память</button>
-      <button class="pill ${webinarAdmin.format === "schulte" ? "active" : ""}" data-value="schulte">🧠 Шульте</button>
-      <button class="pill ${webinarAdmin.format === "gorbov" ? "active" : ""}" data-value="gorbov">🔴 Чёрно-красная</button>
+      ${WEBINAR_GAMES_ORDER.map((g) => `<button class="pill ${webinarAdmin.format === g ? "active" : ""}" data-value="${g}">${WEBINAR_FMT_META[g].icon} ${WEBINAR_FMT_META[g].title}</button>`).join("")}
     </div>
     <div class="field">Сложность</div>
     <div class="pills" id="wb-difficulty">
@@ -6972,7 +6999,12 @@ function renderWebinarAdmin(res) {
 async function webinarAdminCreate() {
   const code = (document.getElementById("wb-code").value || "").trim();
   if (!code) { alert("Впиши кодовое слово для этого вызова"); return; }
-  const res = await apiPost("/api/webinar/create", { init_data: INIT_DATA, format: webinarAdmin.format, difficulty: webinarAdmin.difficulty, code_word: code });
+  const fmt = webinarAdmin.format;
+  const body = { init_data: INIT_DATA, format: fmt, difficulty: webinarAdmin.difficulty, code_word: code };
+  // MCQ-игры: вопросы генерит клиент; Профи-блиц берёт из банка по всем темам
+  if (fmt === "fastmath" || fmt === "infomath") body.questions = duelBuildItems(fmt, webinarAdmin.difficulty);
+  else if (fmt === "sprint") body.topic = "informatika,mathematics,physics";
+  const res = await apiPost("/api/webinar/create", body);
   if (!res || !res.ok) { alert((res && res.detail) || "Не удалось создать вызов"); return; }
   hapticMedium();
   webinarLaunchGame(res, "webinar-admin");
