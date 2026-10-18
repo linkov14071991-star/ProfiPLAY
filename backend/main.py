@@ -3797,6 +3797,25 @@ async def webinar_close(cid: int, init_data: str = Body(...)):
 
 WEBINAR_WINNERS = 3        # топ-3 — победители (месяц курса)
 WEBINAR_PRIZES_TOTAL = 8   # места 1–8 получают призы; 4–8 — призёры (сертификаты)
+WEBINAR_MANAGER = "@krrrasya"   # контакт менеджера для получения призов
+
+
+@app.post("/api/webinar/remind_nocontact")
+async def webinar_remind_nocontact(init_data: str = Body(...)):
+    """Админ: написать призёрам (топ-8) без @username, что с ними не могут связаться → контакт менеджера."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        top = _webinar_leaderboard(db)
+    targets = [r for r in top[:WEBINAR_PRIZES_TOTAL] if not r["username"]]
+    text = (f"🎁 <b>Поздравляем — ты призёр вебинара «от 0 до 70»!</b>\n\n"
+            f"Мы не можем с тобой связаться: у тебя в Telegram не указан @username. "
+            f"Напиши, пожалуйста, нашему менеджеру {WEBINAR_MANAGER}, чтобы забрать приз. 💚")
+    sent = 0
+    if BOT_TOKEN and targets:
+        sent = await _bot_send_all([r["user_id"] for r in targets], text)
+    return {"ok": True, "targets": len(targets), "sent": sent, "names": [r["name"] for r in targets]}
 
 
 @app.post("/api/webinar/finish")
@@ -3948,7 +3967,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webinar-results-announce-v141"
+BUILD_TAG = "webinar-nocontact-v142"
 
 
 @app.get("/api/version")

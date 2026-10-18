@@ -7060,6 +7060,7 @@ function renderWebinarAdmin(res) {
   </div>
   <div class="wb-admin-fin">
     <button id="btn-wb-finish" class="btn btn-secondary">🏁 Подвести итоги и объявить победителей</button>
+    <button id="btn-wb-nocontact" class="btn btn-secondary">✉️ Написать призёрам без контакта</button>
     <button id="btn-wb-reset" class="btn btn-link">Сбросить вебинар</button>
   </div></div>`;
   el.innerHTML = html;
@@ -7068,6 +7069,7 @@ function renderWebinarAdmin(res) {
   const cb = document.getElementById("btn-wb-close"); if (cb) cb.onclick = webinarAdminClose;
   document.getElementById("btn-wb-create").onclick = webinarAdminCreate;
   document.getElementById("btn-wb-finish").onclick = webinarAdminFinishEvent;
+  document.getElementById("btn-wb-nocontact").onclick = webinarAdminRemindNoContact;
   document.getElementById("btn-wb-reset").onclick = webinarAdminReset;
 }
 
@@ -7104,6 +7106,17 @@ async function webinarAdminFinishEvent() {
   hapticSuccess();
   alert(`Готово! Итоги объявлены.\nПобедителей: ${res.winners}, призёров: ${res.prizers}. Оповещено участников: ${res.notified}.`);
   webinarLastSig = ""; await loadWebinar();
+}
+async function webinarAdminRemindNoContact() {
+  if (!confirm("Отправить призёрам из топ-8, у кого нет @username, сообщение: «с тобой не могут связаться, напиши менеджеру @krrrasya»?")) return;
+  const btn = document.getElementById("btn-wb-nocontact");
+  if (btn) { btn.disabled = true; btn.textContent = "Отправляю…"; }
+  const res = await apiPost("/api/webinar/remind_nocontact", { init_data: INIT_DATA });
+  if (btn) { btn.disabled = false; btn.textContent = "✉️ Написать призёрам без контакта"; }
+  if (!res || !res.ok) { alert((res && res.detail) || "Не удалось отправить"); return; }
+  hapticSuccess();
+  if (!res.targets) { alert("Призёров без @username нет — всем можно написать по нику."); return; }
+  alert(`Отправлено ${res.sent} из ${res.targets}.\nБез контакта: ${(res.names || []).join(", ")}`);
 }
 async function webinarAdminReset() {
   if (!confirm("Полностью очистить вебинар (все вызовы и баллы)? Только для нового эфира.")) return;
