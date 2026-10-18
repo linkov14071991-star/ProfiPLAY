@@ -3795,6 +3795,10 @@ async def webinar_close(cid: int, init_data: str = Body(...)):
     return {"ok": True, "top": top}
 
 
+WEBINAR_WINNERS = 3        # топ-3 — победители (месяц курса)
+WEBINAR_PRIZES_TOTAL = 8   # места 1–8 получают призы; 4–8 — призёры (сертификаты)
+
+
 @app.post("/api/webinar/finish")
 async def webinar_finish(init_data: str = Body(...)):
     """Админ: подвести итоги вебинара (закрыть открытые, зафиксировать топ)."""
@@ -3806,12 +3810,76 @@ async def webinar_finish(init_data: str = Body(...)):
             _webinar_finalize(db, o["id"])
         top = _webinar_leaderboard(db)
         _flag_set(db, "webinar_finished", "1")
-        db.execute(
-            "INSERT INTO giveaway_draws (key, data_json, created_at) VALUES ('webinar_1017', ?, datetime('now')) "
-            "ON CONFLICT(key) DO UPDATE SET data_json = excluded.data_json, created_at = excluded.created_at",
-            (json.dumps({"top": top[:20]}),),
-        )
+        try:
+            db.execute(
+                "INSERT INTO giveaway_draws (key, data_json, created_at) VALUES ('webinar_1017', ?, datetime('now')) "
+                "ON CONFLICT(key) DO UPDATE SET data_json = excluded.data_json, created_at = excluded.created_at",
+                (json.dumps({"top": top[:20]}),),
+            )
+        except Exception as e:
+            print(f"[webinar finish] snapshot skip: {e}")
     return {"ok": True, "top": top}
+
+
+@app.post("/api/webinar/announce_results")
+async def webinar_announce_results(init_data: str = Body(...)):
+    """Админ: подвести итоги И разослать победителей. Топ-3 — победители, 4–8 — призёры."""
+    tg_user = get_verified_user(init_data)
+    if tg_user["id"] not in ADMIN_IDS:
+        raise HTTPException(status_code=403, detail="Not admin")
+    with get_db() as db:
+        for o in db.execute("SELECT id FROM webinar_challenge WHERE state = 'open'").fetchall():
+            _webinar_finalize(db, o["id"])
+        top = _webinar_leaderboard(db)
+        _flag_set(db, "webinar_finished", "1")
+        try:
+            db.execute(
+                "INSERT INTO giveaway_draws (key, data_json, created_at) VALUES ('webinar_1017', ?, datetime('now')) "
+                "ON CONFLICT(key) DO UPDATE SET data_json = excluded.data_json, created_at = excluded.created_at",
+                (json.dumps({"top": top[:20]}),),
+            )
+        except Exception as e:
+            print(f"[webinar announce] snapshot skip: {e}")
+        reg_ids = _webinar_registered_ids(db)
+
+    def _nm(r):
+        return ("@" + r["username"]) if r["username"] else r["name"]
+
+    medals = ["🥇", "🥈", "🥉"]
+    winners = top[:WEBINAR_WINNERS]
+    prizers = top[WEBINAR_WINNERS:WEBINAR_PRIZES_TOTAL]
+    L = ["🏁 <b>Вебинар от 0 до 70 — итоги!</b>", "", "Спасибо всем за игру! Вот результаты 👇", ""]
+    if winners:
+        L.append("🏆 <b>Победители (топ-3):</b>")
+        for i, r in enumerate(winners):
+            L.append(f"{medals[i]} {_nm(r)} — <b>{r['points']}</b> баллов")
+    if prizers:
+        L.append("")
+        L.append("🎁 <b>Призёры (4–8 место):</b>")
+        for i, r in enumerate(prizers):
+            L.append(f"{r['place']}. {_nm(r)} — {r['points']} баллов")
+    L += ["", "Победителям — месяц курса (тариф «Стандарт»), призёрам — сертификаты OZON / Золотое Яблоко. С каждым свяжемся лично! 💚"]
+    post = "\n".join(L)
+
+    # персональные поздравления топ-8
+    personal = []
+    for i, r in enumerate(top[:WEBINAR_PRIZES_TOTAL]):
+        place = i + 1
+        if i < WEBINAR_WINNERS:
+            txt = (f"🏆 <b>Поздравляем — ты ПОБЕДИТЕЛЬ вебинара!</b>\n"
+                   f"Ты занял <b>{place} место</b> с {r['points']} баллами. Тебе — <b>месяц курса (Стандарт)</b>. Скоро свяжемся лично! 💚")
+        else:
+            txt = (f"🎁 <b>Поздравляем — ты ПРИЗЁР вебинара!</b>\n"
+                   f"Ты занял <b>{place} место</b> с {r['points']} баллами. Тебе — <b>сертификат OZON / Золотое Яблоко</b>. Скоро свяжемся лично! 💚")
+        personal.append((r["user_id"], txt))
+
+    markup = {"inline_keyboard": [[{"text": "🎮 В Профик ARENA", "web_app": {"url": WEBAPP_URL}}]]} if WEBAPP_URL else None
+    sent_all = 0
+    if BOT_TOKEN and reg_ids:
+        sent_all = await _bot_send_all(reg_ids, post, markup)
+        if personal:
+            await _send_bot_messages(personal)
+    return {"ok": True, "top": top, "notified": sent_all, "winners": len(winners), "prizers": len(prizers)}
 
 
 @app.post("/api/webinar/reset")
@@ -3880,7 +3948,7 @@ async def webinar_state(init_data: str = Body(..., embed=True)):
 
 
 # ---------- Версия сборки (для проверки, что задеплоилось) ----------
-BUILD_TAG = "webinar-countdown-v140"
+BUILD_TAG = "webinar-results-announce-v141"
 
 
 @app.get("/api/version")

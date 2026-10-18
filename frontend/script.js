@@ -7059,7 +7059,7 @@ function renderWebinarAdmin(res) {
     <button id="btn-wb-create" class="btn btn-primary">▶️ Создать и сыграть вызов</button>
   </div>
   <div class="wb-admin-fin">
-    <button id="btn-wb-finish" class="btn btn-secondary">🏁 Подвести итоги вебинара</button>
+    <button id="btn-wb-finish" class="btn btn-secondary">🏁 Подвести итоги и объявить победителей</button>
     <button id="btn-wb-reset" class="btn btn-link">Сбросить вебинар</button>
   </div></div>`;
   el.innerHTML = html;
@@ -7093,10 +7093,17 @@ async function webinarAdminClose() {
   hapticSuccess(); webinarLastSig = ""; await loadWebinar();
 }
 async function webinarAdminFinishEvent() {
-  if (!confirm("Подвести итоги вебинара? Все открытые вызовы закроются, зафиксируется финальный топ.")) return;
-  const res = await apiPost("/api/webinar/finish", { init_data: INIT_DATA });
-  if (!res || !res.ok) { alert("Не удалось"); return; }
-  hapticSuccess(); webinarLastSig = ""; await loadWebinar();
+  if (!confirm("Подвести итоги и объявить победителей?\nТоп-3 — победители (месяц курса), 4–8 место — призёры (сертификаты).\nВсем зарегистрированным уйдёт пост с результатами, а топ-8 — личные поздравления.")) return;
+  const btn = document.getElementById("btn-wb-finish");
+  if (btn) { btn.disabled = true; btn.textContent = "Рассылаю…"; }
+  const res = await apiPost("/api/webinar/announce_results", { init_data: INIT_DATA });
+  if (!res || !res.ok) {
+    if (btn) { btn.disabled = false; btn.textContent = "🏁 Подвести итоги и объявить победителей"; }
+    alert((res && res.detail) || "Не удалось подвести итоги"); return;
+  }
+  hapticSuccess();
+  alert(`Готово! Итоги объявлены.\nПобедителей: ${res.winners}, призёров: ${res.prizers}. Оповещено участников: ${res.notified}.`);
+  webinarLastSig = ""; await loadWebinar();
 }
 async function webinarAdminReset() {
   if (!confirm("Полностью очистить вебинар (все вызовы и баллы)? Только для нового эфира.")) return;
@@ -7117,11 +7124,11 @@ function renderWebinarTop(res) {
   // ПОЛНЫЙ список всех участников — для честности и прозрачности
   const rows = top.map((r) => {
     const isMe = myId && r.user_id === myId;
-    const prize = r.place <= 3 ? " 🎓" : "";
+    const prize = r.place <= 3 ? " 🏆" : (r.place <= 8 ? " 🎁" : "");
     const nm = r.username ? "@" + escapeHtml(r.username) : escapeHtml(r.name);
     return `<div class="wb-top-row${isMe ? " me" : ""}"><span class="wb-top-place">${medal(r.place)}</span><span class="wb-top-name">${nm}${prize}</span><span class="wb-top-pts">${r.points}</span></div>`;
   }).join("");
-  el.innerHTML = head + mine + `<div class="wb-top-list">${rows}</div>` + `<div class="wb-top-hint">Полный список участников — для честности. Топ-3 (🎓) — месяц курса, дальше — сертификаты (кол-во по числу участников).</div>`;
+  el.innerHTML = head + mine + `<div class="wb-top-list">${rows}</div>` + `<div class="wb-top-hint">Полный список участников — для честности. 🏆 Топ-3 — победители (месяц курса), 🎁 4–8 место — призёры (сертификаты).</div>`;
 }
 
 async function loadWebinarBanner() {
