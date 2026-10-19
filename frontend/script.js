@@ -3197,10 +3197,46 @@ async function openGiveawayArchive() {
     }
   } catch (e) { /* если розыгрыш не разыгран — просто не показываем */ }
 
-  const html = runCards + aug29Card;
+  // вебинар «ЕГЭ 0→70» 17 октября — победители и призёры
+  const w = WEBINAR_RESULTS;
+  const medal3 = ["🥇", "🥈", "🥉"];
+  const winRows = w.winners.map((p, i) => `<div class="gv-arch-win">${medal3[i]} <b>${escapeHtml(p.name)}</b> — ${p.points} баллов</div>`).join("");
+  const przRows = w.prizers.map((p, i) => `<div class="gv-arch-row" style="opacity:0.9;">🎁 ${i + 4}. ${escapeHtml(p.name)} — ${p.points} баллов</div>`).join("");
+  const webinarCard = `
+    <div class="gv-arch-item">
+      <div class="gv-arch-title">🎓 ${escapeHtml(w.title)}</div>
+      <div class="gv-arch-date">${w.date} · игровые вызовы по кодовому слову</div>
+      <div class="gv-arch-row" style="margin-top:6px;"><b>🏆 Победители:</b></div>
+      ${winRows}
+      <div class="gv-arch-row" style="margin-top:6px;"><b>🎁 Призёры (4–8 место):</b></div>
+      ${przRows}
+      <div class="gv-arch-prize">🏆 Победители — месяц курса «Стандарт», призёры — сертификаты OZON / Золотое Яблоко</div>
+    </div>`;
+
+  const html = webinarCard + runCards + aug29Card;
   el.innerHTML = html || '<p style="text-align:center; opacity:0.7; padding:16px;">Пока пусто. Первый розыгрыш совсем скоро!</p>';
 }
 window.openGiveawayArchive = openGiveawayArchive;
+
+// Результаты вебинара «ЕГЭ 0→70» 17 октября (для Зала славы)
+const WEBINAR_RESULTS = {
+  title: "Вебинар «ЕГЭ по информатике 0→70»",
+  date: "17 октября 2026",
+  participants: "60+",
+  challenges: "10+",
+  winners: [
+    { name: "@Bluecoolfire", points: 885 },
+    { name: "@lielari", points: 745 },
+    { name: "@Funny7Valentine", points: 650 },
+  ],
+  prizers: [
+    { name: "Ali", points: 640 },
+    { name: "@igroman1223", points: 595 },
+    { name: "@seikkoa", points: 355 },
+    { name: "@Solnart16", points: 345 },
+    { name: "@tgvasil164", points: 340 },
+  ],
+};
 
 function gv29Name(t) { return t.username ? "@" + escapeHtml(t.username) : escapeHtml(t.name || "Игрок"); }
 async function openGiveaway29() {
@@ -7147,6 +7183,9 @@ function renderWebinarTop(res) {
 async function loadWebinarBanner() {
   const el = document.getElementById("webinar-banner");
   if (!el) return;
+  // Вебинар завершён — баннер на главной скрыт. Результаты — в Зале славы.
+  el.style.display = "none"; el.innerHTML = "";
+  return;
   let res = null;
   try { res = await apiPost("/api/webinar/state", { init_data: INIT_DATA }); } catch (e) {}
   if (!res || res.finished) { el.style.display = "none"; el.innerHTML = ""; return; }
