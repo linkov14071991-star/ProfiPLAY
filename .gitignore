@@ -11,3 +11,4 @@ venv/
 autopush.bat
 node_modules/
 frontend/node_modules/
+backup_to_G.ps1

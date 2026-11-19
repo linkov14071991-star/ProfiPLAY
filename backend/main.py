@@ -2930,6 +2930,7 @@ async def _bot_send_all(ids, text, markup=None):
     return sent
 
 
+DAILY_REMINDER_ENABLED = False         # ежедневное оповещение с рейтингом (False — отключено)
 DAILY_REMINDER_HOUR_MSK = 12           # ежедневное напоминание зайти в приложение
 
 
@@ -3023,6 +3024,8 @@ async def _daily_reminder_loop():
 
 @app.on_event("startup")
 async def _startup_daily_reminder():
+    if not DAILY_REMINDER_ENABLED:
+        return  # рассылка отключена
     t = asyncio.create_task(_daily_reminder_loop())
     _bg_tasks.add(t)
     t.add_done_callback(_bg_tasks.discard)
